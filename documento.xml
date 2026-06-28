@@ -1,0 +1,1327 @@
+<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" mc:Ignorable="w14 wp14 w15">
+  <w:body>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="60"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b/>
+          <w:bCs/>
+          <w:color w:val="1F4E79"/>
+          <w:sz w:val="24"/>
+          <w:szCs w:val="24"/>
+        </w:rPr>
+        <w:t>KATRIX</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="240"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b/>
+          <w:bCs/>
+          <w:color w:val="111111"/>
+          <w:sz w:val="44"/>
+          <w:szCs w:val="44"/>
+        </w:rPr>
+        <w:t>Propuesta de Desarrollo de Software</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="40"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:color w:val="555555"/>
+          <w:sz w:val="26"/>
+          <w:szCs w:val="26"/>
+        </w:rPr>
+        <w:t>Sistema de Consulta de Productores Asesores de Seguros (SSN)</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="320"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:color w:val="555555"/>
+          <w:sz w:val="22"/>
+          <w:szCs w:val="22"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Preparado para: Javier Coronel </w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>1. Situación actual</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Actualmente Javier cuenta con un sistema desarrollado en 2017 (&#x201C;InformacionDeMatriculasV3&#x201D;), del cual no se dispone del código fuente, sino únicamente del ejecutable compilado y sus librerías asociadas:</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblW w:w="9360" w:type="dxa"/>
+        <w:jc w:val="left"/>
+        <w:tblInd w:w="0" w:type="dxa"/>
+        <w:tblLayout w:type="fixed"/>
+        <w:tblCellMar>
+          <w:top w:w="60" w:type="dxa"/>
+          <w:left w:w="120" w:type="dxa"/>
+          <w:bottom w:w="60" w:type="dxa"/>
+          <w:right w:w="120" w:type="dxa"/>
+        </w:tblCellMar>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="9360"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:trPr/>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="9360" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:eastAsia="Consolas" w:cs="Consolas" w:ascii="Consolas" w:hAnsi="Consolas"/>
+                <w:sz w:val="20"/>
+                <w:szCs w:val="20"/>
+              </w:rPr>
+              <w:t>InformacionDeMatriculas.exe</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr/>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="9360" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:eastAsia="Consolas" w:cs="Consolas" w:ascii="Consolas" w:hAnsi="Consolas"/>
+                <w:sz w:val="20"/>
+                <w:szCs w:val="20"/>
+              </w:rPr>
+              <w:t>InformacionDeMatriculas.exe.config</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr/>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="9360" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:eastAsia="Consolas" w:cs="Consolas" w:ascii="Consolas" w:hAnsi="Consolas"/>
+                <w:sz w:val="20"/>
+                <w:szCs w:val="20"/>
+              </w:rPr>
+              <w:t>HtmlAgilityPack.dll</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr/>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="9360" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:eastAsia="Consolas" w:cs="Consolas" w:ascii="Consolas" w:hAnsi="Consolas"/>
+                <w:sz w:val="20"/>
+                <w:szCs w:val="20"/>
+              </w:rPr>
+              <w:t>ScrapySharp.Core.dll</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr/>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="9360" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:eastAsia="Consolas" w:cs="Consolas" w:ascii="Consolas" w:hAnsi="Consolas"/>
+                <w:sz w:val="20"/>
+                <w:szCs w:val="20"/>
+              </w:rPr>
+              <w:t>ScrapySharpAsync.dll</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr/>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="9360" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:eastAsia="Consolas" w:cs="Consolas" w:ascii="Consolas" w:hAnsi="Consolas"/>
+                <w:sz w:val="20"/>
+                <w:szCs w:val="20"/>
+              </w:rPr>
+              <w:t>FSharp.Core.dll</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="200"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Tras analizar el funcionamiento interno del programa, se identificaron los siguientes problemas:</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="3"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>El sistema funciona consultando, matrícula por matrícula, el sitio web ssn.gov.ar de la Superintendencia de Seguros de la Nación (SSN).</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Ese dominio ya no existe: la SSN migró su sitio a ssn.gob.ar, por lo que el programa no puede conectarse y deja de funcionar por completo.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>El programa no cuenta con ningún mecanismo de resolución de captcha, un elemento que los sitios gubernamentales suelen incorporar con el tiempo.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Al no existir código fuente, no es posible repararlo, actualizarlo ni adaptarlo: cualquier corrección implica reescribir el sistema desde cero.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>2. Solución propuesta</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>En lugar de intentar reparar o parchear un sistema obsoleto y dependiente de scraping, se propone desarrollar una aplicación nueva de escritorio, moderna y autocontenida, que resuelva la misma necesidad — consultar el padrón de Productores Asesores de Seguros — de forma más simple, rápida y robusta.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>2.1 Fuente de datos principal</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>La SSN publica este mismo registro como dato abierto oficial (licencia Creative Commons, de uso libre citando la fuente), actualizado semestralmente. La nueva aplicación descargará y mantendrá este dataset en una caché local, permitiendo búsquedas instantáneas sin depender de una conexión a internet para el uso diario.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Ventajas de este enfoque frente al sistema anterior:</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Sin captcha, sin esperas entre consultas y sin riesgo de bloqueo por parte del sitio de la SSN.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Búsqueda instantánea por matrícula, nombre, CUIT o documento.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Funcionamiento offline una vez descargado el dataset, con chequeo automático de actualizaciones al iniciar la aplicación (en segundo plano).</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>2.2 Interfaz de la aplicación</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Aplicación de escritorio para Windows, entregada como un único archivo .exe, sin instalador, que corre en cualquier PC sin requerir instalaciones adicionales.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Diseño moderno tipo Material Design, con paleta profesional acorde a una empresa de seguros.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Barra de búsqueda con filtrado en tiempo real, insensible a mayúsculas y acentos.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Resultados mostrados en tabla, con vista de detalle (ficha completa) por registro, incluyendo opción de copiar los datos al portapapeles.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Indicador de la fecha de última actualización del dataset y referencia a la fuente oficial (SSN – Datos Abiertos).</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>2.3 Mejora adicional: consulta en vivo para casos no encontrados</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Dado que el dataset oficial se actualiza solo dos veces al año, puede haber productores registrados recientemente que todavía no figuren en él. Para esos casos, se evaluará incorporar un módulo opcional de consulta en vivo contra el sitio actual de la SSN, con resolución automática de captcha mediante CapSolver (servicio externo de resolución de captchas).</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Consideraciones de este módulo:</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Es un complemento de tipo &#x201C;best-effort&#x201D;: si la SSN modifica nuevamente su sitio, este módulo en particular podría dejar de funcionar y requerir un ajuste aparte, no cubierto por el mantenimiento básico.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Requiere que el cliente cuente con su propia cuenta y API key de CapSolver. El costo de este servicio (centavos de USD por consulta) corre por cuenta del cliente.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Puede activarse o desactivarse desde la configuración de la aplicación.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Antes de implementarlo, se realizará una verificación técnica para confirmar si el sitio actual de la SSN realmente requiere resolución de captcha; es posible que no sea necesario, lo cual simplificaría esta parte.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>3. Entregables</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Aplicación de escritorio (.exe) funcional, lista para usar en cualquier PC con Windows, sin necesidad de instalación.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Dataset inicial cargado en la aplicación, junto con el mecanismo de actualización automática del mismo.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Soporte inicial para validar el funcionamiento de la aplicación en el entorno real del cliente.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>4. Mantenimiento</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Se ofrece un esquema de mantenimiento mensual que incluye:</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Verificación periódica de que la fuente de datos (dataset abierto de la SSN) siga funcionando correctamente.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Corrección de errores menores y soporte ante consultas del usuario.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Asistencia remota (vía AnyDesk o TeamViewer) para diagnóstico en caso de problemas.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Los cambios mayores — por ejemplo, si la SSN modifica significativamente su sitio o dataset, se solicitan nuevas funcionalidades, o es necesario reescribir el módulo de consulta en vivo — se cotizan por separado, fuera del esquema de mantenimiento básico.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>5. Actualizaciones futuras</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Para esta primera versión, las actualizaciones de la aplicación se entregarán como un nuevo archivo .exe para reemplazar el anterior — un proceso simple, de un solo archivo, sin instalación. Un sistema de auto-actualización integrado dentro de la propia aplicación queda planteado como una mejora posible para etapas futuras, en caso de que el uso del sistema crezca y lo justifique.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>6. Anexo: Costo estimado de un relevamiento manual de datos complementarios</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Algunos campos que no forman parte del dataset de Datos Abiertos (Teléfono, E-mail, Provincia, Nro. y Fecha de Resolución, etc.) sólo están disponibles consultando, uno por uno, el sitio en vivo de la SSN y resolviendo el reCAPTCHA de forma manual. A continuación se detalla el costo aproximado de realizar ese proceso a mano.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Flujo de trabajo manual por productor</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Abrir la web de la SSN.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Resolver manualmente el reCAPTCHA de Google (selección de imágenes, semáforos, pasos peatonales, etc.): 15 a 30 segundos.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Ingresar el DNI o matrícula y presionar &#x201C;Buscar&#x201D;: 5 a 10 segundos.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Copiar los datos de contacto del resultado y pegarlos en una planilla o base de datos: 20 a 30 segundos.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b/>
+          <w:bCs/>
+        </w:rPr>
+        <w:t>Tiempo estimado por productor: ~1 minuto (60 segundos).</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Tiempo total estimado (trabajo continuo, sin pausas)</w:t>
+      </w:r>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblW w:w="9360" w:type="dxa"/>
+        <w:jc w:val="left"/>
+        <w:tblInd w:w="0" w:type="dxa"/>
+        <w:tblLayout w:type="fixed"/>
+        <w:tblCellMar>
+          <w:top w:w="60" w:type="dxa"/>
+          <w:left w:w="120" w:type="dxa"/>
+          <w:bottom w:w="60" w:type="dxa"/>
+          <w:right w:w="120" w:type="dxa"/>
+        </w:tblCellMar>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="4680"/>
+        <w:gridCol w:w="4680"/>
+      </w:tblGrid>
+      <w:tr>
+        <w:trPr/>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="4680" w:type="dxa"/>
+            <w:shd w:val="clear" w:color="auto" w:fill="D5E8F0"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:b/>
+                <w:bCs/>
+              </w:rPr>
+              <w:t>Cantidad de productores</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="4680" w:type="dxa"/>
+            <w:shd w:val="clear" w:color="auto" w:fill="D5E8F0"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:b/>
+                <w:bCs/>
+              </w:rPr>
+              <w:t>Tiempo total estimado</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr/>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="4680" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr/>
+              <w:t>100 productores</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="4680" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr/>
+              <w:t>1 hora y 40 minutos de trabajo continuo.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr/>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="4680" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr/>
+              <w:t>1.000 productores</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="4680" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr/>
+              <w:t>16 horas y 40 minutos (unas 2 jornadas completas de trabajo).</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr>
+        <w:trPr/>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="4680" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr/>
+              <w:t>55.000 productores (padrón completo)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="4680" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:left w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:bottom w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+              <w:right w:val="single" w:sz="2" w:space="0" w:color="CCCCCC"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p>
+            <w:pPr>
+              <w:pStyle w:val="Normal"/>
+              <w:rPr/>
+            </w:pPr>
+            <w:r>
+              <w:rPr/>
+              <w:t>≈ 916 horas de trabajo neto, equivalentes a unos 115 días de trabajo de 8 horas diarias sin interrupciones (aproximadamente 5 meses para una sola persona).</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Dificultades adicionales del proceso manual</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="80"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b/>
+          <w:bCs/>
+        </w:rPr>
+        <w:t xml:space="preserve">Bloqueos de IP: </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr/>
+        <w:t>si una misma dirección realiza cientos de consultas seguidas, la web de la SSN o reCAPTCHA pueden bloquearla temporalmente por actividad sospechosa.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="ListParagraph"/>
+        <w:numPr>
+          <w:ilvl w:val="0"/>
+          <w:numId w:val="1"/>
+        </w:numPr>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b/>
+          <w:bCs/>
+        </w:rPr>
+        <w:t xml:space="preserve">Fatiga mental: </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr/>
+        <w:t>resolver miles de CAPTCHAs de forma manual y repetitiva es sumamente tedioso y propenso a errores de carga y de copiado de datos.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Esto confirma que, para volúmenes mayores a unos pocos casos puntuales, el relevamiento manual no es una alternativa práctica, y refuerza la conveniencia del enfoque basado en el dataset de Datos Abiertos (sección 2.1), complementado únicamente con consultas en vivo puntuales (sección 2.3) para casos individuales no encontrados.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading1"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>7. Anexo: Marco legal sobre la evasión de CAPTCHAs en sitios públicos (Argentina)</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Existe una diferencia importante entre el scraping pasivo de datos públicos &#x2014;como el uso del dataset de Datos Abiertos de la SSN propuesto en la sección 2.1&#x2014; y la evasión o resolución automatizada de CAPTCHAs para acceder a un sistema que los exige expresamente. Un CAPTCHA constituye una barrera de seguridad explícita, y forzar su resolución automática para ingresar a un sistema de un organismo estatal puede encuadrar en distintas figuras del Código Penal argentino y generar responsabilidad civil.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Acceso indebido a un sistema informático</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>El artículo 153 bis del Código Penal (incorporado por la Ley 26.388 de Delitos Informáticos) sanciona el acceso no autorizado a un sistema o dato informático de acceso restringido, con penas agravadas cuando el sistema pertenece a un organismo público estatal. La evasión automatizada de un CAPTCHA puede interpretarse como forzar el ingreso a un sistema que cuenta con una medida de seguridad destinada expresamente a restringir el acceso.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Daño o entorpecimiento informático</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Los artículos 183 y 184 del Código Penal, también modificados por la Ley 26.388, contemplan el daño informático y prevén agravantes cuando afecta sistemas de la administración pública. Una automatización que realice consultas masivas y sostenidas, sobrecargando o entorpeciendo el funcionamiento normal de un sitio estatal, podría encuadrar en esta figura.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Heading2"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Incumplimiento contractual y mala fe civil</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr/>
+        <w:t>Más allá del plano penal, los Términos y Condiciones de uso de un sitio suelen prohibir expresamente este tipo de prácticas. Su incumplimiento, sumado a la evasión deliberada de una medida de seguridad, puede dar lugar además a reclamos civiles por daños y perjuicios en el marco del Código Civil y Comercial.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b/>
+          <w:bCs/>
+        </w:rPr>
+        <w:t xml:space="preserve">Conclusión para este proyecto: </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr/>
+        <w:t>por estos motivos, la solución descripta en este documento se basa exclusivamente en el dataset de Datos Abiertos de la SSN &#x2014;información pública, sin barreras de acceso&#x2014;, evitando cualquier interacción con el CAPTCHA del sitio en vivo. El módulo opcional de consulta en vivo de la sección 2.3 debe entenderse limitado a consultas puntuales y de bajo volumen para casos individuales no encontrados en el dataset, no a relevamientos masivos.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:spacing w:before="0" w:after="160"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:i/>
+          <w:iCs/>
+          <w:color w:val="888888"/>
+          <w:sz w:val="18"/>
+          <w:szCs w:val="18"/>
+        </w:rPr>
+        <w:t>Nota: este apartado tiene fines informativos y de contexto para la toma de decisiones del proyecto; no constituye asesoramiento legal formal. Para una evaluación vinculante se recomienda consultar con un profesional en derecho informático.</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:pStyle w:val="Normal"/>
+        <w:pBdr>
+          <w:top w:val="single" w:sz="6" w:space="8" w:color="CCCCCC"/>
+        </w:pBdr>
+        <w:spacing w:before="320" w:after="0"/>
+        <w:rPr/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:i/>
+          <w:iCs/>
+          <w:color w:val="888888"/>
+          <w:sz w:val="18"/>
+          <w:szCs w:val="18"/>
+        </w:rPr>
+        <w:t>Katrix – Soluciones de software a medida · katrix.com.ar</w:t>
+      </w:r>
+    </w:p>
+    <w:sectPr>
+      <w:type w:val="nextPage"/>
+      <w:pgSz w:w="12240" w:h="15840"/>
+      <w:pgMar w:left="1440" w:right="1440" w:gutter="0" w:header="0" w:top="1440" w:footer="0" w:bottom="1440"/>
+      <w:pgNumType w:fmt="decimal"/>
+      <w:formProt w:val="false"/>
+      <w:textDirection w:val="lrTb"/>
+      <w:docGrid w:type="default" w:linePitch="360" w:charSpace="4096"/>
+    </w:sectPr>
+  </w:body>
+</w:document>

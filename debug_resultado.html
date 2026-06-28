@@ -1,0 +1,443 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+    <title>SSN - Productores Individuales y Sociedades</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+    <link rel="stylesheet" href="css/bootstrap.css">
+    <link rel="stylesheet" href="css/roboto-fontface.css">
+    <link rel="stylesheet" href="css/poncho.css">
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+    <script language="javascript">
+        function cambiarEstado(objeto) {
+            var tipo = objeto.value
+            var numero = objeto.name.substring(8)
+
+            /* 1. Ocultar / mostrar */
+            document.getElementById("tipoPasSelect").style.display = (tipo === "PAS") ? "block" : "none";
+            document.getElementById("tipoSocSelect").style.display = (tipo === "SOC") ? "block" : "none";
+
+            document.getElementById("tipoPas").value = "";
+            document.getElementById("tipoSoc").value = "";
+
+            document.getElementById("divMatricula").style.display =  "none";
+            document.getElementById("divApellidorazonsocial").style.display = "none";
+            document.getElementById("divDocNro").style.display = "none";
+            document.getElementById("divTipoDoc").style.display = "none";
+
+            document.getElementById("matricula").value = "";
+            document.getElementById("apellidorazonsocial").value = "";
+            document.getElementById("docNro").value = "";
+            document.getElementById("tipoDoc").value = "";
+        }
+
+        function cambiarInput(objeto) {
+            var tipo = objeto.value
+            var numero = objeto.name.substring(8)
+            var matricula = document.getElementById("matricula");
+            var apellidorazonsocial = document.getElementById("apellidorazonsocial");
+            var docNro = document.getElementById("docNro");
+
+            /* 1. Ocultar / mostrar */
+            document.getElementById("divMatricula").style.display = (tipo === "matricula") ? "block" : "none";
+            document.getElementById("divApellidorazonsocial").style.display = (tipo === "apellidorazonsocial") ? "block" : "none";
+            document.getElementById("divDocNro").style.display = (tipo === "docNro") ? "block" : "none";
+            document.getElementById("divTipoDoc").style.display = (tipo === "docNro") ? "block" : "none";
+
+            switch (tipo) {
+                case "matricula":
+                    document.getElementById("tipoDocSelect").value = "";
+                    document.getElementById("docNro").value = "";
+                    document.getElementById("apellidorazonsocial").value = "";
+                    document.getElementById("matricula").focus();
+                    break;
+
+                case "apellidorazonsocial":
+                    document.getElementById("matricula").value = "";
+                    document.getElementById("tipoDocSelect").value = "";
+                    document.getElementById("docNro").value = "";
+                    document.getElementById("apellidorazonsocial").focus();
+                    break;
+
+                case "docNro":
+                    document.getElementById("matricula").value = "";
+                    document.getElementById("apellidorazonsocial").value = "";
+                    document.getElementById("docNro").focus();
+                    break;
+
+                default:
+                    // Limpiar todos los campos si se selecciona "Elija tipo de búsqueda"
+                    document.getElementById("matricula").value = "";
+                    document.getElementById("apellidorazonsocial").value = "";
+                    document.getElementById("tipoDocSelect").value = "";
+                    document.getElementById("docNro").value = "";
+            }
+
+        }
+
+        function verificar() {
+            if (document.all.form1.socpro.value == "PAS") {
+                if (document.all.form1.apellidorazonsocial.value == "" && document.all.form1.matricula.value == "" && document.all.form1.docNro.value == "") {
+                    alert("Debe ingresar al menos un parametro para buscar");
+                    return false;
+                }
+            }
+            else if (document.all.form1.socpro.value == "SOC") {
+                if (document.all.form1.apellidorazonsocial.value == "" && document.all.form1.matricula.value == "") {
+                    alert("Debe ingresar al menos un parametro para buscar");
+                    return false;
+                }
+            }
+            else {
+                alert("Debe elegir tipo de registro");
+                return false;
+            }
+
+            if (!verificarCaptcha()) {
+                return false
+            }
+
+            document.all.form1.submit();
+        }
+
+        function verificarCaptcha() {
+            // Verificar si reCAPTCHA estÃ¡ cargado
+            if (typeof grecaptcha === 'undefined') {
+                alert('ERROR: reCAPTCHA no estÃ¡ cargado');
+                return false;
+            }
+
+            var response = grecaptcha.getResponse();
+
+            if (response.length === 0) {
+                alert('Por favor, completa el CAPTCHA');
+                return false;
+            }
+
+            return true;
+        }
+
+
+
+    </script>
+</head>
+
+<body>
+
+
+    <header>
+        <nav class="navbar navbar-top navbar-default" role="navigation">
+            <div class="container">
+                <div>
+                    <div class="navbar-header">
+
+                        <a href="/poncho/" class="navbar-brand">
+                            <img alt="Poncho" src="imagenes/logo_ssn_.png" height="60">
+                            <h1>PRODUCTORES INDIVIDUALES Y SOCIEDADES</h1>
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </nav>
+    </header>
+
+
+    <main role="main">
+        <div class="container">
+            <section>
+                <article class="content_format row">
+
+                    <div class="row col-md-12">
+                        <div class="col-md-12">
+                            <div class="alert alert-warning" role="alert">
+                                <h4>IMPORTANTE: </h4>
+                                <p>
+                                    Si ud. es productor solamente ingrese su n&uacute;mero de matr&iacute;cula.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form name="form1" method="post" action="" class="row col-md-12" onsubmit="return verificarCaptcha()">
+
+                        <div class="form-group col-md-12">
+                          <input name="socpro" type="radio" value="PAS" checked onClick="cambiarEstado(this)">
+                            Productores / 
+                          <input type="radio" name="socpro" value="SOC"  onClick="cambiarEstado(this)">
+                            Sociedades
+                        </div>
+                        <div class="form-group col-md-12" id="tipoPasSelect" style='display:block;'>
+                            <select class="form-control" name="tipoPas" id="tipoPas" onchange="cambiarInput(this)">
+                                <option value="">Eliga tipo de búsqueda</option>
+                                <option value="matricula" >Matrícula</option>
+                                <option value="apellidorazonsocial" >Apellido / Razon social</option>
+                                <option value="docNro" selected>Nro documento</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-12" id="tipoSocSelect" style='display:none;'>
+                            <select class="form-control" name="tipoSoc" id="tipoSoc" onchange="cambiarInput(this)">
+                                <option value="">Eliga tipo de búsqueda</option>
+                                <option value="matricula" >Matrícula</option>
+                                <option value="apellidorazonsocial" >Apellido / Razon social</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group col-md-12" id="divMatricula" style='display:none;'>
+                            <input name="matricula" type="text" id="matricula" class="form-control" placeholder="Matr&iacute;cula"
+                                value="">
+                        </div>
+
+
+                        <div class="form-group col-md-12" id="divApellidorazonsocial" style='display:none;'>
+                            <input name="apellidorazonsocial" type="text" id="apellidorazonsocial" class="form-control" minlength="3" placeholder="Apellido o Raz&oacute;n Social"
+                                value="">
+                        </div>
+
+                        <div class="form-group col-md-4" id="divTipoDoc" name="tipodoc" id="tipodoc" style='display:block;'>
+                            <select class="form-control" id="tipoDocSelect">
+                                <option value="">Tipo Doc.</option>
+                                
+                                <option value="1"
+                                    >Documento Unico
+                                </option>
+                                
+                                <option value="2"
+                                    >Pasaporte
+                                </option>
+                                
+                                <option value="3"
+                                    >Certificado Migratorio
+                                </option>
+                                
+                                <option value="4"
+                                    >Libreta Civica
+                                </option>
+                                
+                                <option value="5"
+                                    >Libreta Enrolamiento
+                                </option>
+                                
+                                <option value="6"
+                                    >Cedula de Identidad
+                                </option>
+                                
+                            </select>
+                        </div>
+                        <div class="form-group col-md-8" id="divDocNro" style='display:block;'>
+                            <input name="docNro" type="text" id="docNro" class="form-control" placeholder=" Nro. de Documento"
+                                value="31251929" >
+                        </div>
+                        <div class="form-group col-md-12">
+                            <div class="col-md-4">
+                                <div class="recaptcha-container">
+                                    <!-- Reemplaza YOUR_SITE_KEY con tu clave de sitio de Google reCAPTCHA -->
+                                    <div class="g-recaptcha" data-sitekey="6LdXY90rAAAAAN4wjl4FJAO3SmPOvPqcyPypXr0N"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <input type="button" name="Submit" value="Buscar" onclick="verificar()" class="btn btn-primary">
+                            </div>
+                        </div>
+
+
+                    </form>
+                </article>
+            </section>
+        </div>
+    </main>
+
+    <script type="text/javascript" src="/poncho/node_modules/jquery/dist/jquery.js"></script>
+    <script type="text/javascript" src="/poncho/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+
+
+
+
+</body>
+</html>
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+    <title>SSN - Productores Individuales y Sociedades</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+
+    <link href="css/bootstrap.css" rel="stylesheet">
+        <link href="css/roboto-fontface.css" rel="stylesheet">
+            <link href="css/poncho.css" rel="stylesheet"></link>
+        </link>
+    </link>
+</head>
+
+<body bgcolor="#FFFFFF">
+
+    <!-- INICIO agregado poncho 20180311-->
+
+
+    <header>
+        <nav class="navbar navbar-top navbar-default" role="navigation">
+            <div class="container">
+                <div>
+                    <div class="navbar-header">
+
+                        <a href="/poncho/" class="navbar-brand">
+                            <img alt="Poncho" src="imagenes/logo_ssn_.png" height="0">
+                            <h1>PRODUCTORES INDIVIDUALES Y SOCIEDADES</h1>
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+        </nav>
+    </header>
+
+
+    <main role="main">
+        <div class="container">
+            <section>
+                <article class="content_format row">
+                    <p>
+                        
+                    </p>
+
+                    <div class="row col-12">
+                        <div class="col-md-9 col-md-offset-2">
+                        </div>
+
+                        <div class="col-md-3 col-md-offset-2">
+                            <h7>
+                                Página 1 de 1
+                            </h7>
+                        </div>
+
+                    </div>
+
+                    
+                    <div class="panel panel-default col-12">
+                        <div class="panel-heading2 row">
+                            <div class="col-md-4 col-md-offset-2">
+                                <h3>
+                                    <span class="destacadopdtores">Matrícula:
+                                    </span>
+                                    79529
+                                </h3>
+                                </h3>
+                            </div>
+
+                            <div class="col-md-8 col-md-offset-2">
+                                <h3>
+                                    <span class="destacadopdtores">Nombre:
+                                    </span>
+
+                                    CORONEL MARCOS JAVIER
+
+                                </h3>
+                            </div>
+
+                            
+
+                            <div class="col-md-4">
+                                <h5>
+                                    <span class="destacadopdtores">Documento:
+                                    </span>
+                                     
+                                         &nbsp;31251929 
+                                </h5>
+
+                            </div>
+
+                            
+
+
+                            <div class="col-md-3 ">
+                                <h5>
+
+                                    <span class="destacadopdtores">CUIT:
+                                    </span>
+                                    20312519292
+                                </h5>
+
+                            </div>
+
+                            <div class="col-md-5 ">
+                                <h5>
+                                    <span class="destacadopdtores">Ramo:
+                                    </span>
+                                    Patrimoniales y Vida
+                                </h5>
+                            </div>
+
+                            <br />
+
+                        </div>
+
+                        <div class="panel-body2 row">
+                            <div class="titulin_panel col-12">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <p class="margen_inf">
+                                            <span class="destacadopdtores">Provincia
+                                            </span>
+                                            Cordoba
+                                        </p>
+                                    </div>
+                                    <div class="col-md-7">
+                                        <p class="margen_inf">
+                                            <span class="destacadopdtores">Teléfonos:
+                                            </span>
+                                            3513891856 
+                                        </p>
+
+                                    </div>
+
+                                    <div class="col-md-5">
+                                        <p class="margen_inf">
+                                            <span class="destacadopdtores">E-mail:
+                                            </span>
+                                            javiercoronel@gmail.com
+                                        </p>
+                                    </div>
+
+                                    <br />
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row col-12 alta">
+                            <div class="col-12">
+                                <h5>Datos de alta
+                                </h5>
+                            </div>
+
+                            <div class="col-md-7">
+                                <p class="margen_inf">
+                                    <span class="destacadopdtores">Nro. de Resolución
+                                    </span>
+                                    ALTA COMO PRODUCTOR (Res: 38792)
+                                </p>
+                            </div>
+
+                            <div class="col-md-5 ">
+                                <p class="margen_inf">
+                                    <span class="destacadopdtores">Fº de Resolución
+                                    </span>
+                                    05/12/2014
+                                </p>
+                            </div>
+                        </div>
+
+                        <br />
+
+
+                    </div>
+                    
+                </article>
+            </section>
+
+        </div>
+    </main>
+
+</body>
+</html>

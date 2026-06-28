@@ -1,0 +1,13 @@
+# Git ignore for crm-ssn desktop client
+api-crm/
+.venv/
+venv/
+__pycache__/
+build/
+dist/
+scratch/
+temp_build/
+*.pyc
+.DS_Store
+*.db
+*.log
