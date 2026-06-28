@@ -11,8 +11,8 @@ jobs:
           python-version: "3.11"
       - name: Install deps
         run: pip install flet pyinstaller requests beautifulsoup4 lxml soupsieve Pillow
-      - name: Convert icon to ICO
-        run: python -c "from PIL import Image; img = Image.open('LogoJCOrg.png'); img.save('LogoJCOrg.ico', format='ICO')"
+      - name: Convert icon
+        run: python -c "from PIL import Image; Image.open('LogoJCOrg.png').save('LogoJCOrg.ico', format='ICO')"
       - name: Build
         run: pyinstaller --noconfirm --noconsole --onefile --icon LogoJCOrg.ico --name KatrixBroker --add-data "data;data" --add-data "assets;assets" --add-data "LogoJCOrg.png;." main.py
       - name: Upload artifact
