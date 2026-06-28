@@ -14,7 +14,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install deps
-        run: pip install flet pyinstaller requests beautifulsoup4 lxml soupsieve
+        run: pip install flet pyinstaller requests beautifulsoup4 lxml soupsieve Pillow
 
       - name: Build
         run: flet pack main.py -i LogoJCOrg.png --name "KatrixBroker" --add-data "data;data" --add-data "assets;assets" --add-data "LogoJCOrg.png;."
