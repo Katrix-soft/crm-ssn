@@ -10,11 +10,9 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install deps
-        run: pip install flet pyinstaller requests beautifulsoup4 lxml soupsieve Pillow
-      - name: Convert icon
-        run: python -c "from PIL import Image; Image.open('LogoJCOrg.png').save('LogoJCOrg.ico', format='ICO')"
+        run: pip install flet pyinstaller requests beautifulsoup4 lxml soupsieve
       - name: Build
-        run: pyinstaller --noconfirm --noconsole --onefile --icon LogoJCOrg.ico --name KatrixBroker --add-data "data;data" --add-data "assets;assets" --add-data "LogoJCOrg.png;." main.py
+        run: pyinstaller --noconfirm --noconsole --onefile --name KatrixBroker --add-data "data;data" --add-data "assets;assets" --add-data "LogoJCOrg.png;." main.py
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
