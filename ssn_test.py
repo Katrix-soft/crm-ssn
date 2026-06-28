@@ -90,7 +90,12 @@ def obtener_proxies_activos() -> dict:
         proxies["https"] = https_proxy
     return proxies
 
-DB_DIR = "data"
+import platform
+if platform.system() == "Windows":
+    DB_DIR = os.path.join(os.getenv("APPDATA", os.path.expanduser("~")), "KatrixBroker", "data")
+else:
+    DB_DIR = os.path.join(os.path.expanduser("~"), ".katrixbroker", "data")
+
 DB_PATH = os.path.join(DB_DIR, "productores_scraped.db")
 CSV_URL = "https://datosabiertos.ssn.gob.ar/dataset/be4927ba-6b6d-4cee-b33e-5319b33b15b8/resource/07de24f8-4191-497e-a0da-da83cf5eb5d9/download/productores-asesores.csv"
 CSV_PATH_LOCAL = os.path.join(DB_DIR, "productores-asesores.csv")

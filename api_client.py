@@ -51,11 +51,10 @@ DEFAULT_API_URL = obtener_url_api()
 
 def _get_config_dir() -> str:
     """Devuelve la carpeta de datos del usuario según el entorno."""
-    if getattr(sys, "frozen", False):
-        base = os.path.dirname(sys.executable)
+    if platform.system() == "Windows":
+        data_dir = os.path.join(os.getenv("APPDATA", os.path.expanduser("~")), "KatrixBroker", "data")
     else:
-        base = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(base, "data")
+        data_dir = os.path.join(os.path.expanduser("~"), ".katrixbroker", "data")
     os.makedirs(data_dir, exist_ok=True)
     return data_dir
 
