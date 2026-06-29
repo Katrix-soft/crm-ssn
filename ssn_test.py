@@ -463,6 +463,10 @@ def inicializar_db():
         cursor.execute("ALTER TABLE licencias ADD COLUMN dispositivos_info TEXT")
     except sqlite3.OperationalError:
         pass
+    try:
+        cursor.execute("ALTER TABLE licencias ADD COLUMN integraciones TEXT")
+    except sqlite3.OperationalError:
+        pass
 
     # Insertar licencia de prueba por defecto si no hay licencias
     cursor.execute("SELECT COUNT(*) FROM licencias")
@@ -2938,7 +2942,7 @@ def guardar_licencia(clave: str, cliente: str, email_cliente: str,
     conn.close()
     return row_id
 
-def actualizar_licencia(licencia_id: int, cliente: str, fecha_expiracion: str, estado: str, limite_dispositivos: int, dispositivo_id: Optional[str] = None, motivo: Optional[str] = None, dispositivos_info: Optional[str] = None) -> bool:
+def actualizar_licencia(licencia_id: int, cliente: str, fecha_expiracion: str, estado: str, limite_dispositivos: int, dispositivo_id: Optional[str] = None, motivo: Optional[str] = None, dispositivos_info: Optional[str] = None, integraciones: Optional[str] = None) -> bool:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     try:
@@ -2947,6 +2951,10 @@ def actualizar_licencia(licencia_id: int, cliente: str, fecha_expiracion: str, e
         pass
     try:
         cursor.execute("ALTER TABLE licencias ADD COLUMN dispositivos_info TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE licencias ADD COLUMN integraciones TEXT")
     except sqlite3.OperationalError:
         pass
         
@@ -2960,6 +2968,10 @@ def actualizar_licencia(licencia_id: int, cliente: str, fecha_expiracion: str, e
     if dispositivos_info is not None:
         query += ", dispositivos_info=?"
         params.append(dispositivos_info)
+        
+    if integraciones is not None:
+        query += ", integraciones=?"
+        params.append(integraciones)
         
     query += " WHERE id=?"
     params.append(licencia_id)

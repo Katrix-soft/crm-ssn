@@ -2439,6 +2439,17 @@ def main(page: ft.Page):
                 )
             ]
             main_row.controls = [content_column]
+        elif state.get("reactivating_license", False):
+            from ui_components import build_reactivation_loading_view
+            reactivation_view = build_reactivation_loading_view()
+            content_column.controls = [
+                ft.Container(
+                    content=reactivation_view,
+                    alignment=ft.Alignment(0, 0),
+                    expand=True,
+                )
+            ]
+            main_row.controls = [content_column]
         elif state.get("loading_login", False):
             # Pantalla de bienvenida intermedia
             welcome_view = build_welcome_loading_view(state.get("username", ""))
@@ -2570,6 +2581,10 @@ def main(page: ft.Page):
                         if not state.get("license_valid", False):
                             state["license_valid"] = True
                             state["error_license"] = None
+                            state["reactivating_license"] = True
+                            page.run_thread(update_page_layout)
+                            _time.sleep(4) # Espera visual de la imagen
+                            state["reactivating_license"] = False
                             page.run_thread(update_page_layout)
                     else:
                         # Si no es válida por razones explícitas (suspensión, eliminación, etc)

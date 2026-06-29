@@ -1254,6 +1254,66 @@ def build_welcome_loading_view(username: str) -> ft.Container:
         animate=ft.Animation(300, "easeOut"),
     )
 
+def build_reactivation_loading_view() -> ft.Container:
+    def on_reactivation_hover(e):
+        e.control.scale = 1.015 if e.data == "true" else 1.0
+        e.control.shadow = ft.BoxShadow(
+            spread_radius=2, 
+            blur_radius=24, 
+            color=ft.Colors.with_opacity(0.35 if e.data == "true" else 0.15, COLORS["success"] if e.data == "true" else "#000000")
+        )
+        e.control.update()
+
+    return ft.Container(
+        content=ft.Column(
+            controls=[
+                ft.Container(
+                    content=ft.Icon(
+                        ft.Icons.VERIFIED_USER_ROUNDED,
+                        size=80,
+                        color=COLORS["success"],
+                    ),
+                    alignment=ft.Alignment(0, 0),
+                    margin=ft.Margin(0, 0, 0, 16),
+                ),
+                ft.Text(
+                    "¡Licencia Reactivada!",
+                    size=24,
+                    weight=ft.FontWeight.W_900,
+                    color=COLORS["success"],
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Text(
+                    "Por favor, espera unos segundos mientras preparamos tu entorno de trabajo seguro y te redirigimos...",
+                    size=13,
+                    color=COLORS["text_secondary"],
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Container(
+                    content=ft.ProgressBar(
+                        color=COLORS["success"],
+                        bgcolor=ft.Colors.with_opacity(0.1, COLORS["success"]),
+                        width=320,
+                    ),
+                    alignment=ft.Alignment(0, 0),
+                    margin=ft.Margin(0, 16, 0, 8),
+                ),
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+            spacing=4,
+            tight=True,
+        ),
+        bgcolor=COLORS["surface"],
+        border_radius=20,
+        padding=24,
+        width=420,
+        shadow=ft.BoxShadow(spread_radius=1, blur_radius=24, color=ft.Colors.with_opacity(0.15, "#000000")),
+        on_hover=on_reactivation_hover,
+        animate_scale=ft.Animation(300, "easeOut"),
+        animate=ft.Animation(300, "easeOut"),
+    )
+
 
 def build_error_state(message: str, on_retry: Optional[Callable] = None) -> ft.Container:
     controls = [
