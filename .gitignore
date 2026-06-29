@@ -11,3 +11,4 @@ temp_build/
 .DS_Store
 *.db
 *.log
+env.example
