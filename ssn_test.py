@@ -491,46 +491,7 @@ def inicializar_db():
                 hashed_p = hash_password(curr_p)
                 cursor.execute("UPDATE usuarios SET password = ? WHERE email = ?", (hashed_p, e))
 
-    # Carga de Semilla de Datos ERP
-    cursor.execute("SELECT COUNT(*) FROM clientes")
-    if cursor.fetchone()[0] == 0:
-        cursor.execute("SELECT matricula FROM productores_detalle LIMIT 3")
-        mats = [r[0] for r in cursor.fetchall()]
-        while len(mats) < 3:
-            mats.append(f"M-{len(mats)+70000}")
-            
-        dummy_clients = [
-            ("Juan Pérez", "20-34567890-9", "juan.perez@gmail.com", "11-4567-8901", "Av. Cabildo 1540, CABA", "Cliente desde 2024. Prefiere contacto por WhatsApp."),
-            ("María Rodríguez", "27-40123456-8", "maria.rod@hotmail.com", "261-987-6543", "San Martín 450, Mendoza", "Interesada en seguros de Vida."),
-            ("Carlos González", "20-22334455-6", "carlos.gonzalez@empresa.com", "351-555-0199", "Colón 120, Córdoba", "Director de Pyme local."),
-            ("Sofía Martínez", "27-38445566-1", "sofia.m@gmail.com", "11-2345-6789", "Corrientes 890, CABA", "Cliente con múltiples vehículos."),
-            ("Estudio Contable ASOC", "30-71556677-9", "contacto@estudioasoc.com", "341-480-1234", "Pellegrini 1400, Rosario", "Cuenta corporativa. Pólizas de Comercio.")
-        ]
-        for c in dummy_clients:
-            cursor.execute("INSERT INTO clientes (nombre, dni_cuil, email, telefono, direccion, notas) VALUES (?, ?, ?, ?, ?, ?)", c)
-            
-        dummy_policies = [
-            (1, mats[0], "San Cristóbal", "Automotor", "POL-98765", "2026-01-15", "2027-01-15", 120000.0, 150000.0, 15.0, 22500.0, "Al día", "Vigente", "Toyota Corolla 2022. Cobertura Todo Riesgo."),
-            (1, mats[0], "Allianz", "Hogar", "POL-11223", "2026-03-01", "2027-03-01", 35000.0, 45000.0, 20.0, 9000.0, "Al día", "Vigente", "Casa de familia en Olivos. Robo e Incendio."),
-            (2, mats[1], "Sancor", "Vida", "POL-44556", "2026-02-10", "2027-02-10", 60000.0, 70000.0, 25.0, 17500.0, "Al día", "Vigente", "Seguro de vida individual con capital capitalizable."),
-            (3, mats[2], "San Cristóbal", "Integral de Comercio", "POL-77889", "2026-05-01", "2027-05-01", 200000.0, 260000.0, 18.0, 46800.0, "Financiada", "Vigente", "Oficinas comerciales. Adicional robo de valores."),
-            (4, mats[0], "Federación Patronal", "Automotor", "POL-33445", "2025-06-01", "2026-06-01", 90000.0, 110000.0, 15.0, 16500.0, "Impaga", "Vigente", "Ford Focus 2018. Responsabilidad Civil."),
-            (5, mats[1], "Allianz", "ART", "POL-55667", "2026-04-15", "2027-04-15", 300000.0, 380000.0, 10.0, 38000.0, "Al día", "Vigente", "Contrato ART para empleados administrativos.")
-        ]
-        for p in dummy_policies:
-            cursor.execute("""
-                INSERT INTO polizas (cliente_id, pas_matricula, compania, ramo, nro_poliza, vigencia_desde, vigencia_hasta, prima, premio, comision_porcentaje, comision_monto, estado_pago, estado, notas)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, p)
-            
-        dummy_claims = [
-            (1, "2026-05-10", "Choque menor en la vía pública (esquina). Daño en paragolpes trasero. Repuestos autorizados.", "En proceso", "Taller oficial Toyota en proceso de reparación."),
-            (6, "2026-06-02", "Accidente in-itinere de empleado. Esguince de tobillo. Asistencia médica brindada.", "Liquidado", "Caso cerrado. Alta médica otorgada.")
-        ]
-        for cl in dummy_claims:
-            # Seguro que el policy ID exista. El sexto es de Allianz ART (ID 6)
-            cursor.execute("INSERT INTO siniestros (poliza_id, fecha_siniestro, descripcion, estado, notas) VALUES (?, ?, ?, ?, ?)", cl)
-        
+    # Semilla de datos eliminada. La base de datos arranca limpia para produccion.
     conn.commit()
     conn.close()
 
