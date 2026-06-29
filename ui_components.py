@@ -1268,10 +1268,12 @@ def build_reactivation_loading_view() -> ft.Container:
         content=ft.Column(
             controls=[
                 ft.Container(
-                    content=ft.Icon(
-                        ft.Icons.VERIFIED_USER_ROUNDED,
-                        size=80,
-                        color=COLORS["success"],
+                    content=ft.Image(
+                        src="reactivacion_chill.png",
+                        width=380,
+                        height=240,
+                        fit="cover",
+                        border_radius=12,
                     ),
                     alignment=ft.Alignment(0, 0),
                     margin=ft.Margin(0, 0, 0, 16),

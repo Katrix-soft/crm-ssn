@@ -2428,23 +2428,23 @@ def main(page: ft.Page):
                 )
             ]
             main_row.controls = [content_column]
-        elif not state["logged_in"]:
-            # Sin sidebar en login
-            login_card = build_login_view(on_login, on_forgot_password, error_text=state.get("error_login"))
-            content_column.controls = [
-                ft.Container(
-                    content=login_card,
-                    alignment=ft.Alignment(0, 0),
-                    expand=True,
-                )
-            ]
-            main_row.controls = [content_column]
         elif state.get("reactivating_license", False):
             from ui_components import build_reactivation_loading_view
             reactivation_view = build_reactivation_loading_view()
             content_column.controls = [
                 ft.Container(
                     content=reactivation_view,
+                    alignment=ft.Alignment(0, 0),
+                    expand=True,
+                )
+            ]
+            main_row.controls = [content_column]
+        elif not state["logged_in"]:
+            # Sin sidebar en login
+            login_card = build_login_view(on_login, on_forgot_password, error_text=state.get("error_login"))
+            content_column.controls = [
+                ft.Container(
+                    content=login_card,
                     alignment=ft.Alignment(0, 0),
                     expand=True,
                 )
