@@ -385,6 +385,7 @@ class LicenciaUpdate(BaseModel):
     dispositivo_id: Optional[str] = None
     motivo: Optional[str] = None
     dispositivos_info: Optional[str] = None
+    integraciones: Optional[str] = None
 
 class LicenciaResponse(BaseModel):
     id: int
@@ -399,6 +400,7 @@ class LicenciaResponse(BaseModel):
     producto: Optional[str] = None
     dispositivos_info: Optional[str] = None
     motivo: Optional[str] = None
+    integraciones: Optional[str] = None
 
 class LicenciaValidarRequest(BaseModel):
     clave: str
