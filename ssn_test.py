@@ -963,27 +963,27 @@ def obtener_todos_db(user_id: int = None, role: str = None) -> list[dict]:
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
-                       GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ') as sociedades
+                       (SELECT GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ')
+                        FROM productor_sociedad ps
+                        JOIN sociedades s ON ps.sociedad_matricula = s.matricula
+                        WHERE ps.productor_matricula = p.matricula) as sociedades
                 FROM productores_detalle p
-                LEFT JOIN productor_sociedad ps ON p.matricula = ps.productor_matricula
-                LEFT JOIN sociedades s ON ps.sociedad_matricula = s.matricula
                 WHERE (p.usuario_id = ? 
                    OR p.usuario_id IN (SELECT usuario_propietario_id FROM permisos_visibilidad WHERE usuario_lector_id = ?)
                    OR p.usuario_id IS NULL)
                   AND UPPER(p.provincia) IN ('MENDOZA', 'SAN JUAN', 'SAN LUIS')
-                GROUP BY p.matricula
             """, (user_id, user_id))
         else:
             cursor.execute("""
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
-                       GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ') as sociedades
+                       (SELECT GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ')
+                        FROM productor_sociedad ps
+                        JOIN sociedades s ON ps.sociedad_matricula = s.matricula
+                        WHERE ps.productor_matricula = p.matricula) as sociedades
                 FROM productores_detalle p
-                LEFT JOIN productor_sociedad ps ON p.matricula = ps.productor_matricula
-                LEFT JOIN sociedades s ON ps.sociedad_matricula = s.matricula
                 WHERE UPPER(p.provincia) IN ('MENDOZA', 'SAN JUAN', 'SAN LUIS')
-                GROUP BY p.matricula
             """)
         rows = cursor.fetchall()
         conn.close()
@@ -1021,29 +1021,29 @@ def obtener_cartera_db(user_id: int = None, role: str = None) -> list[dict]:
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
-                       GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ') as sociedades
+                       (SELECT GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ')
+                        FROM productor_sociedad ps
+                        JOIN sociedades s ON ps.sociedad_matricula = s.matricula
+                        WHERE ps.productor_matricula = p.matricula) as sociedades
                 FROM productores_detalle p
-                LEFT JOIN productor_sociedad ps ON p.matricula = ps.productor_matricula
-                LEFT JOIN sociedades s ON ps.sociedad_matricula = s.matricula
                 WHERE (
                     p.usuario_id = ? 
                     OR p.usuario_id IN (SELECT usuario_propietario_id FROM permisos_visibilidad WHERE usuario_lector_id = ?)
                     OR p.usuario_id IS NULL
                 )
                 AND ({cartera_filter})
-                GROUP BY p.matricula
             """, (user_id, user_id))
         else:
             cursor.execute(f"""
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
-                       GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ') as sociedades
+                       (SELECT GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ')
+                        FROM productor_sociedad ps
+                        JOIN sociedades s ON ps.sociedad_matricula = s.matricula
+                        WHERE ps.productor_matricula = p.matricula) as sociedades
                 FROM productores_detalle p
-                LEFT JOIN productor_sociedad ps ON p.matricula = ps.productor_matricula
-                LEFT JOIN sociedades s ON ps.sociedad_matricula = s.matricula
                 WHERE {cartera_filter}
-                GROUP BY p.matricula
             """)
         rows = cursor.fetchall()
         conn.close()
