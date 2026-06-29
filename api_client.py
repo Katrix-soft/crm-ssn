@@ -42,8 +42,8 @@ def obtener_url_api() -> str:
     except Exception:
         pass
     
-    # Fallback a variable de entorno o localhost
-    return os.environ.get("KATRIX_API_URL", "http://localhost:8000").rstrip("/")
+    # Fallback a variable de entorno o servidor de produccion
+    return os.environ.get("KATRIX_API_URL", "https://api.katrix.com.ar").rstrip("/")
 
 
 DEFAULT_API_URL = obtener_url_api()
