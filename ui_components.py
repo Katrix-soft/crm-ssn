@@ -187,7 +187,7 @@ def build_header(
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
         bgcolor=COLORS["header_bg"],
-        padding=ft.Padding(left=24, right=24, top=16, bottom=16),
+        padding=ft.Padding(left=48, right=48, top=16, bottom=16),
         shadow=ft.BoxShadow(spread_radius=0, blur_radius=8, color=ft.Colors.with_opacity(0.25, "#000000"), offset=ft.Offset(0, 2)),
         animate=400,
     )
@@ -415,7 +415,7 @@ def build_search_bar(
             spacing=12,
         ),
         bgcolor=COLORS["surface"],
-        padding=ft.Padding(left=24, right=24, top=18, bottom=18),
+        padding=ft.Padding(left=48, right=48, top=18, bottom=18),
         border=ft.Border(bottom=ft.BorderSide(1, COLORS["divider"])),
         shadow=ft.BoxShadow(spread_radius=0, blur_radius=4, color=ft.Colors.with_opacity(0.06, "#000000"), offset=ft.Offset(0, 2)),
         animate=400,
@@ -461,7 +461,7 @@ def build_results_badge(
 
     return ft.Container(
         content=ft.Text(text, size=12, color=color, italic=(count == 0)),
-        padding=ft.Padding(left=24, right=24, top=8, bottom=8),
+        padding=ft.Padding(left=48, right=48, top=8, bottom=8),
         bgcolor=COLORS["background"],
     )
 
@@ -547,7 +547,7 @@ def build_results_table(
             spacing=0,
         ),
         bgcolor=COLORS["background"],
-        padding=ft.Padding(left=24, right=24, top=10, bottom=10),
+        padding=ft.Padding(left=48, right=48, top=10, bottom=10),
         border=ft.Border(bottom=ft.BorderSide(1.5, COLORS["divider"])),
     )
 
@@ -791,7 +791,7 @@ def _build_result_row(rec: Dict[str, Any], bg_color: str, on_click: Callable) ->
         ),
         bgcolor=bg_color,
         height=ROW_HEIGHT,
-        padding=ft.Padding(left=24, right=24, top=0, bottom=0),
+        padding=ft.Padding(left=48, right=48, top=0, bottom=0),
         border=ft.Border(bottom=ft.BorderSide(0.5, COLORS["divider"])),
         on_click=lambda e: on_click(rec),
         ink=True,
@@ -1449,7 +1449,7 @@ def build_pagination(
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
         bgcolor=COLORS["surface"],
-        padding=ft.Padding(left=24, right=24, top=12, bottom=12),
+        padding=ft.Padding(left=48, right=48, top=12, bottom=12),
         border=ft.Border(top=ft.BorderSide(1, COLORS["divider"])),
     )
 
@@ -1475,7 +1475,7 @@ def build_footer(cache_date: Optional[str]) -> ft.Container:
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
         bgcolor=COLORS["surface"],
-        padding=ft.Padding(left=24, right=24, top=10, bottom=10),
+        padding=ft.Padding(left=48, right=48, top=10, bottom=10),
         border=ft.Border(top=ft.BorderSide(1, COLORS["divider"])),
         animate=400,
     )
