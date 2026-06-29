@@ -2381,7 +2381,7 @@ def main(page: ft.Page):
     # ── Áreas de layout ───────────────────────────────────
     content_column = ft.Column(spacing=0, expand=True)
     sidebar_ref    = ft.Ref[ft.Container]()
-    main_row       = ft.Row(spacing=0, expand=True, controls=[content_column])
+    main_row       = ft.Row(spacing=24, expand=True, controls=[content_column])
 
     layout_container = ft.Container(
         content=ft.Column(
