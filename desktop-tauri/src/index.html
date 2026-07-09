@@ -17,6 +17,26 @@
     ⚠️ Modo Offline Activo — Usando datos almacenados localmente.
   </div>
 
+
+  <!-- License Activation Screen -->
+  <div id="licenseScreen" class="login-overlay" style="display:none;">
+    <div class="login-card">
+      <div class="login-logo" style="font-size:2.5rem;">🔑</div>
+      <h2 class="login-title">Activar Katrix CRM</h2>
+      <p class="login-subtitle">Ingresá tu clave de licencia para activar el sistema.</p>
+
+      <div class="form-group">
+        <label>Clave de Licencia</label>
+        <input type="text" id="licenseActivateInput" class="input-control"
+          placeholder="Ej: KTX-CRM-XXXX-XXXX-XXXX"
+          style="text-transform:uppercase; letter-spacing:1px; font-family:monospace; font-size:15px;">
+      </div>
+
+      <button id="btnActivateLicense" class="btn btn-primary" style="width:100%;">Activar Licencia</button>
+      <div id="licenseActivateError" style="color:var(--danger-color); font-size:13px; margin-top:12px; display:none; background:var(--danger-bg); padding:10px; border-radius:var(--radius-sm);"></div>
+    </div>
+  </div>
+
   <!-- Login Screen Overlay -->
   <div id="loginScreen" class="login-overlay">
     <div class="login-card">
@@ -76,7 +96,10 @@
           <a href="#"><span class="nav-icon">📅</span> Plan Comercial</a>
         </li>
         <li class="nav-item" data-view="viewAdmin">
-          <a href="#"><span class="nav-icon">⚙️</span> Administración</a>
+          <a href="#"><span class="nav-icon">🛠️</span> Administración</a>
+        </li>
+        <li class="nav-item" data-view="viewConfig" style="display: none;">
+          <a href="#"><span class="nav-icon">⚙️</span> Configuración</a>
         </li>
         <li class="nav-item" data-view="viewLicense">
           <a href="#"><span class="nav-icon">🔑</span> Licencia</a>
@@ -321,6 +344,95 @@
               <button id="btnCleanDb" class="btn btn-danger btn-sm">Limpiar DB SQLite</button>
               <button id="btnBackupDb" class="btn btn-ghost btn-sm">Descargar Backup</button>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: CONFIGURACION -->
+      <section id="viewConfig" class="page-view">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Configuración del Sistema</h1>
+            <p>Control operacional de funcionalidades y accesos para administradores de oficina.</p>
+          </div>
+        </div>
+
+        <div class="panel-card" style="max-width: 800px;">
+          <h3 class="mb-20">Habilitar / Deshabilitar Funcionalidades</h3>
+          <div class="settings-list">
+            
+            <!-- Buscador SSN -->
+            <div class="settings-item">
+              <div class="settings-info">
+                <span class="settings-title">Buscador SSN en Tiempo Real</span>
+                <span class="settings-desc">Permite a los usuarios realizar consultas directas y captcha al padrón de la SSN.</span>
+              </div>
+              <label class="switch-control">
+                <input type="checkbox" id="cfg_permitir_busqueda_ssn">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <!-- Importacion Excel/CSV -->
+            <div class="settings-item">
+              <div class="settings-info">
+                <span class="settings-title">Importación de Padrones</span>
+                <span class="settings-desc">Habilita la opción de subir archivos Excel y CSV para la actualización masiva.</span>
+              </div>
+              <label class="switch-control">
+                <input type="checkbox" id="cfg_permitir_importacion_excel">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <!-- Limpiar DB -->
+            <div class="settings-item">
+              <div class="settings-info">
+                <span class="settings-title">Vaciado de Base de Datos</span>
+                <span class="settings-desc">Habilita el botón de limpieza y vaciado de la base de datos de productores en Administración.</span>
+              </div>
+              <label class="switch-control">
+                <input type="checkbox" id="cfg_permitir_vaciar_db">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <!-- Cartera y Polizas -->
+            <div class="settings-item">
+              <div class="settings-info">
+                <span class="settings-title">Módulo de Cartera & Pólizas</span>
+                <span class="settings-desc">Habilita el acceso completo a la gestión de Clientes, Pólizas y Siniestros.</span>
+              </div>
+              <label class="switch-control">
+                <input type="checkbox" id="cfg_permitir_cartera_polizas">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <!-- Metricas KPI -->
+            <div class="settings-item">
+              <div class="settings-info">
+                <span class="settings-title">Módulo de Métricas & KPI</span>
+                <span class="settings-desc">Habilita la pestaña de analítica, distribución de ramos y comisiones estimadas.</span>
+              </div>
+              <label class="switch-control">
+                <input type="checkbox" id="cfg_permitir_metricas_kpi">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <!-- Plan Comercial -->
+            <div class="settings-item">
+              <div class="settings-info">
+                <span class="settings-title">Módulo de Plan Comercial</span>
+                <span class="settings-desc">Habilita el seguimiento mensual de visitas, campañas y candidatos de captación.</span>
+              </div>
+              <label class="switch-control">
+                <input type="checkbox" id="cfg_permitir_plan_comercial">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
           </div>
         </div>
       </section>

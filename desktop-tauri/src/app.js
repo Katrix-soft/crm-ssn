@@ -5,6 +5,9 @@ let currentUser = null;
 let currentSearchPage = 1;
 let totalSearchPages = 1;
 const searchPageSize = 25;
+let systemConfigs = {};
+let savedLicenseKey = localStorage.getItem("katrix_license_key") || "";
+let licenseData = null; // holds the last validated license response
 
 // Charts instances
 let chartRamosInstance = null;
@@ -33,7 +36,15 @@ function toggleTheme() {
 // Auth Management
 async function checkAuth() {
   document.getElementById("apiBase").value = apiBaseUrl;
-  
+
+  // Step 1: Validate license first
+  const licenseOk = await checkLicense();
+  if (!licenseOk) {
+    showLicenseScreen();
+    return;
+  }
+
+  // Step 2: Check user session
   if (!accessToken) {
     showLoginScreen();
     return;
@@ -45,13 +56,13 @@ async function checkAuth() {
       currentUser = profile;
       showAppContainer();
       updateProfileUI();
+      await loadSystemConfigs();
       loadDashboardData();
     } else {
       logout();
     }
   } catch (error) {
     console.error("Auth validation failed", error);
-    // If connection error, allow offline login if credentials exist in cache
     const cachedUser = localStorage.getItem("katrix_cached_user");
     if (cachedUser) {
       currentUser = JSON.parse(cachedUser);
@@ -63,6 +74,162 @@ async function checkAuth() {
       showLoginScreen();
     }
   }
+}
+
+// ─── LICENSE FUNCTIONS ────────────────────────────────────────────────────────
+
+function getDeviceId() {
+  let id = localStorage.getItem("katrix_device_id");
+  if (!id) {
+    id = "KTX-" + Math.random().toString(36).substr(2, 8).toUpperCase() + "-" + Date.now();
+    localStorage.setItem("katrix_device_id", id);
+  }
+  return id;
+}
+
+function getDeviceName() {
+  return JSON.stringify({
+    sistema_operativo: navigator.platform || "Desktop",
+    usuario: navigator.userAgent.includes("Windows") ? "Win" : "Linux",
+    hostname: "katrix-client",
+    procesador: navigator.hardwareConcurrency + " cores",
+    arquitectura: "x64"
+  });
+}
+
+async function checkLicense() {
+  if (!savedLicenseKey) return false;
+  try {
+    const res = await fetch(`${apiBaseUrl.replace(/\/$/, "")}/licencias/validar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clave: savedLicenseKey,
+        dispositivo_id: getDeviceId(),
+        email_cliente: "",
+        dispositivo_nombre: getDeviceName()
+      })
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (data.valid) {
+      licenseData = data;
+      return true;
+    }
+    // Invalid license — clear it
+    showToast(`Licencia inválida: ${data.message}`, "danger");
+    localStorage.removeItem("katrix_license_key");
+    savedLicenseKey = "";
+    licenseData = null;
+    return false;
+  } catch (e) {
+    // Network error — if key exists, allow offline (don't block)
+    console.warn("License check failed (offline?)", e);
+    return !!savedLicenseKey; // trust cached key offline
+  }
+}
+
+async function activateLicense() {
+  const input = document.getElementById("licenseActivateInput");
+  const errBox = document.getElementById("licenseActivateError");
+  const key = (input.value || "").trim().toUpperCase();
+  
+  errBox.style.display = "none";
+  
+  if (!key) {
+    errBox.textContent = "Ingresá una clave de licencia.";
+    errBox.style.display = "block";
+    return;
+  }
+  
+  try {
+    const res = await fetch(`${apiBaseUrl.replace(/\/$/, "")}/licencias/validar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clave: key,
+        dispositivo_id: getDeviceId(),
+        email_cliente: "",
+        dispositivo_nombre: getDeviceName()
+      })
+    });
+    const data = await res.json();
+    if (data.valid) {
+      licenseData = data;
+      savedLicenseKey = key;
+      localStorage.setItem("katrix_license_key", key);
+      document.getElementById("licenseScreen").style.display = "none";
+      showToast(`¡Licencia activada! Bienvenido, ${data.cliente}.`);
+      showLoginScreen();
+    } else {
+      errBox.textContent = data.message || "Clave de licencia inválida.";
+      errBox.style.display = "block";
+    }
+  } catch (e) {
+    errBox.textContent = "No se pudo conectar al servidor. Verificá tu conexión.";
+    errBox.style.display = "block";
+  }
+}
+
+async function loadLicenseData() {
+  // Try re-validating to get fresh data
+  if (savedLicenseKey) {
+    try {
+      const res = await fetch(`${apiBaseUrl.replace(/\/$/, "")}/licencias/validar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clave: savedLicenseKey,
+          dispositivo_id: getDeviceId(),
+          email_cliente: "",
+          dispositivo_nombre: getDeviceName()
+        })
+      });
+      if (res.ok) licenseData = await res.json();
+    } catch (e) { /* use cached */ }
+  }
+
+  const data = licenseData;
+  const keyEl = document.getElementById("licenseKeyInput");
+  const clientEl = document.getElementById("licenseClientInput");
+  const expEl = document.getElementById("licenseExpirationInput");
+  const limitEl = document.getElementById("licenseLimitInput");
+  const statusEl = document.getElementById("licenseStatusBadge");
+  const btnCheck = document.getElementById("btnForceLicenseCheck");
+
+  if (keyEl) keyEl.value = savedLicenseKey || "No activada";
+  if (clientEl) clientEl.value = data ? data.cliente : "-";
+  if (limitEl) limitEl.value = data ? `${data.limite_dispositivos || "?"} Equipos` : "-";
+
+  if (expEl && data) {
+    try {
+      const d = new Date(data.fecha_expiracion + "T00:00:00");
+      expEl.value = d.toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
+    } catch { expEl.value = data.fecha_expiracion; }
+  } else if (expEl) expEl.value = "-";
+
+  if (statusEl) {
+    statusEl.innerHTML = data && data.valid
+      ? `<span class="badge badge-success">Activa</span>`
+      : `<span class="badge badge-danger">No válida</span>`;
+  }
+
+  if (btnCheck) {
+    btnCheck.onclick = async () => {
+      btnCheck.disabled = true;
+      btnCheck.textContent = "Verificando...";
+      await loadLicenseData();
+      btnCheck.disabled = false;
+      btnCheck.textContent = "Refrescar Licencia Online";
+      showToast("Estado de licencia actualizado.");
+    };
+  }
+}
+
+function showLicenseScreen() {
+  document.getElementById("licenseScreen").style.display = "flex";
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("appContainer").style.display = "none";
 }
 
 function showLoginScreen() {
@@ -86,6 +253,10 @@ function updateProfileUI() {
   const adminNavItem = document.querySelector('[data-view="viewAdmin"]');
   if (adminNavItem) {
     adminNavItem.style.display = isAdmin ? "block" : "none";
+  }
+  const configNavItem = document.querySelector('[data-view="viewConfig"]');
+  if (configNavItem) {
+    configNavItem.style.display = isAdmin ? "block" : "none";
   }
 }
 
@@ -159,6 +330,20 @@ function setupEventListeners() {
       
       const targetView = item.getAttribute("data-view");
       
+      // Feature flag check
+      if (targetView === "viewCartera" && systemConfigs.permitir_cartera_polizas === "false") {
+        showToast("El módulo de Cartera está deshabilitado por el administrador.", "warning");
+        return;
+      }
+      if (targetView === "viewMetrics" && systemConfigs.permitir_metricas_kpi === "false") {
+        showToast("El módulo de Métricas está deshabilitado por el administrador.", "warning");
+        return;
+      }
+      if (targetView === "viewCommercial" && systemConfigs.permitir_plan_comercial === "false") {
+        showToast("El módulo de Plan Comercial está deshabilitado por el administrador.", "warning");
+        return;
+      }
+      
       // Update active state in sidebar
       navItems.forEach(nav => nav.classList.remove("active"));
       item.classList.add("active");
@@ -174,8 +359,48 @@ function setupEventListeners() {
       if (targetView === "viewMetrics") loadMetricsData();
       if (targetView === "viewCommercial") loadVisitasData();
       if (targetView === "viewAdmin") loadAdminUsers();
+      if (targetView === "viewConfig") loadConfigView();
       if (targetView === "viewLicense") loadLicenseData();
     });
+  });
+
+  // Config toggles change handlers
+  const configKeys = [
+    "permitir_busqueda_ssn",
+    "permitir_importacion_excel",
+    "permitir_vaciar_db",
+    "permitir_cartera_polizas",
+    "permitir_metricas_kpi",
+    "permitir_plan_comercial"
+  ];
+  
+  configKeys.forEach(key => {
+    const input = document.getElementById(`cfg_${key}`);
+    if (input) {
+      input.addEventListener("change", async (e) => {
+        const newValue = e.target.checked ? "true" : "false";
+        try {
+          const res = await apiFetch("/configuracion", {
+            method: "POST",
+            body: JSON.stringify({
+              clave: key,
+              valor: newValue
+            })
+          });
+          if (res && res.ok) {
+            systemConfigs[key] = newValue;
+            applyFeatureVisibility();
+            showToast(`Configuración de '${key.replace('permitir_', '').replace(/_/g, ' ').toUpperCase()}' actualizada.`);
+          } else {
+            showToast("No se pudo guardar la configuración", "danger");
+            e.target.checked = !e.target.checked;
+          }
+        } catch (err) {
+          showToast("Error al actualizar configuración: " + err.message, "danger");
+          e.target.checked = !e.target.checked;
+        }
+      });
+    }
   });
 
   // Login click handler
@@ -183,6 +408,19 @@ function setupEventListeners() {
   document.getElementById("loginPass").addEventListener("keypress", (e) => {
     if (e.key === "Enter") handleLogin();
   });
+
+  // License activation handler
+  const btnActivate = document.getElementById("btnActivateLicense");
+  if (btnActivate) {
+    btnActivate.addEventListener("click", activateLicense);
+  }
+  const licInput = document.getElementById("licenseActivateInput");
+  if (licInput) {
+    licInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") activateLicense();
+    });
+  }
+
 
   // Logout handler
   document.getElementById("btnLogout").addEventListener("click", logout);
@@ -276,6 +514,7 @@ async function handleLogin() {
       
       showAppContainer();
       updateProfileUI();
+      await loadSystemConfigs();
       loadDashboardData();
       showToast(`¡Bienvenido, ${currentUser.username}!`);
     }
@@ -919,3 +1158,93 @@ function showToast(message, type = "success") {
     banner.style.display = "none";
   }, 4000);
 }
+
+// System Config functions
+async function loadSystemConfigs() {
+  try {
+    const data = await apiFetch("/configuracion");
+    if (data) {
+      systemConfigs = data;
+      applyFeatureVisibility();
+      
+      const configView = document.getElementById("viewConfig");
+      if (configView && configView.classList.contains("active")) {
+        populateConfigCheckboxes();
+      }
+    }
+  } catch (error) {
+    console.error("Error al cargar configuraciones de sistema:", error);
+  }
+}
+
+function applyFeatureVisibility() {
+  const ssnBtn = document.getElementById("btnTriggerSSNSearch");
+  if (ssnBtn) {
+    if (systemConfigs.permitir_busqueda_ssn === "false") {
+      ssnBtn.style.display = "none";
+    } else {
+      ssnBtn.style.display = "inline-block";
+    }
+  }
+
+  // Import padron card/field
+  const importInput = document.getElementById("btnImportExcel");
+  if (importInput) {
+    const parentGroup = importInput.closest(".form-group");
+    if (parentGroup) {
+      parentGroup.style.display = (systemConfigs.permitir_importacion_excel === "false") ? "none" : "block";
+    }
+  }
+
+  // Clean DB button
+  const cleanBtn = document.getElementById("btnCleanDb");
+  if (cleanBtn) {
+    cleanBtn.style.display = (systemConfigs.permitir_vaciar_db === "false") ? "none" : "inline-block";
+  }
+
+  // Sidebar tabs
+  const carteraTab = document.querySelector('[data-view="viewCartera"]');
+  if (carteraTab) {
+    carteraTab.style.display = (systemConfigs.permitir_cartera_polizas === "false") ? "none" : "block";
+  }
+
+  const metricsTab = document.querySelector('[data-view="viewMetrics"]');
+  if (metricsTab) {
+    metricsTab.style.display = (systemConfigs.permitir_metricas_kpi === "false") ? "none" : "block";
+  }
+
+  const commercialTab = document.querySelector('[data-view="viewCommercial"]');
+  if (commercialTab) {
+    commercialTab.style.display = (systemConfigs.permitir_plan_comercial === "false") ? "none" : "block";
+  }
+}
+
+async function loadConfigView() {
+  if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "superadmin")) return;
+  
+  try {
+    await loadSystemConfigs();
+    populateConfigCheckboxes();
+  } catch (error) {
+    showToast("Error al cargar configuración", "danger");
+  }
+}
+
+function populateConfigCheckboxes() {
+  const keys = [
+    "permitir_busqueda_ssn",
+    "permitir_importacion_excel",
+    "permitir_vaciar_db",
+    "permitir_cartera_polizas",
+    "permitir_metricas_kpi",
+    "permitir_plan_comercial"
+  ];
+  
+  keys.forEach(key => {
+    const input = document.getElementById(`cfg_${key}`);
+    if (input) {
+      input.checked = (systemConfigs[key] === "true");
+    }
+  });
+}
+
