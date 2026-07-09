@@ -96,6 +96,7 @@ class APIClient:
         self.role: Optional[str] = None
         self.user_id: Optional[int] = None
         self.license_key: Optional[str] = None
+        self.last_validation_time: Optional[datetime] = None
         
         # Intentar cargar licencia guardada localmente
         self._load_local_license()
@@ -151,6 +152,11 @@ class APIClient:
         """
         Valida la licencia contra el servidor usando la huella digital local.
         """
+        # Si ya fue validada online en los últimos 30 minutos, usar el resultado en caché
+        from datetime import datetime, timedelta
+        if self.last_validation_time and (datetime.now() - self.last_validation_time) < timedelta(minutes=30):
+            return True, "Licencia activa (Caché)"
+
         fingerprint = obtener_fingerprint()
         
         # Obtener información súper detallada del sistema operativo y hardware
@@ -196,10 +202,17 @@ class APIClient:
                 res_data = response.json()
                 if res_data.get("valid"):
                     self.save_local_license(license_key)
+                    self.last_validation_time = datetime.now()
                     return True, f"Licencia válida para: {res_data.get('cliente')}"
                 else:
+                    self.remove_local_license()
+                    self.last_validation_time = None
                     return False, res_data.get("message", "Licencia inválida")
             else:
+                # Si el servidor responde con error pero ya hay una licencia guardada localmente,
+                # permitir modo offline temporal para evitar cierres de sesión por caídas o rate-limit (429)
+                if self.license_key == license_key.strip().upper():
+                    return True, f"Licencia validada localmente (Modo Offline - HTTP {response.status_code})"
                 return False, f"Error del servidor de licencias (HTTP {response.status_code})"
         except requests.RequestException as e:
             # Si el servidor no está disponible y ya hay una licencia guardada, permitir "modo offline" temporal

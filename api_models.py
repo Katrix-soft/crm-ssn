@@ -12,6 +12,13 @@ class LoginRequest(BaseModel):
     username: str = Field(..., description="Nombre de usuario o email")
     password: str
 
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., description="Email o usuario de la cuenta a recuperar")
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., description="Token JWT de recuperación")
+    password: str = Field(..., min_length=6, description="Nueva contraseña")
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"

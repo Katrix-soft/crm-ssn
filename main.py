@@ -2573,7 +2573,7 @@ def main(page: ft.Page):
         def check_license_loop():
             import time as _time
             while True:
-                _time.sleep(15)
+                _time.sleep(120)
                 if client.license_key:
                     ok, msg = client.validar_licencia_online(client.license_key)
                     if ok:
@@ -2588,8 +2588,11 @@ def main(page: ft.Page):
                             page.run_thread(update_page_layout)
                     else:
                         # Si no es válida por razones explícitas (suspensión, eliminación, etc)
-                        # Ignoramos fallas temporales de red/conexión
-                        if "conexión" not in msg.lower() and "connect" not in msg.lower():
+                        # Ignoramos fallas temporales de red/conexión y errores de servidor/HTTP/rate-limit
+                        if ("conexión" not in msg.lower() and 
+                            "connect" not in msg.lower() and 
+                            "http" not in msg.lower() and 
+                            "servidor" not in msg.lower()):
                             if state.get("license_valid", False):
                                 state["license_valid"] = False
                                 state["error_license"] = msg
