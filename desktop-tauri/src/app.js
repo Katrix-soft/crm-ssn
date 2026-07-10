@@ -1109,22 +1109,61 @@ async function handleImportFile(event) {
   }
 }
 
-// License details
+// License details — reads real data from server
 async function loadLicenseData() {
-  try {
-    // API endpoint for license info
-    const data = await apiFetch("/auth/me"); // Can extract license info if returned or mock
-    
-    // Setup fields
-    document.getElementById("licenseKeyInput").value = "KATRIX-PRO-987X-Y773-TR3";
-    document.getElementById("licenseClientInput").value = currentUser ? currentUser.username : "Cliente Katrix";
-    document.getElementById("licenseExpirationInput").value = "31 de Diciembre de 2026";
-    document.getElementById("licenseLimitInput").value = "5 Equipos";
-    
-  } catch (error) {
-    console.error("Failed to load license info", error);
+  if (savedLicenseKey) {
+    try {
+      const res = await fetch(`${apiBaseUrl.replace(/\/$/, "")}/licencias/validar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clave: savedLicenseKey,
+          dispositivo_id: getDeviceId(),
+          email_cliente: "",
+          dispositivo_nombre: getDeviceName()
+        })
+      });
+      if (res.ok) licenseData = await res.json();
+    } catch (e) { /* use cached */ }
+  }
+
+  const data = licenseData;
+  const keyEl = document.getElementById("licenseKeyInput");
+  const clientEl = document.getElementById("licenseClientInput");
+  const expEl = document.getElementById("licenseExpirationInput");
+  const limitEl = document.getElementById("licenseLimitInput");
+  const statusEl = document.getElementById("licenseStatusBadge");
+  const btnCheck = document.getElementById("btnForceLicenseCheck");
+
+  if (keyEl) keyEl.value = savedLicenseKey || "No activada";
+  if (clientEl) clientEl.value = data ? data.cliente : "-";
+  if (limitEl) limitEl.value = data ? `${data.limite_dispositivos || "?"} Equipos` : "-";
+
+  if (expEl && data) {
+    try {
+      const d = new Date(data.fecha_expiracion + "T00:00:00");
+      expEl.value = d.toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
+    } catch { expEl.value = data.fecha_expiracion; }
+  } else if (expEl) expEl.value = "-";
+
+  if (statusEl) {
+    statusEl.innerHTML = data && data.valid
+      ? `<span class="badge badge-success">Activa</span>`
+      : `<span class="badge badge-danger">No válida</span>`;
+  }
+
+  if (btnCheck) {
+    btnCheck.onclick = async () => {
+      btnCheck.disabled = true;
+      btnCheck.textContent = "Verificando...";
+      await loadLicenseData();
+      btnCheck.disabled = false;
+      btnCheck.textContent = "Refrescar Licencia Online";
+      showToast("Estado de licencia actualizado.");
+    };
   }
 }
+
 
 // Modal Helpers
 window.openModal = function(modalId) {

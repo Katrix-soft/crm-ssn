@@ -338,7 +338,7 @@
             <h3 class="mb-20">Acciones de Datos</h3>
             <div class="form-group">
               <label>Importar Padrón de Productores (Excel / CSV)</label>
-              <input type="file" id="btnImportExcel" class="input-control" accept=".xlsx, .xls, .csv">
+              <input type="file" id="btnImportExcel" class="input-control" accept=".xlsx,.xlsm,.xls,.csv">
             </div>
             <div class="d-flex gap-10 mt-20">
               <button id="btnCleanDb" class="btn btn-danger btn-sm">Limpiar DB SQLite</button>
@@ -444,27 +444,6 @@
             <h1>Estado del Licenciamiento</h1>
             <p>Detalles sobre la clave de activación de hardware y vencimiento.</p>
           </div>
-        </div>
-
-        <div class="panel-card" style="max-width: 600px;">
-          <div class="form-group">
-            <label>Clave de Licencia Actual</label>
-            <input type="text" id="licenseKeyInput" class="input-control" readonly>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Cliente</label>
-              <input type="text" id="licenseClientInput" class="input-control" readonly>
-            </div>
-            <div class="form-group">
-              <label>Fecha de Expiración</label>
-              <input type="text" id="licenseExpirationInput" class="input-control" readonly>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Límite Dispositivos</label>
-              <input type="text" id="licenseLimitInput" class="input-control" readonly>
             </div>
             <div class="form-group">
               <label>Estado en Servidor</label>
