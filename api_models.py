@@ -73,6 +73,8 @@ class PASListItem(BaseModel):
     email: Optional[str]
     estado_contacto: Optional[str] = "Sin contactar"
     companias: Optional[str]
+    documento: Optional[str] = None
+    cuit: Optional[str] = None
 
 class PASEstadoUpdate(BaseModel):
     estado_contacto: str = Field(..., description="Sin contactar | Contactado | No responde | Interesado")
@@ -420,4 +422,13 @@ class LicenciaValidarResponse(BaseModel):
     message: str
     cliente: str
     fecha_expiracion: str
+    limite_dispositivos: Optional[int] = None
+
+
+# ─── Configuración del Sistema ───────────────────────────────────────────────
+
+class ConfigUpdateRequest(BaseModel):
+    clave: str
+    valor: str
+
 

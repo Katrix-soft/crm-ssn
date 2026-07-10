@@ -1,5 +1,6 @@
 // App State Configuration
 let apiBaseUrl = localStorage.getItem("katrix_api_base") || "https://api.katrix.com.ar";
+let selectedImportFile = null;
 let accessToken = localStorage.getItem("katrix_access_token") || "";
 let currentUser = null;
 let currentSearchPage = 1;
@@ -468,7 +469,63 @@ function setupEventListeners() {
   document.getElementById("btnSaveSystemUser").addEventListener("click", saveSystemUser);
 
   // Excel/CSV import handler
-  document.getElementById("btnImportExcel").addEventListener("change", handleImportFile);
+  const importInput = document.getElementById("btnImportExcel");
+  if (importInput) {
+    importInput.addEventListener("change", (e) => {
+      selectedImportFile = e.target.files[0];
+      const fileNameSpan = document.getElementById("importFileName");
+      const startBtn = document.getElementById("btnStartImport");
+      
+      if (selectedImportFile) {
+        fileNameSpan.textContent = `Archivo: ${selectedImportFile.name}`;
+        fileNameSpan.style.color = "var(--text-color)";
+        if (startBtn) startBtn.style.display = "flex";
+      } else {
+        fileNameSpan.textContent = "Ningún archivo seleccionado (.xlsx, .xlsm, .csv)";
+        fileNameSpan.style.color = "var(--text-muted)";
+        if (startBtn) startBtn.style.display = "none";
+      }
+    });
+  }
+
+  const startImportBtn = document.getElementById("btnStartImport");
+  if (startImportBtn) {
+    startImportBtn.addEventListener("click", executeImport);
+  }
+
+  // Setup Drag and Drop events on importDropZone
+  const dropZone = document.getElementById("importDropZone");
+  if (dropZone) {
+    dropZone.addEventListener("mouseenter", () => {
+      dropZone.style.borderColor = "var(--accent-color)";
+      dropZone.style.background = "var(--surface-hover-more, rgba(255, 255, 255, 0.05))";
+    });
+    dropZone.addEventListener("mouseleave", () => {
+      dropZone.style.borderColor = "var(--border-color)";
+      dropZone.style.background = "var(--surface-hover)";
+    });
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = "var(--accent-color)";
+      dropZone.style.background = "rgba(255, 255, 255, 0.05)";
+    });
+    dropZone.addEventListener("dragleave", () => {
+      dropZone.style.borderColor = "var(--border-color)";
+      dropZone.style.background = "var(--surface-hover)";
+    });
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = "var(--border-color)";
+      dropZone.style.background = "var(--surface-hover)";
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        importInput.files = files;
+        const event = new Event('change');
+        importInput.dispatchEvent(event);
+      }
+    });
+  }
 
   // DB commands
   document.getElementById("btnCleanDb").addEventListener("click", handleCleanDb);
@@ -553,11 +610,42 @@ async function loadSearchResults() {
     const data = await apiFetch(endpoint);
     tbody.innerHTML = "";
     
+    // Check if there is an exact match in returned items
+    const cleaned = query ? query.replace(/\D/g, "") : "";
+    let hasExactMatch = false;
+    if (cleaned && data && data.items && data.items.length > 0) {
+      hasExactMatch = data.items.some(pas => {
+        const m = String(pas.matricula || "").replace(/\D/g, "");
+        const d = String(pas.documento || "").replace(/\D/g, "");
+        const c = String(pas.cuit || "").replace(/\D/g, "");
+        return m === cleaned || d === cleaned || c === cleaned;
+      });
+    }
+
     if (!data || !data.items || data.items.length === 0) {
       tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 30px; color: var(--text-muted);">No se encontraron productores asesores.</td></tr>`;
       document.getElementById("searchPaginationInfo").textContent = "Página 1 de 1";
       document.getElementById("btnPrevPage").disabled = true;
       document.getElementById("btnNextPage").disabled = true;
+      
+      // Auto-trigger SSN query if query is numeric, no exact match, and user confirms
+      if (query && !hasExactMatch) {
+        if (cleaned.length >= 4 && cleaned.length <= 11) {
+          let docType = "DNI";
+          if (cleaned.length === 11) {
+            docType = "CUIT";
+          } else if (cleaned.length >= 4 && cleaned.length <= 6) {
+            docType = "MATRICULA";
+          }
+          
+          setTimeout(() => {
+            const confirmSearch = confirm(`No se encontró el productor con matrícula o documento "${query}" en la base de datos local.\n\n¿Desea consultar e importar en tiempo real desde la SSN usando ${docType} "${cleaned}"?`);
+            if (confirmSearch) {
+              triggerSSNSearchWithParam(cleaned, docType);
+            }
+          }, 200);
+        }
+      }
       return;
     }
     
@@ -589,6 +677,25 @@ async function loadSearchResults() {
     
     document.getElementById("btnPrevPage").disabled = currentSearchPage <= 1;
     document.getElementById("btnNextPage").disabled = currentSearchPage >= totalSearchPages;
+
+    // Prompt to search on SSN if list has items but none of them matches exactly the search term
+    if (query && !hasExactMatch) {
+      if (cleaned.length >= 4 && cleaned.length <= 11) {
+        let docType = "DNI";
+        if (cleaned.length === 11) {
+          docType = "CUIT";
+        } else if (cleaned.length >= 4 && cleaned.length <= 6) {
+          docType = "MATRICULA";
+        }
+        
+        setTimeout(() => {
+          const confirmSearch = confirm(`No se encontró un productor con matrícula o documento exacto "${query}" en la base de datos local.\n\n¿Desea consultar e importar en tiempo real desde la SSN usando ${docType} "${cleaned}"?`);
+          if (confirmSearch) {
+            triggerSSNSearchWithParam(cleaned, docType);
+          }
+        }, 200);
+      }
+    }
     
   } catch (error) {
     tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 30px; color: var(--danger-color);">Error al cargar resultados: ${error.message}</td></tr>`;
@@ -597,21 +704,28 @@ async function loadSearchResults() {
 
 // Live SSN query trigger
 function triggerSSNSearchPrompt() {
-  const query = prompt("Ingrese CUIT, CUIL o DNI del Productor para consultar la SSN en tiempo real:");
+  const query = prompt("Ingrese CUIT, DNI o Matrícula del Productor para consultar la SSN en tiempo real:");
   if (!query) return;
   
   // Clean inputs
   const cleaned = query.replace(/\D/g, "");
-  if (cleaned.length < 7 || cleaned.length > 11) {
-    alert("Número de documento o CUIT inválido. Debe tener entre 7 y 11 dígitos.");
+  if (cleaned.length < 4 || cleaned.length > 11) {
+    alert("Número de documento, CUIT o Matrícula inválido. Debe tener entre 4 y 11 dígitos.");
     return;
   }
   
-  showToast("Iniciando scraping y resolución automatizada de captcha...");
+  let docType = "DNI";
+  if (cleaned.length === 11) {
+    docType = "CUIT";
+  } else if (cleaned.length >= 4 && cleaned.length <= 6) {
+    docType = "MATRICULA";
+  }
   
-  // Perform the background live search
-  const isCuit = cleaned.length === 11;
-  const docType = isCuit ? "CUIT" : "DNI";
+  triggerSSNSearchWithParam(cleaned, docType);
+}
+
+function triggerSSNSearchWithParam(cleaned, docType) {
+  showToast("Iniciando scraping y resolución automatizada de captcha...");
   
   // Show spinner page loader
   const tbody = document.getElementById("searchTableBody");
@@ -627,16 +741,20 @@ function triggerSSNSearchPrompt() {
   
   apiFetch(`/pas/buscar-ssn/${cleaned}?tipo_doc=${docType}`)
     .then(result => {
+      const dataObj = result.data || result;
+      if (!dataObj || !dataObj.matricula) {
+        showToast("No se encontró el productor en el padrón de la SSN.", "warning");
+        loadSearchResults();
+        return;
+      }
       showToast("¡Productor importado y guardado exitosamente!");
       // Populate results search box
-      document.getElementById("searchQuery").value = result.matricula || cleaned;
+      document.getElementById("searchQuery").value = dataObj.matricula;
       currentSearchPage = 1;
       loadSearchResults();
       
       // Auto open detail
-      if (result.matricula) {
-        viewProducerDetail(result.matricula);
-      }
+      viewProducerDetail(dataObj.matricula);
     })
     .catch(error => {
       showToast(`Scraping fallido: ${error.message}`, "danger");
@@ -659,9 +777,84 @@ async function viewProducerDetail(matricula) {
     document.getElementById("detailEstadoGestion").value = pas.estado_contacto || "Sin Contactar";
     document.getElementById("detailObservaciones").value = pas.observaciones || "";
     
+    // Expanded fields
+    document.getElementById("detailRamo").value = pas.ramo || "—";
+    document.getElementById("detailDomicilio").value = pas.domicilio || "—";
+    document.getElementById("detailCodPostal").value = pas.cod_postal || "—";
+    document.getElementById("detailTelefono").value = pas.telefono || "—";
+    document.getElementById("detailEmail").value = pas.email || "—";
+    document.getElementById("detailResolucion").value = pas.resolucion || "—";
+    document.getElementById("detailFechaResolucion").value = pas.fecha_resolucion || "—";
+    
+    // Quick Actions
+    const btnCall = document.getElementById("btnActionCall");
+    const btnWa = document.getElementById("btnActionWhatsapp");
+    if (pas.telefono) {
+      btnCall.style.display = "flex";
+      btnCall.onclick = () => window.open(`tel:${pas.telefono.replace(/\s+/g, '')}`, '_self');
+      
+      btnWa.style.display = "flex";
+      let cleanedPhone = pas.telefono.replace(/\D/g, '');
+      if (cleanedPhone.startsWith("0")) cleanedPhone = cleanedPhone.substring(1);
+      if (!cleanedPhone.startsWith("54")) cleanedPhone = "549" + cleanedPhone;
+      btnWa.onclick = () => window.open(`https://wa.me/${cleanedPhone}`, '_blank');
+    } else {
+      btnCall.style.display = "none";
+      btnWa.style.display = "none";
+    }
+    
+    const btnEmail = document.getElementById("btnActionEmail");
+    if (pas.email) {
+      btnEmail.style.display = "flex";
+      btnEmail.onclick = () => window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(pas.email)}`, '_blank');
+    } else {
+      btnEmail.style.display = "none";
+    }
+    
+    // Live Scraper button setup
+    const docToScrape = pas.cuit || pas.documento;
+    const scrapeBtn = document.getElementById("btnScrapePASDetail");
+    if (docToScrape) {
+      const cleanedDoc = docToScrape.replace(/\D/g, "");
+      if (cleanedDoc.length >= 7 && cleanedDoc.length <= 11) {
+        scrapeBtn.style.display = "flex";
+        scrapeBtn.onclick = () => runLiveScrapeForPAS(cleanedDoc, cleanedDoc.length === 11 ? "CUIT" : "DNI", pas.matricula);
+      } else {
+        scrapeBtn.style.display = "none";
+      }
+    } else {
+      scrapeBtn.style.display = "none";
+    }
+    
     openModal("modalProducerDetail");
   } catch (error) {
     showToast(`Error al obtener detalles: ${error.message}`, "danger");
+  }
+}
+
+async function runLiveScrapeForPAS(docNumber, docType, currentMatricula) {
+  const scrapeBtn = document.getElementById("btnScrapePASDetail");
+  const originalText = scrapeBtn.innerHTML;
+  scrapeBtn.disabled = true;
+  scrapeBtn.innerHTML = `<span>⏳ Buscando...</span>`;
+  
+  showToast("Consultando SSN en tiempo real. Resolviendo captcha...");
+  
+  try {
+    const result = await apiFetch(`/pas/buscar-ssn/${docNumber}?tipo_doc=${docType}`);
+    showToast("¡Ficha de productor actualizada desde la SSN exitosamente!");
+    
+    // Reload search results in background
+    loadSearchResults();
+    
+    // Refresh modal fields with the updated data
+    const newMatricula = result.matricula || currentMatricula;
+    await viewProducerDetail(newMatricula);
+  } catch (error) {
+    showToast(`Fallo al actualizar desde SSN: ${error.message}`, "danger");
+  } finally {
+    scrapeBtn.disabled = false;
+    scrapeBtn.innerHTML = originalText;
   }
 }
 
@@ -1072,16 +1265,21 @@ async function handleCleanDb() {
 }
 
 // Excel Import
-async function handleImportFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+async function executeImport() {
+  if (!selectedImportFile) return;
+  
+  const startBtn = document.getElementById("btnStartImport");
+  const fileNameSpan = document.getElementById("importFileName");
+  
+  const originalText = startBtn.innerHTML;
+  startBtn.disabled = true;
+  startBtn.innerHTML = `<span>⏳ Procesando Padrón...</span>`;
   
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", selectedImportFile);
   
   showToast("Subiendo y procesando padrón. Esto puede demorar unos minutos...");
   
-  // Custom API fetch for FormData upload
   const url = `${apiBaseUrl.replace(/\/$/, "")}/mantenimiento/importar-excel`;
   const headers = {};
   if (accessToken) {
@@ -1096,73 +1294,34 @@ async function handleImportFile(event) {
     });
     
     if (!response.ok) {
-      throw new Error(`Error de red: ${response.status}`);
+      let errMsg = `Error de red: ${response.status}`;
+      try {
+        const errJson = await response.json();
+        if (errJson.detail) errMsg = errJson.detail;
+      } catch(e) {}
+      throw new Error(errMsg);
     }
     
     const result = await response.json();
-    showToast(`¡Padrón importado! ${result.insertados || 0} registros nuevos insertados.`);
+    showToast(`¡Padrón importado! ${result.insertados || 0} registros nuevos/actualizados.`);
+    
+    // Reset state
+    selectedImportFile = null;
+    document.getElementById("btnImportExcel").value = "";
+    fileNameSpan.textContent = "Ningún archivo seleccionado (.xlsx, .xlsm, .csv)";
+    fileNameSpan.style.color = "var(--text-muted)";
+    startBtn.style.display = "none";
+    
     loadSearchResults();
   } catch (error) {
     showToast(`Fallo en importación: ${error.message}`, "danger");
   } finally {
-    event.target.value = ""; // clear selector
+    startBtn.disabled = false;
+    startBtn.innerHTML = originalText;
   }
 }
 
-// License details — reads real data from server
-async function loadLicenseData() {
-  if (savedLicenseKey) {
-    try {
-      const res = await fetch(`${apiBaseUrl.replace(/\/$/, "")}/licencias/validar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clave: savedLicenseKey,
-          dispositivo_id: getDeviceId(),
-          email_cliente: "",
-          dispositivo_nombre: getDeviceName()
-        })
-      });
-      if (res.ok) licenseData = await res.json();
-    } catch (e) { /* use cached */ }
-  }
 
-  const data = licenseData;
-  const keyEl = document.getElementById("licenseKeyInput");
-  const clientEl = document.getElementById("licenseClientInput");
-  const expEl = document.getElementById("licenseExpirationInput");
-  const limitEl = document.getElementById("licenseLimitInput");
-  const statusEl = document.getElementById("licenseStatusBadge");
-  const btnCheck = document.getElementById("btnForceLicenseCheck");
-
-  if (keyEl) keyEl.value = savedLicenseKey || "No activada";
-  if (clientEl) clientEl.value = data ? data.cliente : "-";
-  if (limitEl) limitEl.value = data ? `${data.limite_dispositivos || "?"} Equipos` : "-";
-
-  if (expEl && data) {
-    try {
-      const d = new Date(data.fecha_expiracion + "T00:00:00");
-      expEl.value = d.toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
-    } catch { expEl.value = data.fecha_expiracion; }
-  } else if (expEl) expEl.value = "-";
-
-  if (statusEl) {
-    statusEl.innerHTML = data && data.valid
-      ? `<span class="badge badge-success">Activa</span>`
-      : `<span class="badge badge-danger">No válida</span>`;
-  }
-
-  if (btnCheck) {
-    btnCheck.onclick = async () => {
-      btnCheck.disabled = true;
-      btnCheck.textContent = "Verificando...";
-      await loadLicenseData();
-      btnCheck.disabled = false;
-      btnCheck.textContent = "Refrescar Licencia Online";
-      showToast("Estado de licencia actualizado.");
-    };
-  }
-}
 
 
 // Modal Helpers

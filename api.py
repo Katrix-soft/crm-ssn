@@ -45,7 +45,7 @@ app = FastAPI(
 # CORS — ajustá los orígenes a tu dominio real en producción
 ALLOWED_ORIGINS = os.getenv(
     "KATRIX_CORS_ORIGINS",
-    "http://localhost,http://localhost:3000,http://localhost:8080"
+    "http://localhost,http://localhost:3000,http://localhost:8080,http://localhost:1420,tauri://localhost,http://tauri.localhost"
 ).split(",")
 
 app.add_middleware(
@@ -611,6 +611,8 @@ def list_pas(
         email=r.get("email"),
         estado_contacto=r.get("estado_contacto", "Sin contactar"),
         companias=r.get("companias"),
+        documento=r.get("documento") or r.get("productor_id"),
+        cuit=r.get("cuit") or r.get("productor_id"),
     ) for r in page_records]
 
     return PaginatedPAS(total=total, page=page, page_size=page_size, items=items)
@@ -687,11 +689,11 @@ def update_pas_companias(
 def buscar_en_ssn(
     documento: str,
     tipo_doc: str = Query("DNI", description="DNI | CUIT"),
-    current: TokenData = Depends(require_admin),
+    current: TokenData = Depends(get_current_user),
 ):
     """
     Busca un productor directamente en el padrón público de la SSN.
-    Solo admin. Usa el scraper interno (puede ser lento la primera vez).
+    Usa el scraper interno (puede ser lento la primera vez).
     """
     import threading
     result_container = {}

@@ -104,7 +104,7 @@ class KatrixAPITestCase(unittest.TestCase):
 
     def test_04_login_incorrecto(self):
         """Verificar que las credenciales incorrectas retornen error."""
-        response = self.client.post("/auth/login", data={
+        response = self.client.post("/auth/login", json={
             "username": "broker",
             "password": "wrongpassword"
         })
@@ -112,7 +112,7 @@ class KatrixAPITestCase(unittest.TestCase):
 
     def test_05_login_exitoso_y_perfil(self):
         """Verificar login del admin por defecto y obtención de perfil."""
-        response = self.client.post("/auth/login", data={
+        response = self.client.post("/auth/login", json={
             "username": "broker",
             "password": "password123"
         })
@@ -126,19 +126,20 @@ class KatrixAPITestCase(unittest.TestCase):
         response_me = self.client.get("/auth/me", headers=headers)
         self.assertEqual(response_me.status_code, 200)
         user_data = response_me.json()
-        self.assertEqual(user_data["usuario"], "broker")
-        self.assertEqual(user_data["rol"], "admin")
+        self.assertEqual(user_data["username"], "broker")
+        self.assertEqual(user_data["role"], "admin")
 
     def test_06_crud_licencias_admin(self):
         """Verificar la creación, listado, edición y eliminación de licencias (Admin)."""
         # 1. Login Admin
-        login_res = self.client.post("/auth/login", data={"username": "broker", "password": "password123"})
+        login_res = self.client.post("/auth/login", json={"username": "broker", "password": "password123"})
         token = login_res.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
         # 2. Crear nueva licencia
         payload = {
             "cliente": "Nuevo Cliente Comercial",
+            "email_cliente": "cliente@example.com",
             "fecha_expiracion": "2027-12-31",
             "estado": "activa",
             "limite_dispositivos": 5
