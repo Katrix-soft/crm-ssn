@@ -44,8 +44,8 @@ LIGHT_COLORS = {
     "row_alt":         "#F9FAFB",
     "divider":         "#E5E7EB",
     "shadow":          "#E5E7EB",
-    "header_bg":       "#3B82F6",       # Light mode header is the main blue
-    "header_text":     "#FFFFFF",
+    "header_bg":       "#FFFFFF",
+    "header_text":     "#111827",
 }
 
 DARK_COLORS = {
@@ -72,8 +72,8 @@ DARK_COLORS = {
     "header_text":     "#F8FAFC",
 }
 
-# Default to DARK_COLORS for eye comfort
-COLORS = dict(DARK_COLORS)
+# Default to LIGHT_COLORS as requested
+COLORS = dict(LIGHT_COLORS)
 
 def set_theme_mode(mode: str):
     target = DARK_COLORS if mode == "dark" else LIGHT_COLORS
@@ -138,19 +138,15 @@ def build_header(
                             content=ft.Text(
                                 f"{total_records:,} productores registrados".replace(",", "."),
                                 size=12,
-                                color=ft.Colors.with_opacity(0.85, COLORS["header_text"]),
+                                color=COLORS["primary"] if COLORS["header_bg"] == "#FFFFFF" else ft.Colors.with_opacity(0.85, COLORS["header_text"]),
+                                weight=ft.FontWeight.BOLD if COLORS["header_bg"] == "#FFFFFF" else ft.FontWeight.NORMAL,
                             ),
-                            bgcolor=ft.Colors.with_opacity(0.15, "#FFFFFF"),
+                            bgcolor=ft.Colors.with_opacity(0.1, COLORS["primary"]) if COLORS["header_bg"] == "#FFFFFF" else ft.Colors.with_opacity(0.15, "#FFFFFF"),
                             border_radius=20,
                             padding=ft.Padding(left=14, right=14, top=6, bottom=6),
                         ),
-                        ft.IconButton(
-                            icon=ft.Icons.LIGHT_MODE_ROUNDED if COLORS["surface"] == "#1E293B" else ft.Icons.DARK_MODE_ROUNDED,
-                            icon_color=COLORS["header_text"],
-                            icon_size=20,
-                            tooltip="Cambiar tema (Claro/Oscuro)",
-                            on_click=on_theme_click,
-                        ) if on_theme_click else ft.Container(),
+                        # Theme toggle disabled to enforce light theme
+                        ft.Container(),
                         ft.IconButton(
                             icon=ft.Icons.DASHBOARD_ROUNDED,
                             icon_color=COLORS["header_text"],
@@ -224,6 +220,8 @@ def build_search_bar(
     sort_descending_value: bool = False,
     on_sort_direction_change: Optional[Callable[[bool], None]] = None,
     selected_ramo: Optional[str] = None,
+    regional_only_value: bool = False,
+    on_regional_only_change: Optional[Callable[[bool], None]] = None,
 ) -> ft.Container:
 
     ramo_options = [ft.dropdown.Option("Todos los ramos")]
@@ -344,6 +342,34 @@ def build_search_bar(
                                     on_click=lambda e: on_sort_direction_change(not sort_descending_value) if on_sort_direction_change else None,
                                     tooltip="Cambiar dirección del orden (Ascendente / Descendente)",
                                 ) if on_sort_direction_change else ft.Container(),
+                                ft.Container(
+                                    content=ft.Row(
+                                        controls=[
+                                            ft.Icon(
+                                                ft.Icons.MAP_ROUNDED if regional_only_value else ft.Icons.PUBLIC_ROUNDED,
+                                                size=16,
+                                                color=COLORS["primary"]
+                                            ),
+                                            ft.Text(
+                                                "Regionales" if regional_only_value else "Nacionales",
+                                                size=12,
+                                                weight=ft.FontWeight.W_600,
+                                                color=COLORS["primary"]
+                                            ),
+                                        ],
+                                        spacing=6,
+                                        tight=True,
+                                    ),
+                                    bgcolor=ft.Colors.with_opacity(0.1, COLORS["primary"]),
+                                    border=ft.Border.all(
+                                        1.5,
+                                        COLORS["primary"]
+                                    ),
+                                    border_radius=8,
+                                    padding=ft.Padding(left=10, right=12, top=6, bottom=6),
+                                    on_click=lambda e: on_regional_only_change(not regional_only_value) if on_regional_only_change else None,
+                                    tooltip="Alternar entre ver solo productores de la región Cuyo (Mendoza, San Juan, San Luis) o de todo el país",
+                                ) if on_regional_only_change else ft.Container(),
                             ],
                             spacing=14,
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -1348,6 +1374,62 @@ def build_error_state(message: str, on_retry: Optional[Callable] = None) -> ft.C
     )
 
 
+def build_access_denied_view(module_name: str, on_go_back: Optional[Callable] = None) -> ft.Container:
+    controls = [
+        ft.Container(
+            content=ft.Icon(ft.Icons.LOCK_PERSON_ROUNDED, size=64, color=ft.Colors.RED_400),
+            bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.RED_500),
+            padding=18,
+            border_radius=32,
+        ),
+        ft.Text("Acceso Restringido", size=22, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+        ft.Text(
+            f"Tu cuenta no posee los permisos necesarios para acceder al módulo de:\n'{module_name}'", 
+            size=14, 
+            color=COLORS["text_secondary"], 
+            text_align=ft.TextAlign.CENTER
+        ),
+        ft.Text(
+            "Si creés que esto es un error, solicitá asistencia al Administrador.", 
+            size=12, 
+            color=COLORS["text_secondary"], 
+            italic=True,
+            text_align=ft.TextAlign.CENTER
+        ),
+    ]
+    if on_go_back:
+        controls.append(
+            ft.FilledButton(
+                "Ir al Inicio",
+                icon=ft.Icons.HOME_ROUNDED,
+                on_click=on_go_back,
+                style=ft.ButtonStyle(
+                    bgcolor=COLORS["primary"],
+                    color=COLORS["text_on_primary"],
+                    shape=ft.RoundedRectangleBorder(radius=10),
+                    padding=ft.Padding(20, 12, 20, 12)
+                ),
+            )
+        )
+    return ft.Container(
+        content=ft.Container(
+            content=ft.Column(
+                controls=controls,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=16,
+            ),
+            bgcolor=ft.Colors.with_opacity(0.04, COLORS["text_primary"]),
+            border_radius=20,
+            border=ft.Border.all(1, COLORS["divider"]),
+            padding=40,
+            width=420,
+        ),
+        alignment=ft.Alignment(0, 0),
+        expand=True,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Paginación
 # ---------------------------------------------------------------------------
@@ -1493,9 +1575,11 @@ def build_detail_view(
     on_status_change: Callable[[str], None],
     page: ft.Page,
     on_scrape_click: Optional[Callable[[Dict[str, Any], Any], None]] = None,
-    on_save_notes: Optional[Callable[[str], None]] = None,
+    on_save_notes: Optional[Callable] = None,
     on_save_companias: Optional[Callable[[str], None]] = None,
     on_save_sociedades: Optional[Callable[[str], None]] = None,
+    calendar_url: str = "",
+    usuario: str = "broker",
 ) -> ft.Container:
     nombre    = record.get(COL_NOMBRE, "Productor")
     matricula = record.get(COL_MATRICULA, "")
@@ -1670,6 +1754,189 @@ def build_detail_view(
             ink=True,
         )
 
+    obs_text_initial = record.get("observaciones", "") or ""
+    notes_count_initial = len([l for l in obs_text_initial.split("\n") if l.strip()])
+
+    def show_notes_dialog(e=None):
+        dialog_history_column = ft.Column(
+            spacing=8,
+            scroll=ft.ScrollMode.AUTO,
+            expand=True,
+        )
+        
+        def refresh_dialog_history():
+            dialog_history_column.controls.clear()
+            obs_text = record.get("observaciones", "") or ""
+            import re
+            if obs_text.strip():
+                lines = [l.strip() for l in obs_text.split("\n") if l.strip()]
+                for line in lines:
+                    match = re.match(r"^\[(.*?)\]:\s*(.*)$", line)
+                    if match:
+                        meta_info, note_content = match.group(1), match.group(2)
+                        dialog_history_column.controls.append(
+                            ft.Container(
+                                content=ft.Column([
+                                    ft.Row([
+                                        ft.Icon(ft.Icons.CALENDAR_TODAY_ROUNDED, size=11, color=COLORS["primary"]),
+                                        ft.Text(meta_info, size=12, weight=ft.FontWeight.BOLD, color=COLORS["primary"]),
+                                    ], spacing=4),
+                                    ft.Text(note_content, size=14, color=COLORS["text_primary"]),
+                                ], spacing=2),
+                                bgcolor=COLORS["background"],
+                                border=ft.Border.all(1, COLORS["border"]),
+                                border_radius=6,
+                                padding=ft.Padding(8, 6, 8, 6),
+                            )
+                        )
+                    else:
+                        dialog_history_column.controls.append(
+                            ft.Container(
+                                content=ft.Column([
+                                    ft.Row([
+                                        ft.Icon(ft.Icons.HISTORY_ROUNDED, size=11, color=COLORS["text_secondary"]),
+                                        ft.Text("Comentario anterior", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
+                                    ], spacing=4),
+                                    ft.Text(line, size=14, color=COLORS["text_primary"]),
+                                ], spacing=2),
+                                bgcolor=COLORS["background"],
+                                border=ft.Border.all(1, COLORS["border"]),
+                                border_radius=6,
+                                padding=ft.Padding(8, 6, 8, 6),
+                            )
+                        )
+            else:
+                dialog_history_column.controls.append(
+                    ft.Text("No hay observaciones o notas registradas.", size=13, italic=True, color=COLORS["text_secondary"])
+                )
+            
+            page.update()
+
+        dialog_notes_field = ft.TextField(
+            value="",
+            multiline=True,
+            min_lines=1,
+            max_lines=3,
+            text_size=14,
+            border_color=COLORS["divider"],
+            focused_border_color=COLORS["primary"],
+            color=COLORS["text_primary"],
+            cursor_color=COLORS["primary"],
+            hint_text="Escribí una nueva nota o comentario aquí...",
+            hint_style=ft.TextStyle(color=COLORS["text_secondary"], size=14),
+            expand=True,
+        )
+
+        def handle_save_dialog_note(e):
+            new_comment = dialog_notes_field.value.strip()
+            if not new_comment:
+                return
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
+            formatted = f"[{timestamp} - {usuario}]: {new_comment}"
+            old_obs = record.get("observaciones", "") or ""
+            if old_obs.strip():
+                updated_obs = old_obs.rstrip("\n") + "\n" + formatted
+            else:
+                updated_obs = formatted
+            
+            if on_save_notes:
+                on_save_notes(updated_obs)
+                record["observaciones"] = updated_obs
+                refresh_dialog_history()
+                dialog_notes_field.value = ""
+                refresh_notes_history_ui()
+                page.update()
+
+        def close_dialog(e=None):
+            dlg.open = False
+            page.update()
+
+        dlg = ft.AlertDialog(
+            title=ft.Row(
+                controls=[
+                    ft.Icon(ft.Icons.NOTE_ALT_ROUNDED, color=COLORS["primary"], size=22),
+                    ft.Text(f"Bitácora de Observaciones - {nombre}", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                ],
+                spacing=8,
+            ),
+            content=ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Container(
+                            content=dialog_history_column,
+                            expand=True,
+                            border=ft.Border.all(1, COLORS["divider"]),
+                            border_radius=8,
+                            padding=10,
+                            bgcolor=COLORS["surface"],
+                        ),
+                        ft.Divider(height=10, color=COLORS["divider"]),
+                        ft.Row(
+                            controls=[
+                                dialog_notes_field,
+                                ft.ElevatedButton(
+                                    "Guardar",
+                                    icon=ft.Icons.SAVE_ROUNDED,
+                                    on_click=handle_save_dialog_note,
+                                    style=ft.ButtonStyle(
+                                        bgcolor=COLORS["primary"],
+                                        color=COLORS["text_on_primary"],
+                                        shape=ft.RoundedRectangleBorder(radius=6),
+                                    ),
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.START,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=10,
+                        ),
+                    ],
+                    spacing=12,
+                ),
+                width=650,
+                height=500,
+            ),
+            actions=[
+                ft.TextButton("Cerrar", on_click=close_dialog),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        page.overlay.append(dlg)
+        dlg.open = True
+        refresh_dialog_history()
+
+    notes_count_text = ft.Text(
+        f"{notes_count_initial} Notas",
+        size=12,
+        color=COLORS["primary"],
+        weight=ft.FontWeight.W_600,
+    )
+
+    def refresh_notes_history_ui():
+        obs_text = record.get("observaciones", "") or ""
+        notes_count = len([l for l in obs_text.split("\n") if l.strip()])
+        notes_count_text.value = f"{notes_count} Notas"
+        try:
+            notes_count_text.update()
+        except:
+            pass
+
+    notes_count_btn = ft.Container(
+        content=ft.Row([
+            ft.Icon(ft.Icons.CHAT_BUBBLE_OUTLINE_ROUNDED, color=COLORS["primary"], size=16),
+            notes_count_text,
+        ], spacing=6, alignment=ft.MainAxisAlignment.CENTER),
+        bgcolor=ft.Colors.with_opacity(0.08, COLORS["primary"]),
+        border=ft.Border.all(1.5, ft.Colors.with_opacity(0.2, COLORS["primary"])),
+        border_radius=8,
+        width=130,
+        padding=ft.Padding(left=10, right=10, top=10, bottom=10),
+        on_click=show_notes_dialog,
+        ink=True,
+        tooltip="Ver bitácora de notas",
+    )
+
     status_section = ft.Container(
         content=ft.Column(
             controls=[
@@ -1680,9 +1947,11 @@ def build_detail_view(
                         make_status_btn("Contactado"),
                         make_status_btn("No responde"),
                         make_status_btn("Interesado"),
+                        notes_count_btn,
                     ],
                     spacing=8,
                     wrap=True,
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
             ],
             spacing=8,
@@ -1693,8 +1962,60 @@ def build_detail_view(
     # Quick Actions Row
     def handle_contact_action(url):
         webbrowser.open(url)
-        if estado_actual == "Sin contactar":
-            on_status_change("Contactado")
+        
+        def set_status(status_val):
+            on_status_change(status_val)
+            outcome_dialog.open = False
+            page.update()
+            
+        is_dark = (COLORS["surface"] == "#1E293B")
+        
+        outcome_dialog = ft.AlertDialog(
+            title=ft.Row([
+                ft.Icon(ft.Icons.PHONE_CALLBACK_ROUNDED, color=COLORS["primary"]),
+                ft.Text("Registrar resultado del contacto", size=15, weight=ft.FontWeight.BOLD)
+            ], spacing=8),
+            content=ft.Container(
+                content=ft.Column([
+                    ft.Text("Has iniciado un contacto/llamado. ¿Cuál fue el resultado?", size=12, color=COLORS["text_secondary"]),
+                    ft.Container(height=8),
+                    ft.Row([
+                        ft.ElevatedButton(
+                            "Contactado", 
+                            on_click=lambda _: set_status("Contactado"), 
+                            style=ft.ButtonStyle(bgcolor="#10B981" if is_dark else "#2E7D32", color="#FFFFFF", shape=ft.RoundedRectangleBorder(radius=8))
+                        ),
+                        ft.ElevatedButton(
+                            "No responde", 
+                            on_click=lambda _: set_status("No responde"), 
+                            style=ft.ButtonStyle(bgcolor="#EF4444" if is_dark else "#C62828", color="#FFFFFF", shape=ft.RoundedRectangleBorder(radius=8))
+                        ),
+                    ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
+                    ft.Row([
+                        ft.ElevatedButton(
+                            "Interesado", 
+                            on_click=lambda _: set_status("Interesado"), 
+                            style=ft.ButtonStyle(bgcolor="#F59E0B" if is_dark else "#E65100", color="#FFFFFF", shape=ft.RoundedRectangleBorder(radius=8))
+                        ),
+                        ft.ElevatedButton(
+                            "Sin contactar", 
+                            on_click=lambda _: set_status("Sin contactar"), 
+                            style=ft.ButtonStyle(bgcolor="#64748B" if is_dark else "#78909C", color="#FFFFFF", shape=ft.RoundedRectangleBorder(radius=8))
+                        ),
+                    ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
+                ], spacing=8, tight=True),
+                width=320,
+                padding=ft.Padding(0, 10, 0, 10)
+            ),
+            actions=[
+                ft.TextButton("Cancelar", on_click=lambda _: setattr(outcome_dialog, "open", False) or page.update())
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        page.dialog = outcome_dialog
+        outcome_dialog.open = True
+        page.update()
 
     quick_actions = []
     
@@ -1739,6 +2060,206 @@ def build_detail_view(
                 on_click=lambda e: handle_contact_action(f"https://mail.google.com/mail/?view=cm&fs=1&to={email_val}"),
             )
         )
+
+    # Agendar Reunión (Calendar) Action
+    if calendar_url:
+        quick_actions.append(
+            ft.IconButton(
+                icon=ft.Icons.CALENDAR_MONTH_ROUNDED,
+                icon_color="#EC4899",
+                icon_size=24,
+                tooltip="Agendar Reunión",
+                on_click=lambda e: handle_contact_action(calendar_url),
+            )
+        )
+    else:
+        def show_calendar_warning(e):
+            page.snack_bar = ft.SnackBar(
+                content=ft.Text("⚠️ Por favor configure su Link de Calendario en Mi Perfil para agendar reuniones.", color=ft.Colors.WHITE, size=13, weight=ft.FontWeight.W_500),
+                bgcolor=COLORS["warning"],
+                duration=4000,
+                dismiss_direction=ft.DismissDirection.HORIZONTAL,
+            )
+            page.snack_bar.open = True
+            page.update()
+        quick_actions.append(
+            ft.IconButton(
+                icon=ft.Icons.CALENDAR_MONTH_ROUNDED,
+                icon_color=COLORS["text_secondary"],
+                icon_size=24,
+                tooltip="Agendar Reunión (Link de calendario no configurado)",
+                on_click=show_calendar_warning,
+            )
+        )
+
+    # Registrar Visita/Reunión Dialog & Action
+    def open_log_visit_dialog(e):
+        import ssn_test as _ssn
+        from datetime import datetime
+        
+        date_tf = ft.TextField(
+            label="Fecha de la Reunión/Visita",
+            value=datetime.now().strftime("%Y-%m-%d"),
+            border_color=COLORS["border"],
+            focused_border_color=COLORS["primary"],
+            border_radius=8,
+            text_size=14,
+        )
+        
+        estado_dd = ft.Dropdown(
+            label="Estado de la Visita",
+            value="realizada",
+            options=[
+                ft.dropdown.Option("realizada", "Realizada"),
+                ft.dropdown.Option("pendiente", "Pendiente"),
+            ],
+            border_color=COLORS["border"],
+            focused_border_color=COLORS["primary"],
+            border_radius=8,
+            text_size=14,
+        )
+        
+        notes_tf = ft.TextField(
+            label="Detalle / Observaciones",
+            multiline=True,
+            min_lines=2,
+            max_lines=4,
+            border_color=COLORS["border"],
+            focused_border_color=COLORS["primary"],
+            border_radius=8,
+            text_size=14,
+            hint_text="Escribí aquí de qué se trata la reunión o algún comentario...",
+        )
+        
+        def save_visit_record(ev):
+            date_val = date_tf.value.strip()
+            notes_val = notes_tf.value.strip()
+            estado_val = estado_dd.value
+            
+            if not date_val:
+                date_tf.error_text = "La fecha es obligatoria"
+                try: date_tf.update()
+                except: pass
+                return
+                
+            try:
+                datetime.strptime(date_val, "%Y-%m-%d")
+            except ValueError:
+                date_tf.error_text = "Formato inválido. Usar AAAA-MM-DD"
+                try: date_tf.update()
+                except: pass
+                return
+            
+            mes_val = date_val[:7]
+            companias_val = record.get("companias", "") or ""
+            compania_principal = companias_val.split(",")[0].strip() if companias_val else "Sin Compañía"
+            
+            try:
+                # 1. Guardar visita
+                _ssn.guardar_visita(
+                    mes=mes_val,
+                    matricula=str(matricula),
+                    nombre=nombre,
+                    estado=estado_val,
+                    productividad=notes_val,
+                    campaña=compania_principal
+                )
+                
+                # 2. Guardar actividad comercial (tipo "Reunión")
+                _ssn.guardar_actividad_comercial(
+                    mes=mes_val,
+                    fecha_actividad=date_val,
+                    matricula=str(matricula),
+                    nombre=nombre,
+                    tipo="Reunión",
+                    compania=compania_principal,
+                    observaciones=notes_val
+                )
+            except Exception as ex:
+                print(f"Error saving visit/activity: {ex}")
+            
+            # 3. Append note to observations
+            log_entry = f"[{datetime.now().strftime('%d/%m/%Y %H:%M')} - {usuario}]: Registró Reunión ({estado_val.capitalize()}): {notes_val if notes_val else 'Sin observaciones'}"
+            old_obs = record.get("observaciones", "") or ""
+            if old_obs.strip():
+                updated_obs = old_obs.rstrip("\n") + "\n" + log_entry
+            else:
+                updated_obs = log_entry
+            
+            if on_save_notes:
+                # Call on_save_notes with show_alert=False to avoid popup
+                on_save_notes(updated_obs, show_alert=False)
+                record["observaciones"] = updated_obs
+                
+            # Close dialog
+            visit_dialog.open = False
+            try: page.update()
+            except: pass
+            
+            # Show SnackBar
+            page.snack_bar = ft.SnackBar(
+                content=ft.Text(f"✓ Reunión {estado_val} registrada con éxito.", color=ft.Colors.WHITE, size=13, weight=ft.FontWeight.W_500),
+                bgcolor=COLORS["success"],
+                duration=3000,
+            )
+            page.snack_bar.open = True
+            
+            # Refresh notes count button
+            refresh_notes_history_ui()
+            try: page.update()
+            except: pass
+            
+        def close_visit_dialog(ev):
+            visit_dialog.open = False
+            try: page.update()
+            except: pass
+            
+        visit_dialog = ft.AlertDialog(
+            title=ft.Row([
+                ft.Icon(ft.Icons.HANDSHAKE_ROUNDED, color=COLORS["primary"], size=22),
+                ft.Text(f"Registrar Reunión con {nombre}", size=15, weight=ft.FontWeight.BOLD),
+            ], spacing=8),
+            content=ft.Container(
+                content=ft.Column([
+                    ft.Text("Ingresá los datos de la reunión/visita para registrarla en el Plan de Visitas y Seguimiento Diario.", size=12, color=COLORS["text_secondary"]),
+                    ft.Container(height=6),
+                    date_tf,
+                    estado_dd,
+                    notes_tf,
+                ], spacing=12, tight=True),
+                width=420,
+                padding=ft.Padding(0, 10, 0, 10)
+            ),
+            actions=[
+                ft.TextButton("Cancelar", on_click=close_visit_dialog),
+                ft.ElevatedButton(
+                    "Guardar",
+                    icon=ft.Icons.SAVE_ROUNDED,
+                    on_click=save_visit_record,
+                    style=ft.ButtonStyle(
+                        bgcolor=COLORS["primary"],
+                        color=COLORS["text_on_primary"],
+                        shape=ft.RoundedRectangleBorder(radius=6),
+                    ),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        page.dialog = visit_dialog
+        visit_dialog.open = True
+        try: page.update()
+        except: pass
+
+    quick_actions.append(
+        ft.IconButton(
+            icon=ft.Icons.HANDSHAKE_ROUNDED,
+            icon_color="#FF9800",
+            icon_size=24,
+            tooltip="Registrar Visita/Reunión",
+            on_click=open_log_visit_dialog,
+        )
+    )
 
 
 
@@ -2065,9 +2586,9 @@ def build_detail_view(
         wrap=True,
     )
 
-    # Notes field
+    # Notes field - input for a NEW note only (starts empty)
     notes_field = ft.TextField(
-        value=record.get("observaciones", ""),
+        value="",
         multiline=True,
         min_lines=1,
         max_lines=3,
@@ -2076,117 +2597,83 @@ def build_detail_view(
         focused_border_color=COLORS["primary"],
         color=COLORS["text_primary"],
         cursor_color=COLORS["primary"],
-        hint_text="Escribí notas sobre la llamada o contacto aquí...",
+        hint_text="Escribí una nueva nota o comentario aquí...",
         hint_style=ft.TextStyle(color=COLORS["text_secondary"], size=13),
     )
 
-    # Centered detail card
-    # ── Métricas y Pólizas de Cartera del PAS ─────────────────────────────
-    import ssn_test as _ssn
-    polizas_pas = _ssn.obtener_polizas(pas_matricula=matricula)
-    
-    total_premio_pas = sum(p.get("premio", 0) for p in polizas_pas)
-    total_prima_pas = sum(p.get("prima", 0) for p in polizas_pas)
-    total_comision_pas = sum(p.get("comision_monto", 0) for p in polizas_pas)
-    
-    siniestros_pas = []
-    for p in polizas_pas:
-        siniestros_pas.extend(_ssn.obtener_siniestros(poliza_id=p["id"]))
-    siniestros_activos_pas = sum(1 for s in siniestros_pas if s["estado"] != "cerrado")
+    notes_history_column = ft.Column(spacing=6)
 
-    def fmt_curr(val):
-        return f"${float(val):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-    def local_status_chip(label: str, color: str):
-        return ft.Container(
-            content=ft.Text(label, size=9, color="#FFFFFF", weight=ft.FontWeight.BOLD),
-            bgcolor=color, border_radius=4,
-            padding=ft.Padding(6, 3, 6, 3),
-        )
-
-    kpis_cartera_pas = ft.Row([
-        ft.Container(
-            content=ft.Row([
-                ft.Icon(ft.Icons.MONETIZATION_ON_ROUNDED, color=ft.Colors.GREEN_700, size=18),
-                ft.Column([
-                    ft.Text(fmt_curr(total_premio_pas), size=14, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                    ft.Text("Premio", size=9, color=COLORS["text_secondary"]),
-                ], spacing=0, tight=True)
-            ], spacing=8),
-            bgcolor=COLORS["background"],
-            padding=8, border_radius=6, expand=True,
-        ),
-        ft.Container(
-            content=ft.Row([
-                ft.Icon(ft.Icons.PERCENT_ROUNDED, color=ft.Colors.BLUE_700, size=18),
-                ft.Column([
-                    ft.Text(fmt_curr(total_comision_pas), size=14, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                    ft.Text("Comisión", size=9, color=COLORS["text_secondary"]),
-                ], spacing=0, tight=True)
-            ], spacing=8),
-            bgcolor=COLORS["background"],
-            padding=8, border_radius=6, expand=True,
-        ),
-        ft.Container(
-            content=ft.Row([
-                ft.Icon(ft.Icons.ARTICLE_ROUNDED, color=ft.Colors.PURPLE_700, size=18),
-                ft.Column([
-                    ft.Text(str(len(polizas_pas)), size=14, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                    ft.Text("Pólizas", size=9, color=COLORS["text_secondary"]),
-                ], spacing=0, tight=True)
-            ], spacing=8),
-            bgcolor=COLORS["background"],
-            padding=8, border_radius=6, expand=True,
-        ),
-        ft.Container(
-            content=ft.Row([
-                ft.Icon(ft.Icons.REPORT_PROBLEM_ROUNDED, color=ft.Colors.RED_700, size=18),
-                ft.Column([
-                    ft.Text(str(siniestros_activos_pas), size=14, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                    ft.Text("Siniestros", size=9, color=COLORS["text_secondary"]),
-                ], spacing=0, tight=True)
-            ], spacing=8),
-            bgcolor=COLORS["background"],
-            padding=8, border_radius=6, expand=True,
-        ),
-    ], spacing=8)
-
-    polizas_items_ui = []
-    for p in polizas_pas:
-        polizas_items_ui.append(
-            ft.Container(
-                content=ft.Row([
-                    ft.Icon(ft.Icons.SHIELD_ROUNDED, color=COLORS["primary"], size=16),
-                    ft.Column([
-                        ft.Text(f"{p['compania'].upper()} - {p['ramo']}", size=11, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                        ft.Text(f"Póliza: {p['nro_poliza']} | Asegurado: {p['cliente_nombre']}", size=10, color=COLORS["text_secondary"]),
-                    ], spacing=1, expand=True),
-                    ft.Column([
-                        ft.Text(fmt_curr(p['premio']), size=11, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                        ft.Text(f"Com: {p['comision_porcentaje']}%", size=9, color=COLORS["text_secondary"]),
-                    ], spacing=1, alignment=ft.CrossAxisAlignment.END),
-                    local_status_chip(p['estado'].upper(), COLORS["success"] if p['estado'].lower() == 'activa' else COLORS["primary"]),
-                ], spacing=10),
-                bgcolor=COLORS["background"],
-                border=ft.Border.all(1, COLORS["border"]),
-                border_radius=8,
-                padding=ft.Padding(10, 8, 10, 8),
+    def refresh_notes_history_ui():
+        notes_history_column.controls.clear()
+        obs_text = record.get("observaciones", "") or ""
+        notes_count = len([l for l in obs_text.split("\n") if l.strip()])
+        notes_count_text.value = f"{notes_count} Notas"
+        import re
+        if obs_text.strip():
+            lines = [l.strip() for l in obs_text.split("\n") if l.strip()]
+            for line in lines:
+                match = re.match(r"^\[(.*?)\]:\s*(.*)$", line)
+                if match:
+                    meta_info, note_content = match.group(1), match.group(2)
+                    notes_history_column.controls.append(
+                        ft.Container(
+                            content=ft.Column([
+                                ft.Row([
+                                    ft.Icon(ft.Icons.CALENDAR_TODAY_ROUNDED, size=10, color=COLORS["primary"]),
+                                    ft.Text(meta_info, size=9.5, weight=ft.FontWeight.BOLD, color=COLORS["primary"]),
+                                ], spacing=4),
+                                ft.Text(note_content, size=11, color=COLORS["text_primary"]),
+                            ], spacing=2),
+                            bgcolor=COLORS["background"],
+                            border=ft.Border.all(1, COLORS["border"]),
+                            border_radius=6,
+                            padding=ft.Padding(8, 6, 8, 6),
+                        )
+                    )
+                else:
+                    notes_history_column.controls.append(
+                        ft.Container(
+                            content=ft.Column([
+                                ft.Row([
+                                    ft.Icon(ft.Icons.HISTORY_ROUNDED, size=10, color=COLORS["text_secondary"]),
+                                    ft.Text("Comentario anterior (sin formato)", size=9.5, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
+                                ], spacing=4),
+                                ft.Text(line, size=11, color=COLORS["text_primary"]),
+                            ], spacing=2),
+                            bgcolor=COLORS["background"],
+                            border=ft.Border.all(1, COLORS["border"]),
+                            border_radius=6,
+                            padding=ft.Padding(8, 6, 8, 6),
+                        )
+                    )
+        else:
+            notes_history_column.controls.append(
+                ft.Text("No hay observaciones o notas registradas.", size=11, italic=True, color=COLORS["text_secondary"])
             )
-        )
-    if not polizas_items_ui:
-        polizas_items_ui.append(
-            ft.Text("Este PAS no tiene pólizas de cartera asociadas en el ERP.", size=11, italic=True, color=COLORS["text_secondary"])
-        )
 
-    cartera_seccion_pas = ft.Column([
-        ft.Row([
-            ft.Icon(ft.Icons.FOLDER_SPECIAL_ROUNDED, color=COLORS["primary"], size=16),
-            ft.Text("Cartera y Operaciones Asociadas (Katrix ERP)", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-        ], spacing=6),
-        kpis_cartera_pas,
-        ft.Text("Pólizas de la Cartera:", size=11, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
-        ft.Column(polizas_items_ui, spacing=6),
-    ], spacing=10)
+    refresh_notes_history_ui()
+
+    def handle_save_note(e):
+        new_comment = notes_field.value.strip()
+        if not new_comment:
+            return
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
+        formatted = f"[{timestamp} - {usuario}]: {new_comment}"
+        old_obs = record.get("observaciones", "") or ""
+        if old_obs.strip():
+            updated_obs = old_obs.rstrip("\n") + "\n" + formatted
+        else:
+            updated_obs = formatted
+        if on_save_notes:
+            on_save_notes(updated_obs)
+            record["observaciones"] = updated_obs
+            refresh_notes_history_ui()
+            notes_field.value = ""
+            page.update()
+
+    # Centered detail card
+    # Cartera y Operaciones section removed
 
     detail_card = ft.Container(
         content=ft.Column(
@@ -2269,51 +2756,8 @@ def build_detail_view(
                 ft.Divider(height=16, color=COLORS["divider"]),
                 # Grid of info
                 ft.Column(controls=info_items, spacing=12),
-                ft.Divider(height=16, color=COLORS["divider"]),
-                # Cartera ERP section
-                cartera_seccion_pas,
-                ft.Divider(height=16, color=COLORS["divider"]),
 
-                # Notes section
-                ft.Column(
-                    controls=[
-                        ft.Row(
-                            controls=[
-                                ft.Icon(ft.Icons.NOTE_ALT_ROUNDED, color=COLORS["primary"], size=16),
-                                ft.Text("Observaciones / Notas de contacto", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                            ],
-                            spacing=6,
-                        ),
-                        ft.Row(
-                            controls=[
-                                ft.Container(
-                                    content=notes_field,
-                                    expand=True,
-                                ),
-                                ft.ElevatedButton(
-                                    "Guardar Nota",
-                                    icon=ft.Icons.SAVE_ROUNDED,
-                                    on_click=lambda e: on_save_notes(notes_field.value) if on_save_notes else None,
-                                    style=ft.ButtonStyle(
-                                        bgcolor=COLORS["primary"],
-                                        color=COLORS["text_on_primary"],
-                                    ),
-                                ),
-                            ],
-                            alignment=ft.MainAxisAlignment.START,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=10,
-                        ),
-                    ],
-                    spacing=8,
-                ),
-                ft.Divider(height=16, color=COLORS["divider"]),
-                # Bottom Actions
-                ft.Row(
-                    controls=actions,
-                    alignment=ft.MainAxisAlignment.END,
-                    spacing=12,
-                )
+
             ],
             spacing=12,
         ),
@@ -2324,17 +2768,72 @@ def build_detail_view(
         shadow=ft.BoxShadow(spread_radius=0, blur_radius=6, color=ft.Colors.with_opacity(0.05, "#000000"), offset=ft.Offset(0, 3)),
     )
 
-    return ft.Container(
+    notes_card = ft.Container(
+        key="notes_section_target",
         content=ft.Column(
             controls=[
-                header_row,
-                ft.Container(height=8),
-                detail_card
+                ft.Row(
+                    controls=[
+                        ft.Icon(ft.Icons.NOTE_ALT_ROUNDED, color=COLORS["primary"], size=16),
+                        ft.Text("Bitácora de Observaciones / Notas de contacto", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                    ],
+                    spacing=6,
+                ),
+                notes_history_column,
+                ft.Divider(height=10, color=COLORS["divider"]),
+                ft.Row(
+                    controls=[
+                        ft.Container(
+                            content=notes_field,
+                            expand=True,
+                        ),
+                        ft.ElevatedButton(
+                            "Guardar Nota",
+                            icon=ft.Icons.SAVE_ROUNDED,
+                            on_click=handle_save_note,
+                            style=ft.ButtonStyle(
+                                bgcolor=COLORS["primary"],
+                                color=COLORS["text_on_primary"],
+                            ),
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=10,
+                ),
             ],
             spacing=8,
-            scroll=ft.ScrollMode.AUTO,
-            expand=True,
         ),
+        bgcolor=COLORS["surface"],
+        padding=24,
+        border_radius=12,
+        border=ft.Border.all(1, COLORS["divider"]),
+        shadow=ft.BoxShadow(spread_radius=0, blur_radius=6, color=ft.Colors.with_opacity(0.05, "#000000"), offset=ft.Offset(0, 3)),
+    )
+
+    bottom_actions_row = ft.Row(
+        controls=actions,
+        alignment=ft.MainAxisAlignment.END,
+        spacing=12,
+    )
+
+    detail_scroll_column = ft.Column(
+        controls=[
+            header_row,
+            ft.Container(height=8),
+            detail_card,
+            ft.Container(height=8),
+            notes_card,
+            ft.Container(height=8),
+            bottom_actions_row
+        ],
+        spacing=8,
+        scroll=ft.ScrollMode.AUTO,
+        expand=True,
+    )
+
+    return ft.Container(
+        content=detail_scroll_column,
         padding=ft.Padding(24, 18, 24, 18),
         expand=True,
     )
@@ -2346,7 +2845,7 @@ def build_detail_view(
 def build_admin_dashboard(
     state: Dict[str, Any],
     on_back: Callable,
-    on_crear_usuario: Callable[[str, str, str, str], bool],
+    on_crear_usuario: Callable,
     on_eliminar_usuario: Callable[[int], bool],
     on_cambiar_password: Callable[[int, str], bool],
     on_vaciar_db: Callable,
@@ -2407,6 +2906,8 @@ def build_admin_dashboard(
             uname = u.get("usuario")
             uemail = u.get("email") or "—"
             urol = u.get("rol") or "agente"
+            umatricula = u.get("matricula_asociada") or "—"
+            ucal = u.get("calendar_url") or "—"
             req_change = "Sí" if u.get("requiere_cambio") else "No"
             failed_attempts = str(u.get("intentos_fallidos") or 0)
             raw_req_change = u.get("requiere_cambio") or 0
@@ -2429,8 +2930,57 @@ def build_admin_dashboard(
             def make_delete_click(user_id=uid, username=uname):
                 return lambda e: open_delete_user_dialog(user_id, username)
 
-            def make_edit_click(user_id=uid, username=uname, email=uemail, rol=urol, rc=raw_req_change, rf=raw_failed, rb=raw_blocked):
-                return lambda e: open_edit_user_dialog(user_id, username, email, rol, rc, rf, rb)
+            uperms = u.get("permisos") or "comercial,buscador,cartera"
+            
+            # Create premium badges for permissions
+            perm_badges = []
+            if "comercial" in uperms:
+                perm_badges.append(
+                    ft.Container(
+                        content=ft.Text("COM", size=9, color="#FFFFFF", weight=ft.FontWeight.BOLD),
+                        bgcolor="#2563EB",
+                        border_radius=4,
+                        padding=ft.Padding(left=4, right=4, top=2, bottom=2),
+                        tooltip="Gestión Comercial"
+                    )
+                )
+            if "buscador" in uperms:
+                perm_badges.append(
+                    ft.Container(
+                        content=ft.Text("BUS", size=9, color="#FFFFFF", weight=ft.FontWeight.BOLD),
+                        bgcolor="#7C3AED",
+                        border_radius=4,
+                        padding=ft.Padding(left=4, right=4, top=2, bottom=2),
+                        tooltip="Red de PAS (Buscador)"
+                    )
+                )
+            if "cartera" in uperms:
+                perm_badges.append(
+                    ft.Container(
+                        content=ft.Text("CAR", size=9, color="#FFFFFF", weight=ft.FontWeight.BOLD),
+                        bgcolor="#D97706",
+                        border_radius=4,
+                        padding=ft.Padding(left=4, right=4, top=2, bottom=2),
+                        tooltip="Cartera & Operaciones"
+                    )
+                )
+            perms_container = ft.Row(controls=perm_badges, spacing=4, tight=True)
+
+            if ucal != "—" and ucal.strip():
+                calendar_control = ft.Row(
+                    controls=[
+                        ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED, size=14, color=COLORS["primary"]),
+                        ft.Text(ucal[:20] + "..." if len(ucal) > 20 else ucal, size=11, color=COLORS["text_secondary"]),
+                    ],
+                    spacing=4,
+                    tooltip=ucal
+                )
+            else:
+                calendar_control = ft.Text("—", size=12, color=COLORS["text_secondary"])
+
+            def make_edit_click(user_id=uid, username=uname, email=uemail, rol=urol, rc=raw_req_change, rf=raw_failed, rb=raw_blocked, matricula=umatricula, perms=uperms, calendar_url=ucal):
+                edit_mat = "" if matricula == "—" else str(matricula)
+                return lambda e: open_edit_user_dialog(user_id, username, email, rol, rc, rf, rb, edit_mat, perms, calendar_url)
 
             actions_cells = []
             # Todos los usuarios pueden ser editados
@@ -2507,6 +3057,9 @@ def build_admin_dashboard(
                         ft.DataCell(ft.Text(uname, size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])),
                         ft.DataCell(ft.Text(uemail, size=12, color=COLORS["text_secondary"])),
                         ft.DataCell(role_control),
+                        ft.DataCell(perms_container),
+                        ft.DataCell(ft.Text(umatricula, size=12, weight=ft.FontWeight.W_600)),
+                        ft.DataCell(calendar_control),
                         ft.DataCell(ft.Text(req_change, size=12)),
                         ft.DataCell(ft.Text(failed_attempts, size=12)),
                         ft.DataCell(ft.Text(block_text, size=12, color=ft.Colors.RED_400 if block_text != "No" else COLORS["text_secondary"])),
@@ -2523,6 +3076,9 @@ def build_admin_dashboard(
                 ft.DataColumn(ft.Text("Usuario", size=12, weight=ft.FontWeight.BOLD)),
                 ft.DataColumn(ft.Text("Email", size=12, weight=ft.FontWeight.BOLD)),
                 ft.DataColumn(ft.Text("Rol", size=12, weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Permisos", size=12, weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Matrícula", size=12, weight=ft.FontWeight.BOLD)),
+                ft.DataColumn(ft.Text("Agenda / Cal", size=12, weight=ft.FontWeight.BOLD)),
                 ft.DataColumn(ft.Text("Cambio Oblig.", size=12, weight=ft.FontWeight.BOLD)),
                 ft.DataColumn(ft.Text("Intentos Fallidos", size=12, weight=ft.FontWeight.BOLD)),
                 ft.DataColumn(ft.Text("Bloqueo Activo", size=12, weight=ft.FontWeight.BOLD)),
@@ -2579,6 +3135,31 @@ def build_admin_dashboard(
             text_size=13,
         )
         
+        perm_comercial = ft.Checkbox(label="Gestión Comercial", value=True, label_style=ft.TextStyle(size=12))
+        perm_comercial_metricas = ft.Checkbox(label="  └ Métricas y Rendimiento", value=True, label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]))
+        perm_comercial_visitas = ft.Checkbox(label="  └ Plan de Visitas", value=True, label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]))
+        perm_comercial_excel = ft.Checkbox(label="  └ Seguimiento Diario (Excel)", value=True, label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]))
+        
+        def toggle_comercial_subs(e):
+            val = perm_comercial.value
+            perm_comercial_metricas.disabled = not val
+            perm_comercial_visitas.disabled = not val
+            perm_comercial_excel.disabled = not val
+            if not val:
+                perm_comercial_metricas.value = False
+                perm_comercial_visitas.value = False
+                perm_comercial_excel.value = False
+            else:
+                perm_comercial_metricas.value = True
+                perm_comercial_visitas.value = True
+                perm_comercial_excel.value = True
+            page.update()
+            
+        perm_comercial.on_change = toggle_comercial_subs
+        
+        perm_buscador = ft.Checkbox(label="Red de PAS (Buscador)", value=True, label_style=ft.TextStyle(size=12))
+        perm_cartera = ft.Checkbox(label="Cartera & Operaciones", value=True, label_style=ft.TextStyle(size=12))
+        
         def close_dialog(ev):
             dlg.open = False
             page.update()
@@ -2610,11 +3191,21 @@ def build_admin_dashboard(
                 show_snackbar("La contraseña debe tener al menos 6 caracteres.", is_error=True)
                 return
                 
-            if on_crear_usuario(uname, email, pwd, rol):
+            selected_perms = []
+            if perm_comercial.value:
+                selected_perms.append("comercial")
+                if perm_comercial_metricas.value: selected_perms.append("comercial_metricas")
+                if perm_comercial_visitas.value: selected_perms.append("comercial_visitas")
+                if perm_comercial_excel.value: selected_perms.append("comercial_excel")
+            if perm_buscador.value: selected_perms.append("buscador")
+            if perm_cartera.value: selected_perms.append("cartera")
+            perms_str = ",".join(selected_perms)
+            
+            if on_crear_usuario(uname, email, pwd, rol, permisos=perms_str):
                 dlg.open = False
                 page.update()
                 # Log event
-                ssn_test.registrar_log(state.get("username", "admin"), "USER_CREATED", f"Usuario creado: '{uname}' ({email}) - Rol: {rol}")
+                ssn_test.registrar_log(state.get("username", "admin"), "USER_CREATED", f"Usuario creado: '{uname}' ({email}) - Rol: {rol} - Permisos: {perms_str}")
                 show_snackbar(f"Usuario '{uname}' creado con éxito como '{rol}'.")
                 refresh_users()
             else:
@@ -2631,6 +3222,14 @@ def build_admin_dashboard(
                         email_field,
                         pass_field,
                         role_field,
+                        ft.Container(height=4),
+                        ft.Text("Permisos de Acceso:", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
+                        perm_comercial,
+                        perm_comercial_metricas,
+                        perm_comercial_visitas,
+                        perm_comercial_excel,
+                        perm_buscador,
+                        perm_cartera,
                     ],
                     spacing=12,
                     tight=True,
@@ -2647,7 +3246,7 @@ def build_admin_dashboard(
         dlg.open = True
         page.update()
 
-    def open_edit_user_dialog(user_id, username, email, rol, rc, rf, rb):
+    def open_edit_user_dialog(user_id, username, email, rol, rc, rf, rb, current_matricula="", perms="comercial,buscador,cartera", calendar_url=""):
         import time
         uname_field = ft.TextField(
             value=username, 
@@ -2678,6 +3277,22 @@ def build_admin_dashboard(
             text_size=13,
             disabled=(username == state.get("username")), # Don't allow self-role demotion
         )
+        matricula_field = ft.TextField(
+            value=current_matricula,
+            label="Matrícula Asociada (opcional)",
+            border_color=COLORS["border"],
+            focused_border_color=COLORS["primary"],
+            border_radius=8,
+            text_size=13
+        )
+        calendar_url_field = ft.TextField(
+            value=calendar_url,
+            label="Enlace de Agenda / Cal.com (URL)",
+            border_color=COLORS["border"],
+            focused_border_color=COLORS["primary"],
+            border_radius=8,
+            text_size=13
+        )
         pass_field = ft.TextField(
             label="Nueva Contraseña (opcional)", 
             password=True, 
@@ -2705,6 +3320,51 @@ def build_admin_dashboard(
             disabled=not (is_blocked or has_attempts),
         )
         
+        perms_set = {p.strip() for p in perms.split(",") if p.strip()}
+        perm_comercial = ft.Checkbox(label="Gestión Comercial", value=("comercial" in perms_set), label_style=ft.TextStyle(size=12))
+        
+        has_sub_comercial = any(p in perms_set for p in ["comercial_metricas", "comercial_visitas", "comercial_excel"])
+        default_sub_val = ("comercial" in perms_set) and not has_sub_comercial
+        
+        perm_comercial_metricas = ft.Checkbox(
+            label="  └ Métricas y Rendimiento",
+            value=(("comercial_metricas" in perms_set) or default_sub_val),
+            label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]),
+            disabled=not ("comercial" in perms_set)
+        )
+        perm_comercial_visitas = ft.Checkbox(
+            label="  └ Plan de Visitas",
+            value=(("comercial_visitas" in perms_set) or default_sub_val),
+            label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]),
+            disabled=not ("comercial" in perms_set)
+        )
+        perm_comercial_excel = ft.Checkbox(
+            label="  └ Seguimiento Diario (Excel)",
+            value=(("comercial_excel" in perms_set) or default_sub_val),
+            label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]),
+            disabled=not ("comercial" in perms_set)
+        )
+        
+        def toggle_comercial_subs(e):
+            val = perm_comercial.value
+            perm_comercial_metricas.disabled = not val
+            perm_comercial_visitas.disabled = not val
+            perm_comercial_excel.disabled = not val
+            if not val:
+                perm_comercial_metricas.value = False
+                perm_comercial_visitas.value = False
+                perm_comercial_excel.value = False
+            else:
+                perm_comercial_metricas.value = True
+                perm_comercial_visitas.value = True
+                perm_comercial_excel.value = True
+            page.update()
+            
+        perm_comercial.on_change = toggle_comercial_subs
+        
+        perm_buscador = ft.Checkbox(label="Red de PAS (Buscador)", value=("buscador" in perms_set), label_style=ft.TextStyle(size=12))
+        perm_cartera = ft.Checkbox(label="Cartera & Operaciones", value=("cartera" in perms_set), label_style=ft.TextStyle(size=12))
+        
         status_info = []
         if is_blocked:
             rem = int(rb - time.time())
@@ -2725,6 +3385,8 @@ def build_admin_dashboard(
             new_email = (email_field.value or "").strip().lower()
             new_pwd = (pass_field.value or "").strip()
             new_rol = role_field.value
+            new_matricula = (matricula_field.value or "").strip()
+            new_calendar_url = (calendar_url_field.value or "").strip()
             req_change_val = 1 if req_change_chk.value else 0
             reset_lock_val = reset_lock_chk.value
             
@@ -2736,6 +3398,16 @@ def build_admin_dashboard(
                 show_snackbar("La nueva contraseña debe tener al menos 6 caracteres.", is_error=True)
                 return
                 
+            selected_perms = []
+            if perm_comercial.value:
+                selected_perms.append("comercial")
+                if perm_comercial_metricas.value: selected_perms.append("comercial_metricas")
+                if perm_comercial_visitas.value: selected_perms.append("comercial_visitas")
+                if perm_comercial_excel.value: selected_perms.append("comercial_excel")
+            if perm_buscador.value: selected_perms.append("buscador")
+            if perm_cartera.value: selected_perms.append("cartera")
+            perms_str = ",".join(selected_perms)
+            
             success, msg = ssn_test.actualizar_usuario(
                 user_id, 
                 new_uname, 
@@ -2744,7 +3416,10 @@ def build_admin_dashboard(
                 rol=new_rol, 
                 requiere_cambio=req_change_val,
                 reset_lock=reset_lock_val,
-                is_self_update=(username == state.get("username"))
+                is_self_update=(username == state.get("username")),
+                matricula=new_matricula,
+                permisos=perms_str,
+                calendar_url=new_calendar_url
             )
             
             if success:
@@ -2753,12 +3428,15 @@ def build_admin_dashboard(
                 ssn_test.registrar_log(
                     state.get("username", "admin"), 
                     "USER_UPDATED", 
-                    f"Usuario editado: ID {user_id} - '{new_uname}' ({new_email}) - Rol: {new_rol} - Req. Cambio: {req_change_val} - Reset Lock: {reset_lock_val}"
+                    f"Usuario editado: ID {user_id} - '{new_uname}' ({new_email}) - Rol: {new_rol} - Req. Cambio: {req_change_val} - Reset Lock: {reset_lock_val} - Matrícula: {new_matricula or 'Ninguna'} - Permisos: {perms_str} - Agenda: {new_calendar_url}"
                 )
                 
                 if username == state.get("username"):
                     state["username"] = new_uname
-                
+                    # Also update our own permissions in state if we edited ourselves
+                    state["permisos"] = set(selected_perms)
+                    state["calendar_url"] = new_calendar_url
+                    
                 show_snackbar(msg)
                 refresh_users()
                 try:
@@ -2776,9 +3454,19 @@ def build_admin_dashboard(
                         uname_field,
                         email_field,
                         role_field,
+                        matricula_field,
+                        calendar_url_field,
                         pass_field,
                         req_change_chk,
                         reset_lock_chk,
+                        ft.Container(height=4),
+                        ft.Text("Permisos de Acceso:", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
+                        perm_comercial,
+                        perm_comercial_metricas,
+                        perm_comercial_visitas,
+                        perm_comercial_excel,
+                        perm_buscador,
+                        perm_cartera,
                     ] + status_info,
                     spacing=10,
                     tight=True,
@@ -3215,6 +3903,7 @@ def build_dashboard_metrics_view(
     on_back: Callable,
     on_filter_click: Callable[[str, Any], None],
     page: ft.Page,
+    state: Dict[str, Any] = None,
 ) -> ft.Container:
     import collections
     
@@ -4094,30 +4783,52 @@ def build_dashboard_metrics_view(
         ft.Row([btn_export_csv], alignment=ft.MainAxisAlignment.END),
     ], spacing=14, scroll=ft.ScrollMode.AUTO, expand=True)
 
+    user_perms = state.get("permisos", set()) if state else set()
+    has_metricas = "comercial_metricas" in user_perms
+    has_visitas = "comercial_visitas" in user_perms
+    has_excel = "comercial_excel" in user_perms
+    
+    # Support backward compatibility
+    if ("comercial" in user_perms or not user_perms) and not (has_metricas or has_visitas or has_excel):
+        has_metricas = True
+        has_visitas = True
+        has_excel = True
+
+    tabs_list = []
+    views_list = []
+    
+    if has_metricas:
+        tabs_list.append(ft.Tab(label="Métricas y Rendimiento", icon=ft.Icons.ANALYTICS_ROUNDED))
+        views_list.append(ft.Container(content=metrics_column, padding=ft.Padding(0, 16, 0, 16)))
+        
+    if has_visitas:
+        tabs_list.append(ft.Tab(label="Plan de Visitas", icon=ft.Icons.CALENDAR_MONTH_ROUNDED))
+        views_list.append(ft.Container(content=visits_column, padding=ft.Padding(0, 16, 0, 16)))
+        
+    if has_excel:
+        tabs_list.append(ft.Tab(label="Seguimiento Diario (Excel)", icon=ft.Icons.TABLE_ROWS_ROUNDED))
+        views_list.append(ft.Container(content=excel_column, padding=ft.Padding(0, 16, 0, 16)))
+
+    if not tabs_list:
+        tabs_list.append(ft.Tab(label="Sin Accesos", icon=ft.Icons.LOCK_ROUNDED))
+        views_list.append(ft.Container(content=ft.Text("No tenés permisos para ver ninguna sección de este módulo.", color=COLORS["text_secondary"]), padding=16))
+
     tabs = ft.Tabs(
-        length=3,
+        length=len(tabs_list),
         selected_index=0,
         animation_duration=300,
         content=ft.Column(
             expand=True,
             controls=[
                 ft.TabBar(
-                    tabs=[
-                        ft.Tab(label="Métricas y Rendimiento", icon=ft.Icons.ANALYTICS_ROUNDED),
-                        ft.Tab(label="Plan de Visitas", icon=ft.Icons.CALENDAR_MONTH_ROUNDED),
-                        ft.Tab(label="Seguimiento Diario (Excel)", icon=ft.Icons.TABLE_ROWS_ROUNDED),
-                    ],
+                    tabs=tabs_list,
                     label_color=COLORS["primary"],
                     unselected_label_color=COLORS["text_secondary"],
                     indicator_color=COLORS["primary"],
                 ),
                 ft.TabBarView(
                     expand=True,
-                    controls=[
-                        ft.Container(content=metrics_column, padding=ft.Padding(0, 16, 0, 16)),
-                        ft.Container(content=visits_column, padding=ft.Padding(0, 16, 0, 16)),
-                        ft.Container(content=excel_column, padding=ft.Padding(0, 16, 0, 16)),
-                    ]
+                    controls=views_list
                 )
             ]
         ),
@@ -4145,6 +4856,13 @@ def build_dashboard_metrics_view(
                 return "$0,00"
 
         def erp_kpi_card(title, value, sub, icon, color, on_click_fn):
+            card_controls = [
+                ft.Text(str(value), size=20, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                ft.Text(title, size=11, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+            ]
+            if sub:
+                card_controls.append(ft.Text(sub, size=10, color=COLORS["text_secondary"]))
+                
             return ft.Container(
                 content=ft.Row([
                     ft.Container(
@@ -4152,11 +4870,7 @@ def build_dashboard_metrics_view(
                         bgcolor=ft.Colors.with_opacity(0.12, color),
                         border_radius=8, padding=10,
                     ),
-                    ft.Column([
-                        ft.Text(str(value), size=20, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                        ft.Text(title, size=11, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                        ft.Text(sub, size=10, color=COLORS["text_secondary"]),
-                    ], spacing=1, tight=True),
+                    ft.Column(card_controls, spacing=1, tight=True),
                 ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 bgcolor=COLORS["surface"],
                 border=ft.Border(
@@ -4179,35 +4893,11 @@ def build_dashboard_metrics_view(
 
         kpi_row_erp = ft.Row([
             erp_kpi_card(
-                "Premio Administrado", 
-                format_currency(erp['premio_total']), 
-                f"Prima total: {format_currency(erp['prima_total'])}", 
-                ft.Icons.MONETIZATION_ON_ROUNDED, 
-                ft.Colors.GREEN_700,
-                lambda _: on_filter_click("navigate", "cartera")
-            ),
-            erp_kpi_card(
-                "Comisiones Estimadas", 
-                format_currency(erp['comisiones_totales']), 
-                f"Pólizas vigentes: {erp['polizas_vigentes']}", 
-                ft.Icons.PERCENT_ROUNDED, 
-                ft.Colors.BLUE_700,
-                lambda _: on_filter_click("navigate", "cartera")
-            ),
-            erp_kpi_card(
                 "Clientes Activos", 
                 str(erp['clientes_totales']), 
                 "Ver asegurados en Cartera", 
                 ft.Icons.PEOPLE_ROUNDED, 
                 ft.Colors.PURPLE_700,
-                lambda _: on_filter_click("navigate", "cartera")
-            ),
-            erp_kpi_card(
-                "Siniestros Activos", 
-                str(erp['siniestros_abiertos']), 
-                "Reclamos en proceso", 
-                ft.Icons.REPORT_PROBLEM_ROUNDED, 
-                ft.Colors.RED_700,
                 lambda _: on_filter_click("navigate", "cartera")
             ),
         ], spacing=14)
@@ -4603,13 +5293,18 @@ def build_dashboard_metrics_view(
         filter_and_render_candidatos()
         filter_and_render_acciones()
 
-    # Run initial refresh synchronously to populate controls before rendering
-    try:
-        refresh_dashboard()
-    except Exception as e:
-        import traceback
-        print("Error populating Gestion Comercial dashboard:", e)
-        traceback.print_exc()
+    # Run initial refresh asynchronously to populate controls without blocking rendering
+    def run_initial_refresh():
+        try:
+            refresh_dashboard()
+            page.update()
+        except Exception as e:
+            import traceback
+            print("Error populating Gestion Comercial dashboard:", e)
+            traceback.print_exc()
+
+    import threading
+    threading.Thread(target=run_initial_refresh, daemon=True).start()
 
     # Assembly
     return ft.Container(
@@ -4632,10 +5327,10 @@ def build_dashboard_metrics_view(
 def build_profile_view(
     state: Dict[str, Any],
     on_back: Callable,
-    on_update_profile: Callable[[str, str, str], tuple[bool, str]],
-    on_crear_usuario: Callable[[str, str, str, str], bool] = None,
-    on_eliminar_usuario: Callable[[int], bool] = None,
-    on_cambiar_password: Callable[[int, str], bool] = None,
+    on_update_profile: Callable,
+    on_crear_usuario: Callable = None,
+    on_eliminar_usuario: Callable = None,
+    on_cambiar_password: Callable = None,
     page: ft.Page = None,
 ) -> ft.Container:
     import ssn_test
@@ -4689,11 +5384,22 @@ def build_profile_view(
         hint_text="Dejar vacío para mantener la actual",
         prefix_icon=ft.Icons.LOCK_OUTLINE_ROUNDED
     )
+    calendar_url_field = ft.TextField(
+        value=state.get("calendar_url", ""), 
+        label="Mi Enlace de Cal.com / Agenda (URL)", 
+        border_color=COLORS["border"], 
+        focused_border_color=COLORS["primary"], 
+        border_radius=8, 
+        text_size=14,
+        prefix_icon=ft.Icons.CALENDAR_MONTH_ROUNDED,
+        hint_text="https://cal.com/tu-usuario o enlace de Google Calendar"
+    )
 
     def do_update_profile(e):
         new_uname = (uname_field.value or "").strip().lower()
         new_email = (email_field.value or "").strip().lower()
         new_pwd = (pass_field.value or "").strip()
+        new_calendar_url = (calendar_url_field.value or "").strip()
 
         if not new_uname or not new_email:
             show_snackbar("El nombre de usuario y correo electrónico son requeridos.", is_error=True)
@@ -4703,7 +5409,7 @@ def build_profile_view(
             show_snackbar("La nueva contraseña debe tener al menos 6 caracteres.", is_error=True)
             return
 
-        success, msg = on_update_profile(new_uname, new_email, new_pwd)
+        success, msg = on_update_profile(new_uname, new_email, new_pwd, new_calendar_url)
         if success:
             show_snackbar(msg)
         else:
@@ -4746,6 +5452,8 @@ def build_profile_view(
                             email_field,
                             ft.Container(height=8),
                             pass_field,
+                            ft.Container(height=8),
+                            calendar_url_field,
                             ft.Container(height=16),
                             ft.Row(
                                 controls=[
@@ -4816,9 +5524,58 @@ def build_profile_view(
             def make_delete_click(user_id=uid, username=uname):
                 return lambda e: open_delete_user_dialog(user_id, username)
 
-            def make_edit_click(user_id=uid, username=uname, email=uemail, rol=urol, rc=raw_req_change, rf=raw_failed, rb=raw_blocked, matricula=umatricula):
+            uperms = u.get("permisos") or "comercial,buscador,cartera"
+            ucal = u.get("calendar_url") or "—"
+            
+            # Create premium badges for permissions
+            perm_badges = []
+            if "comercial" in uperms:
+                perm_badges.append(
+                    ft.Container(
+                        content=ft.Text("COM", size=9, color="#FFFFFF", weight=ft.FontWeight.BOLD),
+                        bgcolor="#2563EB",
+                        border_radius=4,
+                        padding=ft.Padding(left=4, right=4, top=2, bottom=2),
+                        tooltip="Gestión Comercial"
+                    )
+                )
+            if "buscador" in uperms:
+                perm_badges.append(
+                    ft.Container(
+                        content=ft.Text("BUS", size=9, color="#FFFFFF", weight=ft.FontWeight.BOLD),
+                        bgcolor="#7C3AED",
+                        border_radius=4,
+                        padding=ft.Padding(left=4, right=4, top=2, bottom=2),
+                        tooltip="Red de PAS (Buscador)"
+                    )
+                )
+            if "cartera" in uperms:
+                perm_badges.append(
+                    ft.Container(
+                        content=ft.Text("CAR", size=9, color="#FFFFFF", weight=ft.FontWeight.BOLD),
+                        bgcolor="#D97706",
+                        border_radius=4,
+                        padding=ft.Padding(left=4, right=4, top=2, bottom=2),
+                        tooltip="Cartera & Operaciones"
+                    )
+                )
+            perms_container = ft.Row(controls=perm_badges, spacing=4, tight=True)
+
+            if ucal != "—" and ucal.strip():
+                calendar_control = ft.Row(
+                    controls=[
+                        ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED, size=14, color=COLORS["primary"]),
+                        ft.Text(ucal[:20] + "..." if len(ucal) > 20 else ucal, size=11, color=COLORS["text_secondary"]),
+                    ],
+                    spacing=4,
+                    tooltip=ucal
+                )
+            else:
+                calendar_control = ft.Text("—", size=12, color=COLORS["text_secondary"])
+
+            def make_edit_click(user_id=uid, username=uname, email=uemail, rol=urol, rc=raw_req_change, rf=raw_failed, rb=raw_blocked, matricula=umatricula, perms=uperms, calendar_url=ucal):
                 edit_mat = "" if matricula == "—" else str(matricula)
-                return lambda e: open_edit_user_dialog(user_id, username, email, rol, rc, rf, rb, edit_mat)
+                return lambda e: open_edit_user_dialog(user_id, username, email, rol, rc, rf, rb, edit_mat, perms, calendar_url)
 
             actions_cells = []
             actions_cells.append(
@@ -4888,7 +5645,9 @@ def build_profile_view(
                         ft.DataCell(ft.Text(uname, size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])),
                         ft.DataCell(ft.Text(uemail, size=12, color=COLORS["text_secondary"])),
                         ft.DataCell(role_control),
+                        ft.DataCell(perms_container),
                         ft.DataCell(ft.Text(umatricula, size=12, weight=ft.FontWeight.W_600)),
+                        ft.DataCell(calendar_control),
                         ft.DataCell(ft.Text(req_change, size=12)),
                         ft.DataCell(ft.Text(failed_attempts, size=12)),
                         ft.DataCell(ft.Text(block_text, size=12, color=ft.Colors.RED_400 if block_text != "No" else COLORS["text_secondary"])),
@@ -4905,7 +5664,9 @@ def build_profile_view(
                 ft.DataColumn(ft.Text("Usuario", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
                 ft.DataColumn(ft.Text("Email", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
                 ft.DataColumn(ft.Text("Rol", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
+                ft.DataColumn(ft.Text("Permisos", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
                 ft.DataColumn(ft.Text("Matrícula", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
+                ft.DataColumn(ft.Text("Agenda / Cal", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
                 ft.DataColumn(ft.Text("Cambio Oblig.", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
                 ft.DataColumn(ft.Text("Intentos Fallidos", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
                 ft.DataColumn(ft.Text("Bloqueo Activo", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
@@ -4993,117 +5754,173 @@ def build_profile_view(
             pass
 
     def open_create_user_dialog(e):
-        uname_field = ft.TextField(label="Nombre de Usuario", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-        email_field = ft.TextField(label="Correo Electrónico", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-        pass_field = ft.TextField(label="Contraseña", password=True, can_reveal_password=True, border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-        role_field = ft.Dropdown(
-            label="Rol de Usuario",
-            options=[
-                ft.dropdown.Option("agente", "Agente"),
-                ft.dropdown.Option("admin", "Admin"),
-            ],
-            value="agente",
-            border_color=COLORS["border"],
-            focused_border_color=COLORS["primary"],
-            border_radius=8,
-            text_size=13,
-        )
-        
-        matricula_field = ft.TextField(
-            label="Matrícula Asociada (opcional)",
-            border_color=COLORS["border"],
-            focused_border_color=COLORS["primary"],
-            border_radius=8,
-            text_size=13
-        )
-        
-        req_change_chk = ft.Checkbox(
-            label="Exigir cambio de contraseña al primer inicio",
-            value=True,
-            label_style=ft.TextStyle(size=12)
-        )
-        
-        def close_dialog(ev):
-            dlg.open = False
-            page.update()
+        print("[DEBUG] open_create_user_dialog profile clicked!")
+        import traceback
+        try:
+            uname_field = ft.TextField(label="Nombre de Usuario", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+            email_field = ft.TextField(label="Correo Electrónico", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+            pass_field = ft.TextField(label="Contraseña", password=True, can_reveal_password=True, border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+            role_field = ft.Dropdown(
+                label="Rol de Usuario",
+                options=[
+                    ft.dropdown.Option("agente", "Agente"),
+                    ft.dropdown.Option("admin", "Admin"),
+                ],
+                value="agente",
+                border_color=COLORS["border"],
+                focused_border_color=COLORS["primary"],
+                border_radius=8,
+                text_size=13,
+            )
             
-        def do_create(ev):
-            uname = (uname_field.value or "").strip().lower()
-            email = (email_field.value or "").strip().lower()
-            pwd = (pass_field.value or "").strip()
-            rol = role_field.value
-            req_change = 1 if req_change_chk.value else 0
-            matricula = (matricula_field.value or "").strip() or None
+            matricula_field = ft.TextField(
+                label="Matrícula Asociada (opcional)",
+                border_color=COLORS["border"],
+                focused_border_color=COLORS["primary"],
+                border_radius=8,
+                text_size=13
+            )
             
-            if not uname or not email or not pwd or not rol:
-                show_snackbar("Por favor completa todos los campos para crear el usuario.", is_error=True)
-                return
-                
-            if len(uname) < 3:
-                show_snackbar("El nombre de usuario debe tener al menos 3 caracteres.", is_error=True)
-                return
-                
-            if not re.match(r"^[a-zA-Z0-9_]+$", uname):
-                show_snackbar("El nombre de usuario solo debe contener letras, números y guiones bajos.", is_error=True)
-                return
-                
-            email_pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-            if not re.match(email_pattern, email):
-                show_snackbar("El correo electrónico no es válido.", is_error=True)
-                return
-                
-            if len(pwd) < 6:
-                show_snackbar("La contraseña debe tener al menos 6 caracteres.", is_error=True)
-                return
-                
-            if matricula and not matricula.isdigit():
-                show_snackbar("La matrícula debe contener únicamente dígitos.", is_error=True)
-                return
-                
-            if on_crear_usuario:
-                res = on_crear_usuario(uname, email, pwd, rol, req_change, matricula)
-                success = res[0] if isinstance(res, tuple) else res
-                msg = res[1] if isinstance(res, tuple) else ("Usuario creado con éxito." if success else "Error al crear el usuario.")
-                
-                if success:
-                    dlg.open = False
-                    page.update()
-                    ssn_test.registrar_log(state.get("username", "admin"), "USER_CREATED", f"Usuario creado: '{uname}' ({email}) - Rol: {rol} - Matrícula: {matricula or 'Ninguna'}")
-                    show_snackbar(msg)
-                    refresh_users()
+            req_change_chk = ft.Checkbox(
+                label="Exigir cambio de contraseña al primer inicio",
+                value=True,
+                label_style=ft.TextStyle(size=12)
+            )
+            
+            perm_comercial = ft.Checkbox(label="Gestión Comercial", value=True, label_style=ft.TextStyle(size=12))
+            perm_comercial_metricas = ft.Checkbox(label="  └ Métricas y Rendimiento", value=True, label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]))
+            perm_comercial_visitas = ft.Checkbox(label="  └ Plan de Visitas", value=True, label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]))
+            perm_comercial_excel = ft.Checkbox(label="  └ Seguimiento Diario (Excel)", value=True, label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]))
+            
+            def toggle_comercial_subs(e):
+                val = perm_comercial.value
+                perm_comercial_metricas.disabled = not val
+                perm_comercial_visitas.disabled = not val
+                perm_comercial_excel.disabled = not val
+                if not val:
+                    perm_comercial_metricas.value = False
+                    perm_comercial_visitas.value = False
+                    perm_comercial_excel.value = False
                 else:
-                    show_snackbar(msg, is_error=True)
-            else:
-                show_snackbar("No se pudo crear el usuario. Callback de creación no configurado.", is_error=True)
- 
-        dlg = ft.AlertDialog(
-            title=ft.Row([ft.Icon(ft.Icons.PERSON_ADD_ROUNDED, color=COLORS["primary"]), ft.Text("Crear Nuevo Usuario", size=16, weight=ft.FontWeight.BOLD)]),
-            content=ft.Container(
-                content=ft.Column(
-                    controls=[
-                        uname_field,
-                        email_field,
-                        role_field,
-                        matricula_field,
-                        pass_field,
-                        req_change_chk,
-                    ],
-                    spacing=12,
-                    tight=True,
+                    perm_comercial_metricas.value = True
+                    perm_comercial_visitas.value = True
+                    perm_comercial_excel.value = True
+                page.update()
+                
+            perm_comercial.on_change = toggle_comercial_subs
+            
+            perm_buscador = ft.Checkbox(label="Red de PAS (Buscador)", value=True, label_style=ft.TextStyle(size=12))
+            perm_cartera = ft.Checkbox(label="Cartera & Operaciones", value=True, label_style=ft.TextStyle(size=12))
+            
+            def close_dialog(ev):
+                dlg.open = False
+                page.update()
+                
+            def do_create(ev):
+                try:
+                    uname = (uname_field.value or "").strip().lower()
+                    email = (email_field.value or "").strip().lower()
+                    pwd = (pass_field.value or "").strip()
+                    rol = role_field.value
+                    req_change = 1 if req_change_chk.value else 0
+                    matricula = (matricula_field.value or "").strip() or None
+                    
+                    selected_perms = []
+                    if perm_comercial.value:
+                        selected_perms.append("comercial")
+                        if perm_comercial_metricas.value: selected_perms.append("comercial_metricas")
+                        if perm_comercial_visitas.value: selected_perms.append("comercial_visitas")
+                        if perm_comercial_excel.value: selected_perms.append("comercial_excel")
+                    if perm_buscador.value: selected_perms.append("buscador")
+                    if perm_cartera.value: selected_perms.append("cartera")
+                    perms_str = ",".join(selected_perms)
+                    
+                    if not uname or not email or not pwd or not rol:
+                        show_snackbar("Por favor completa todos los campos para crear el usuario.", is_error=True)
+                        return
+                        
+                    if len(uname) < 3:
+                        show_snackbar("El nombre de usuario debe tener al menos 3 caracteres.", is_error=True)
+                        return
+                        
+                    if not re.match(r"^[a-zA-Z0-9_]+$", uname):
+                        show_snackbar("El nombre de usuario solo debe contener letras, números y guiones bajos.", is_error=True)
+                        return
+                        
+                    email_pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+                    if not re.match(email_pattern, email):
+                        show_snackbar("El correo electrónico no es válido.", is_error=True)
+                        return
+                        
+                    if len(pwd) < 6:
+                        show_snackbar("La contraseña debe tener al menos 6 caracteres.", is_error=True)
+                        return
+                        
+                    if matricula and not matricula.isdigit():
+                        show_snackbar("La matrícula debe contener únicamente dígitos.", is_error=True)
+                        return
+                        
+                    if on_crear_usuario:
+                        res = on_crear_usuario(uname, email, pwd, rol, req_change, matricula, permisos=perms_str)
+                        success = res[0] if isinstance(res, tuple) else res
+                        msg = res[1] if isinstance(res, tuple) else ("Usuario creado con éxito." if success else "Error al crear el usuario.")
+                        
+                        if success:
+                            dlg.open = False
+                            page.update()
+                            ssn_test.registrar_log(state.get("username", "admin"), "USER_CREATED", f"Usuario creado: '{uname}' ({email}) - Rol: {rol} - Matrícula: {matricula or 'Ninguna'} - Permisos: {perms_str}")
+                            show_snackbar(msg)
+                            refresh_users()
+                        else:
+                            show_snackbar(msg, is_error=True)
+                    else:
+                        show_snackbar("No se pudo crear el usuario. Callback de creación no configurado.", is_error=True)
+                except Exception as ex:
+                    print("[ERROR] Exception in do_create:")
+                    traceback.print_exc()
+                    show_snackbar(f"Error al crear usuario: {ex}", is_error=True)
+      
+            dlg = ft.AlertDialog(
+                title=ft.Row([ft.Icon(ft.Icons.PERSON_ADD_ROUNDED, color=COLORS["primary"]), ft.Text("Crear Nuevo Usuario", size=16, weight=ft.FontWeight.BOLD)]),
+                content=ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            uname_field,
+                            email_field,
+                            role_field,
+                            matricula_field,
+                            pass_field,
+                            req_change_chk,
+                            ft.Container(height=4),
+                            ft.Text("Permisos de Acceso:", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
+                            perm_comercial,
+                            perm_comercial_metricas,
+                            perm_comercial_visitas,
+                            perm_comercial_excel,
+                            perm_buscador,
+                            perm_cartera,
+                        ],
+                        spacing=12,
+                        tight=True,
+                    ),
+                    width=320,
                 ),
-                width=320,
-            ),
-            actions=[
-                ft.TextButton("Cancelar", on_click=close_dialog),
-                ft.ElevatedButton("Crear Usuario", on_click=do_create, style=ft.ButtonStyle(bgcolor=COLORS["primary"], color=COLORS["text_on_primary"])),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        page.dialog = dlg
-        dlg.open = True
-        page.update()
+                actions=[
+                    ft.TextButton("Cancelar", on_click=close_dialog),
+                    ft.ElevatedButton("Crear Usuario", on_click=do_create, style=ft.ButtonStyle(bgcolor=COLORS["primary"], color=COLORS["text_on_primary"])),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            if dlg not in page.overlay:
+                page.overlay.append(dlg)
+            dlg.open = True
+            page.update()
+        except Exception as ex:
+            print("[ERROR] Exception in open_create_user_dialog:")
+            traceback.print_exc()
+            show_snackbar(f"Error al abrir diálogo: {ex}", is_error=True)
 
-    def open_edit_user_dialog(user_id, username, email, rol, rc, rf, rb, current_matricula=""):
+    def open_edit_user_dialog(user_id, username, email, rol, rc, rf, rb, current_matricula="", perms="comercial,buscador,cartera", calendar_url=""):
         import time
         uname_field_e = ft.TextField(
             value=username, 
@@ -5142,6 +5959,14 @@ def build_profile_view(
             border_radius=8,
             text_size=13
         )
+        calendar_url_field_e = ft.TextField(
+            value=calendar_url,
+            label="Enlace de Agenda / Cal.com (URL)",
+            border_color=COLORS["border"],
+            focused_border_color=COLORS["primary"],
+            border_radius=8,
+            text_size=13
+        )
         pass_field_e = ft.TextField(
             label="Nueva Contraseña (opcional)", 
             password=True, 
@@ -5169,6 +5994,51 @@ def build_profile_view(
             disabled=not (is_blocked or has_attempts),
         )
         
+        perms_set = {p.strip() for p in perms.split(",") if p.strip()}
+        perm_comercial = ft.Checkbox(label="Gestión Comercial", value=("comercial" in perms_set), label_style=ft.TextStyle(size=12))
+        
+        has_sub_comercial = any(p in perms_set for p in ["comercial_metricas", "comercial_visitas", "comercial_excel"])
+        default_sub_val = ("comercial" in perms_set) and not has_sub_comercial
+        
+        perm_comercial_metricas = ft.Checkbox(
+            label="  └ Métricas y Rendimiento",
+            value=(("comercial_metricas" in perms_set) or default_sub_val),
+            label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]),
+            disabled=not ("comercial" in perms_set)
+        )
+        perm_comercial_visitas = ft.Checkbox(
+            label="  └ Plan de Visitas",
+            value=(("comercial_visitas" in perms_set) or default_sub_val),
+            label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]),
+            disabled=not ("comercial" in perms_set)
+        )
+        perm_comercial_excel = ft.Checkbox(
+            label="  └ Seguimiento Diario (Excel)",
+            value=(("comercial_excel" in perms_set) or default_sub_val),
+            label_style=ft.TextStyle(size=11, color=COLORS["text_secondary"]),
+            disabled=not ("comercial" in perms_set)
+        )
+        
+        def toggle_comercial_subs(e):
+            val = perm_comercial.value
+            perm_comercial_metricas.disabled = not val
+            perm_comercial_visitas.disabled = not val
+            perm_comercial_excel.disabled = not val
+            if not val:
+                perm_comercial_metricas.value = False
+                perm_comercial_visitas.value = False
+                perm_comercial_excel.value = False
+            else:
+                perm_comercial_metricas.value = True
+                perm_comercial_visitas.value = True
+                perm_comercial_excel.value = True
+            page.update()
+            
+        perm_comercial.on_change = toggle_comercial_subs
+        
+        perm_buscador = ft.Checkbox(label="Red de PAS (Buscador)", value=("buscador" in perms_set), label_style=ft.TextStyle(size=12))
+        perm_cartera = ft.Checkbox(label="Cartera & Operaciones", value=("cartera" in perms_set), label_style=ft.TextStyle(size=12))
+        
         status_info = []
         if is_blocked:
             rem = int(rb - time.time())
@@ -5190,6 +6060,7 @@ def build_profile_view(
             new_pwd = (pass_field_e.value or "").strip()
             new_rol = role_field_e.value
             new_matricula = (matricula_field_e.value or "").strip()
+            new_calendar_url = (calendar_url_field_e.value or "").strip()
             req_change_val = 1 if req_change_chk.value else 0
             reset_lock_val = reset_lock_chk.value
             
@@ -5201,6 +6072,16 @@ def build_profile_view(
                 show_snackbar("La nueva contraseña debe tener al menos 6 caracteres.", is_error=True)
                 return
                 
+            selected_perms = []
+            if perm_comercial.value:
+                selected_perms.append("comercial")
+                if perm_comercial_metricas.value: selected_perms.append("comercial_metricas")
+                if perm_comercial_visitas.value: selected_perms.append("comercial_visitas")
+                if perm_comercial_excel.value: selected_perms.append("comercial_excel")
+            if perm_buscador.value: selected_perms.append("buscador")
+            if perm_cartera.value: selected_perms.append("cartera")
+            perms_str = ",".join(selected_perms)
+            
             success, msg = ssn_test.actualizar_usuario(
                 user_id, 
                 new_uname, 
@@ -5210,7 +6091,9 @@ def build_profile_view(
                 requiere_cambio=req_change_val,
                 reset_lock=reset_lock_val,
                 is_self_update=(username == state.get("username")),
-                matricula=new_matricula
+                matricula=new_matricula,
+                permisos=perms_str,
+                calendar_url=new_calendar_url
             )
             
             if success:
@@ -5219,11 +6102,14 @@ def build_profile_view(
                 ssn_test.registrar_log(
                     state.get("username", "admin"), 
                     "USER_UPDATED", 
-                    f"Usuario editado: ID {user_id} - '{new_uname}' ({new_email}) - Rol: {new_rol} - Req. Cambio: {req_change_val} - Reset Lock: {reset_lock_val} - Matrícula: {new_matricula or 'Ninguna'}"
+                    f"Usuario editado: ID {user_id} - '{new_uname}' ({new_email}) - Rol: {new_rol} - Req. Cambio: {req_change_val} - Reset Lock: {reset_lock_val} - Matrícula: {new_matricula or 'Ninguna'} - Permisos: {perms_str} - Agenda: {new_calendar_url}"
                 )
                 
                 if username == state.get("username"):
                     state["username"] = new_uname
+                    # Also update our own permissions in state if we edited ourselves
+                    state["permisos"] = set(selected_perms)
+                    state["calendar_url"] = new_calendar_url
                 
                 show_snackbar(msg)
                 refresh_users()
@@ -5239,9 +6125,18 @@ def build_profile_view(
                         email_field_e,
                         role_field_e,
                         matricula_field_e,
+                        calendar_url_field_e,
                         pass_field_e,
                         req_change_chk,
                         reset_lock_chk,
+                        ft.Container(height=4),
+                        ft.Text("Permisos de Acceso:", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
+                        perm_comercial,
+                        perm_comercial_metricas,
+                        perm_comercial_visitas,
+                        perm_comercial_excel,
+                        perm_buscador,
+                        perm_cartera,
                     ] + status_info,
                     spacing=10,
                     tight=True,
@@ -5254,7 +6149,8 @@ def build_profile_view(
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-        page.dialog = dlg
+        if dlg not in page.overlay:
+            page.overlay.append(dlg)
         dlg.open = True
         page.update()
 
@@ -5292,7 +6188,8 @@ def build_profile_view(
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-        page.dialog = dlg
+        if dlg not in page.overlay:
+            page.overlay.append(dlg)
         dlg.open = True
         page.update()
 
@@ -5320,7 +6217,8 @@ def build_profile_view(
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-        page.dialog = dlg
+        if dlg not in page.overlay:
+            page.overlay.append(dlg)
         dlg.open = True
         page.update()
 

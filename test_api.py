@@ -197,6 +197,30 @@ class KatrixAPITestCase(unittest.TestCase):
         self.assertFalse(res_val_del.json()["valid"])
         self.assertEqual(res_val_del.json()["message"], "Clave de licencia inexistente")
 
+    def test_07_pas_sorting_and_filtering(self):
+        """Verificar el filtrado, ordenamiento y exportación de PAS a CSV."""
+        # 1. Login Admin
+        login_res = self.client.post("/auth/login", json={"username": "broker", "password": "password123"})
+        token = login_res.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # 2. Consultar listado de PAS
+        response = self.client.get("/pas/", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("items", data)
+        self.assertIn("total", data)
+        
+        # 3. Filtrar y ordenar
+        response_filtered = self.client.get("/pas/?q=test&ramo=Vida&mostly_complete=true&sort_by=nombre&sort_desc=true", headers=headers)
+        self.assertEqual(response_filtered.status_code, 200)
+        
+        # 4. Exportar a CSV
+        response_csv = self.client.get("/pas/exportar-csv?q=test&ramo=Vida&mostly_complete=true", headers=headers)
+        self.assertEqual(response_csv.status_code, 200)
+        self.assertEqual(response_csv.headers.get("content-type"), "text/csv; charset=utf-8")
+        self.assertIn("attachment; filename=productores_exportados.csv", response_csv.headers.get("content-disposition", ""))
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 3. Cliente Interactivo (CLI Live Demo)

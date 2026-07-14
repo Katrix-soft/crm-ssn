@@ -567,6 +567,10 @@ def list_pas(
     provincia: Optional[str] = None,
     ramo: Optional[str] = None,
     estado_contacto: Optional[str] = None,
+    mostly_complete: Optional[bool] = Query(None, description="Filtrar por registros mayormente completos"),
+    sort_by: Optional[str] = Query("matricula", description="Ordenar por campo (matricula, nombre, cuit, ramo, estado)"),
+    sort_desc: bool = Query(False, description="Orden descendente"),
+    regional_only: bool = Query(False, description="Ver solo productores de la región Cuyo"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     current: TokenData = Depends(get_current_user),
@@ -574,7 +578,95 @@ def list_pas(
     """
     Lista PAS filtrable. Admin ve todos; agente solo ve su propio registro.
     """
-    records = db.obtener_todos_db(user_id=current.user_id, role=current.role) or []
+    records = db.obtener_todos_db(user_id=current.user_id, role=current.role, regional_only=regional_only) or []
+
+    # Si es agente, solo ve su propio perfil
+    if current.role != "admin" and current.matricula:
+        records = [r for r in records if (r.get("matricula") or r.get("productor_matricula")) == current.matricula]
+
+    # Filtros
+    if q:
+        ql = q.strip().lower()
+        records = [r for r in records if
+                   ql in (r.get("nombre") or r.get("productor_apellido_nombre") or "").lower() or
+                   ql in (r.get("matricula") or r.get("productor_matricula") or "").lower() or
+                   ql in (r.get("documento") or r.get("cuit") or r.get("productor_id") or "").lower()]
+    if provincia:
+        records = [r for r in records if
+                   (r.get("provincia") or "").upper() == provincia.upper()]
+    if ramo:
+        records = [r for r in records if
+                   (r.get("ramo") or "").lower() == ramo.lower()]
+    if estado_contacto:
+        records = [r for r in records if
+                   (r.get("estado_contacto") or "Sin contactar").lower() == estado_contacto.lower()]
+    if mostly_complete:
+        check_fields = ["telefono", "email", "domicilio", "localidad", "cod_postal", "resolucion", "fecha_resolucion"]
+        def is_mostly_complete(r):
+            missing = 0
+            for field in check_fields:
+                val = r.get(field)
+                if val is None or str(val).strip() in ("", "—", "None", "null"):
+                    missing += 1
+            return missing <= 3
+        records = [r for r in records if is_mostly_complete(r)]
+
+    # Ordenamiento
+    if sort_by:
+        def get_mat_num(r):
+            m = str(r.get("matricula") or r.get("productor_matricula") or "").strip()
+            return int(m) if m.isdigit() else 9999999
+            
+        if sort_by == "matricula":
+            records.sort(key=get_mat_num, reverse=sort_desc)
+        elif sort_by == "nombre":
+            records.sort(key=lambda r: (r.get("nombre") or r.get("productor_apellido_nombre") or "").strip().lower(), reverse=sort_desc)
+        elif sort_by == "cuit":
+            records.sort(key=lambda r: (r.get("cuit") or r.get("documento") or r.get("productor_id") or "").strip().lower(), reverse=sort_desc)
+        elif sort_by == "ramo":
+            records.sort(key=lambda r: (r.get("ramo") or "").strip().lower(), reverse=sort_desc)
+        elif sort_by == "estado":
+            records.sort(key=lambda r: (r.get("estado_contacto") or "Sin contactar").strip().lower(), reverse=sort_desc)
+
+    total = len(records)
+    start = (page - 1) * page_size
+    page_records = records[start:start + page_size]
+
+    items = [PASListItem(
+        matricula=r.get("matricula") or r.get("productor_matricula"),
+        nombre=r.get("nombre") or r.get("productor_apellido_nombre"),
+        ramo=r.get("ramo"),
+        provincia=r.get("provincia"),
+        localidad=r.get("localidad"),
+        telefono=r.get("telefono"),
+        email=r.get("email"),
+        estado_contacto=r.get("estado_contacto", "Sin contactar"),
+        companias=r.get("companias"),
+        documento=r.get("documento") or r.get("productor_id"),
+        cuit=r.get("cuit") or r.get("productor_id"),
+    ) for r in page_records]
+
+    return PaginatedPAS(total=total, page=page, page_size=page_size, items=items)
+
+
+@app.get("/pas/exportar-csv", tags=["Productores PAS"])
+def export_pas_csv(
+    q: Optional[str] = Query(None, description="Búsqueda por nombre, matrícula o CUIT"),
+    provincia: Optional[str] = None,
+    ramo: Optional[str] = None,
+    estado_contacto: Optional[str] = None,
+    mostly_complete: Optional[bool] = Query(None, description="Filtrar por registros mayormente completos"),
+    regional_only: bool = Query(False, description="Ver solo productores de la región Cuyo"),
+    current: TokenData = Depends(get_current_user),
+):
+    """
+    Exporta la lista de PAS filtrada en formato CSV.
+    """
+    from fastapi.responses import StreamingResponse
+    import io
+    import csv
+    
+    records = db.obtener_todos_db(user_id=current.user_id, role=current.role, regional_only=regional_only) or []
 
     # Si es agente, solo ve su propio perfil
     if current.role != "admin" and current.matricula:
@@ -596,26 +688,49 @@ def list_pas(
     if estado_contacto:
         records = [r for r in records if
                    (r.get("estado_contacto") or "Sin contactar").lower() == estado_contacto.lower()]
+    if mostly_complete:
+        check_fields = ["telefono", "email", "domicilio", "localidad", "cod_postal", "resolucion", "fecha_resolucion"]
+        def is_mostly_complete(r):
+            missing = 0
+            for field in check_fields:
+                val = r.get(field)
+                if val is None or str(val).strip() in ("", "—", "None", "null"):
+                    missing += 1
+            return missing <= 3
+        records = [r for r in records if is_mostly_complete(r)]
 
-    total = len(records)
-    start = (page - 1) * page_size
-    page_records = records[start:start + page_size]
+    # Generar CSV en memoria
+    output = io.StringIO()
+    output.write('\ufeff')
+    writer = csv.writer(output, delimiter=";")
+    writer.writerow([
+        "Matricula", "Nombre", "CUIT/DNI", "Ramo", "Provincia", 
+        "Localidad", "Telefono", "Email", "Domicilio", "Estado Contacto", "Observaciones"
+    ])
+    
+    for r in records:
+        writer.writerow([
+            r.get("productor_matricula") or r.get("matricula") or "",
+            r.get("productor_apellido_nombre") or r.get("nombre") or "",
+            r.get("cuit") or r.get("documento") or r.get("productor_id") or "",
+            r.get("ramo") or "",
+            r.get("provincia") or "",
+            r.get("localidad") or "",
+            r.get("telefono") or "",
+            r.get("email") or "",
+            r.get("domicilio") or "",
+            r.get("estado_contacto") or "Sin contactar",
+            r.get("observaciones") or ""
+        ])
+        
+    db.registrar_log(current.username, "EXPORT_CSV", f"Exportación de {len(records)} productores a CSV")
 
-    items = [PASListItem(
-        matricula=r.get("productor_matricula"),
-        nombre=r.get("productor_apellido_nombre"),
-        ramo=r.get("ramo"),
-        provincia=r.get("provincia"),
-        localidad=r.get("localidad"),
-        telefono=r.get("telefono"),
-        email=r.get("email"),
-        estado_contacto=r.get("estado_contacto", "Sin contactar"),
-        companias=r.get("companias"),
-        documento=r.get("documento") or r.get("productor_id"),
-        cuit=r.get("cuit") or r.get("productor_id"),
-    ) for r in page_records]
-
-    return PaginatedPAS(total=total, page=page, page_size=page_size, items=items)
+    output.seek(0)
+    return StreamingResponse(
+        io.BytesIO(output.read().encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=productores_exportados.csv"}
+    )
 
 
 @app.get("/pas/{matricula}", response_model=PASResponse, tags=["Productores PAS"])

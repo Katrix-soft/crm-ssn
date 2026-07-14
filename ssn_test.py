@@ -96,7 +96,20 @@ if platform.system() == "Windows":
 else:
     DB_DIR = os.path.join(os.path.expanduser("~"), ".katrixbroker", "data")
 
-DB_PATH = os.path.join(DB_DIR, "productores_scraped.db")
+# Fallback: si la DB principal no existe o está vacía, usar la DB local en ./data/
+_primary_db = os.path.join(DB_DIR, "productores_scraped.db")
+_local_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_local_db = os.path.join(_local_data_dir, "productores_scraped.db")
+
+if os.path.exists(_primary_db) and os.path.getsize(_primary_db) > 0:
+    DB_PATH = _primary_db
+elif os.path.exists(_local_db) and os.path.getsize(_local_db) > 0:
+    # Usar la DB local y sincronizar el DB_DIR para que inicializar_db() funcione correctamente
+    DB_DIR = _local_data_dir
+    DB_PATH = _local_db
+else:
+    # Si no existe ninguna, usar la ruta primaria (se creará al inicializar)
+    DB_PATH = _primary_db
 CSV_URL = "https://datosabiertos.ssn.gob.ar/dataset/be4927ba-6b6d-4cee-b33e-5319b33b15b8/resource/07de24f8-4191-497e-a0da-da83cf5eb5d9/download/productores-asesores.csv"
 CSV_PATH_LOCAL = os.path.join(DB_DIR, "productores-asesores.csv")
 CSV_PATH_ROOT = "productores-asesores.csv"
@@ -305,6 +318,24 @@ def inicializar_db():
     except sqlite3.OperationalError:
         pass
 
+    # Asegurar columna calendar_url en usuarios
+    try:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN calendar_url TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    # Asegurar columna permisos en usuarios
+    try:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN permisos TEXT DEFAULT 'comercial,buscador,cartera'")
+    except sqlite3.OperationalError:
+        pass
+
+    # Asegurar que permisos no sean NULL para todos los usuarios
+    try:
+        cursor.execute("UPDATE usuarios SET permisos = 'comercial,buscador,cartera' WHERE permisos IS NULL")
+    except Exception:
+        pass
+
     # Asegurar columna usuario_id en productores_detalle
     try:
         cursor.execute("ALTER TABLE productores_detalle ADD COLUMN usuario_id INTEGER")
@@ -468,13 +499,18 @@ def inicializar_db():
     except sqlite3.OperationalError:
         pass
 
-    # Insertar licencia de prueba por defecto si no hay licencias
-    cursor.execute("SELECT COUNT(*) FROM licencias")
-    if cursor.fetchone()[0] == 0:
-        cursor.execute("""
-            INSERT INTO licencias (clave, cliente, fecha_expiracion, estado, limite_dispositivos)
-            VALUES (?, ?, ?, ?, ?)
-        """, ("KTX-TEST-VALID-2026", "Cliente Prueba", "2030-12-31", "activa", 2))
+    # Asegurar que la clave de producción usada localmente también sea válida para desarrollo sin fricción
+    for license_key, client, exp, status, max_dev in [
+        ("KTX-CRM-DQUK-LEQD-73A2", "Cliente Desarrollo", "2030-12-31", "activa", 10),
+        ("KTX-CRM-DQUK-LEGD-73A2", "Cliente Desarrollo", "2030-12-31", "activa", 10),
+        ("KTX-TEST-VALID-2026", "Cliente Prueba", "2030-12-31", "activa", 2)
+    ]:
+        cursor.execute("SELECT COUNT(*) FROM licencias WHERE clave = ?", (license_key,))
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("""
+                INSERT INTO licencias (clave, cliente, fecha_expiracion, estado, limite_dispositivos)
+                VALUES (?, ?, ?, ?, ?)
+            """, (license_key, client, exp, status, max_dev))
     # ─────────────────────────────────────────────────────────────────────
 
     # Insertar usuarios por defecto si no existen
@@ -801,49 +837,54 @@ def importar_actividades_desde_excel(file_path: str) -> dict:
                 }
 
                 imported_count = 0
-                for r in rows[6:]:
-                    r_vals = {}
-                    for c in r.findall('ns:c', ns):
-                        cell_type = c.attrib.get('t')
-                        val_tag = c.find('ns:v', ns)
-                        val = val_tag.text if val_tag is not None else ''
-                        if cell_type == 's' and val.isdigit():
-                            val = shared_strings[int(val)]
-                        col_name = ''.join([char for char in c.attrib.get('r') if char.isalpha()])
-                        r_vals[col_name] = val
-                        
-                    name = r_vals.get('B', '').strip()
-                    if name and name != 'Nombre Productor' and not name.startswith('Total'):
-                        comp = r_vals.get('C', '').strip()
-                        for col, val in r_vals.items():
-                            if col in col_to_month and val in ['1', '2']:
-                                m_name = col_to_month[col]
-                                m_num = month_mapping.get(m_name, '01')
-                                day_str = col_to_day.get(col, '01')
-                                if len(day_str) == 1:
-                                    day_str = '0' + day_str
-                                date_str = f"2024-{m_num}-{day_str}"
-                                mes_str = f"2024-{m_num}"
-                                act_type = 'Llamado' if val == '1' else 'Reunión'
-                                
-                                # Find if there is a matricula in the DB for this name
-                                conn_find = sqlite3.connect(DB_PATH)
-                                cursor_find = conn_find.cursor()
-                                cursor_find.execute("SELECT matricula FROM productores_detalle WHERE nombre LIKE ? LIMIT 1", (f"%{name}%",))
-                                mat_row = cursor_find.fetchone()
-                                mat = mat_row[0] if mat_row else ""
-                                conn_find.close()
-                                
-                                # Save it
-                                guardar_actividad_comercial(
-                                    mes=mes_str,
-                                    fecha_actividad=date_str,
-                                    matricula=mat,
-                                    nombre=name,
-                                    tipo=act_type,
-                                    compania=comp
-                                )
-                                imported_count += 1
+                conn_db = sqlite3.connect(DB_PATH)
+                cursor_db = conn_db.cursor()
+                try:
+                    for r in rows[6:]:
+                        r_vals = {}
+                        for c in r.findall('ns:c', ns):
+                            cell_type = c.attrib.get('t')
+                            val_tag = c.find('ns:v', ns)
+                            val = val_tag.text if val_tag is not None else ''
+                            if cell_type == 's' and val.isdigit():
+                                val = shared_strings[int(val)]
+                            col_name = ''.join([char for char in c.attrib.get('r') if char.isalpha()])
+                            r_vals[col_name] = val
+                            
+                        name = r_vals.get('B', '').strip()
+                        if name and name != 'Nombre Productor' and not name.startswith('Total'):
+                            comp = r_vals.get('C', '').strip()
+                            for col, val in r_vals.items():
+                                if col in col_to_month and val in ['1', '2']:
+                                    m_name = col_to_month[col]
+                                    m_num = month_mapping.get(m_name, '01')
+                                    day_str = col_to_day.get(col, '01')
+                                    if len(day_str) == 1:
+                                        day_str = '0' + day_str
+                                    date_str = f"2024-{m_num}-{day_str}"
+                                    mes_str = f"2024-{m_num}"
+                                    act_type = 'Llamado' if val == '1' else 'Reunión'
+                                    
+                                    # Find if there is a matricula in the DB for this name
+                                    cursor_db.execute("SELECT matricula FROM productores_detalle WHERE nombre LIKE ? LIMIT 1", (f"%{name}%",))
+                                    mat_row = cursor_db.fetchone()
+                                    mat = mat_row[0] if mat_row else ""
+                                    
+                                    # Check if duplicate exists
+                                    cursor_db.execute("""
+                                        SELECT id FROM actividades_comerciales 
+                                        WHERE fecha_actividad = ? AND nombre = ? AND tipo = ?
+                                    """, (date_str, name, act_type))
+                                    exists = cursor_db.fetchone()
+                                    if not exists:
+                                        cursor_db.execute("""
+                                            INSERT INTO actividades_comerciales (mes, fecha_actividad, matricula, nombre, tipo, compania, observaciones)
+                                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                                        """, (mes_str, date_str, mat, name, act_type, comp, ''))
+                                        imported_count += 1
+                    conn_db.commit()
+                finally:
+                    conn_db.close()
                                 
                 return {"success": True, "count": imported_count, "message": f"Se importaron {imported_count} actividades con éxito."}
     except Exception as e:
@@ -968,7 +1009,7 @@ def obtener_total_cached() -> int:
         return 0
 
 
-def obtener_todos_db(user_id: int = None, role: str = None) -> list[dict]:
+def obtener_todos_db(user_id: int = None, role: str = None, regional_only: bool = False) -> list[dict]:
     """Retorna todos los productores en el cache SQLite con filtrado de roles."""
     if not os.path.exists(DB_PATH):
         return []
@@ -976,9 +1017,10 @@ def obtener_todos_db(user_id: int = None, role: str = None) -> list[dict]:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
+        regional_clause = "AND UPPER(p.provincia) IN ('MENDOZA', 'SAN JUAN', 'SAN LUIS')" if regional_only else ""
         # High performance query utilizing LEFT JOIN and GROUP_CONCAT to fetch all associated societies in a single trip (Eloquent style)
         if role == "agente" and user_id is not None:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
@@ -990,10 +1032,10 @@ def obtener_todos_db(user_id: int = None, role: str = None) -> list[dict]:
                 WHERE (p.usuario_id = ? 
                    OR p.usuario_id IN (SELECT usuario_propietario_id FROM permisos_visibilidad WHERE usuario_lector_id = ?)
                    OR p.usuario_id IS NULL)
-                  AND UPPER(p.provincia) IN ('MENDOZA', 'SAN JUAN', 'SAN LUIS')
+                  {regional_clause}
             """, (user_id, user_id))
         else:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
@@ -1002,7 +1044,7 @@ def obtener_todos_db(user_id: int = None, role: str = None) -> list[dict]:
                         JOIN sociedades s ON ps.sociedad_matricula = s.matricula
                         WHERE ps.productor_matricula = p.matricula) as sociedades
                 FROM productores_detalle p
-                WHERE UPPER(p.provincia) IN ('MENDOZA', 'SAN JUAN', 'SAN LUIS')
+                WHERE 1=1 {regional_clause}
             """)
         rows = cursor.fetchall()
         conn.close()
@@ -1012,7 +1054,7 @@ def obtener_todos_db(user_id: int = None, role: str = None) -> list[dict]:
         return []
 
 
-def obtener_cartera_db(user_id: int = None, role: str = None) -> list[dict]:
+def obtener_cartera_db(user_id: int = None, role: str = None, regional_only: bool = False) -> list[dict]:
     """Retorna únicamente los productores calificados para la cartera (con actividad, pólizas o asignados)."""
     if not os.path.exists(DB_PATH):
         return []
@@ -1021,9 +1063,10 @@ def obtener_cartera_db(user_id: int = None, role: str = None) -> list[dict]:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
+        regional_clause = "AND UPPER(p.provincia) IN ('MENDOZA', 'SAN JUAN', 'SAN LUIS')" if regional_only else ""
         # Filtro de cartera: estado de contacto activo, con pólizas, en visitas, en candidatos, o asignado a un usuario
-        # Se requiere nombre válido para no tener vacíos al principio y restringir a Mendoza y San Juan.
-        cartera_filter = """
+        # Se requiere nombre válido para no tener vacíos al principio y restringir a Mendoza y San Juan si regional_only.
+        cartera_filter = f"""
             (
                 (p.estado_contacto NOT IN ('Sin contactar', 'Sin contacto', '') AND p.estado_contacto IS NOT NULL)
                 OR p.usuario_id IS NOT NULL
@@ -1032,7 +1075,7 @@ def obtener_cartera_db(user_id: int = None, role: str = None) -> list[dict]:
                 OR p.matricula IN (SELECT DISTINCT matricula FROM candidatos_captacion)
             )
             AND p.nombre IS NOT NULL AND p.nombre != '' AND p.nombre != '—'
-            AND UPPER(p.provincia) IN ('MENDOZA', 'SAN JUAN', 'SAN LUIS')
+            {regional_clause}
         """
         
         if role == "agente" and user_id is not None:
@@ -2127,7 +2170,7 @@ def obtener_usuarios() -> list[dict]:
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT u.id, u.usuario, u.email, u.requiere_cambio, u.intentos_fallidos, u.bloqueado_hasta, u.rol, u.username_changed,
+        SELECT u.id, u.usuario, u.email, u.requiere_cambio, u.intentos_fallidos, u.bloqueado_hasta, u.rol, u.username_changed, u.permisos, u.calendar_url,
                GROUP_CONCAT(p.matricula, ', ') AS matricula_asociada
         FROM usuarios u
         LEFT JOIN productores_detalle p ON p.usuario_id = u.id
@@ -2138,7 +2181,7 @@ def obtener_usuarios() -> list[dict]:
     conn.close()
     return [dict(r) for r in rows]
 
-def crear_usuario(usuario: str, email: str, password_txt: str, rol: str = "agente", requiere_cambio: int = 1, matricula: str = None) -> tuple[bool, str]:
+def crear_usuario(usuario: str, email: str, password_txt: str, rol: str = "agente", requiere_cambio: int = 1, matricula: str = None, permisos: str = "comercial,buscador,cartera") -> tuple[bool, str]:
     """Crea un nuevo usuario en el sistema con opciones completas y validación de matrícula."""
     try:
         usuario = usuario.strip().lower()
@@ -2177,8 +2220,8 @@ def crear_usuario(usuario: str, email: str, password_txt: str, rol: str = "agent
         # Insertar usuario
         hashed_pw = hash_password(password_txt)
         cursor.execute(
-            "INSERT INTO usuarios (usuario, email, password, requiere_cambio, rol, username_changed) VALUES (?, ?, ?, ?, ?, 0)",
-            (usuario, email, hashed_pw, requiere_cambio, rol)
+            "INSERT INTO usuarios (usuario, email, password, requiere_cambio, rol, username_changed, permisos) VALUES (?, ?, ?, ?, ?, 0, ?)",
+            (usuario, email, hashed_pw, requiere_cambio, rol, permisos)
         )
         new_user_id = cursor.lastrowid
         
@@ -2193,7 +2236,7 @@ def crear_usuario(usuario: str, email: str, password_txt: str, rol: str = "agent
         print(f"Error al crear usuario: {e}")
         return False, f"Error al crear usuario: {str(e)}"
 
-def actualizar_usuario(id_usuario: int, nuevo_usuario: str, nuevo_email: str, password_txt: str = None, rol: str = None, requiere_cambio: int = None, reset_lock: bool = False, is_self_update: bool = False, matricula: str = None) -> tuple[bool, str]:
+def actualizar_usuario(id_usuario: int, nuevo_usuario: str, nuevo_email: str, password_txt: str = None, rol: str = None, requiere_cambio: int = None, reset_lock: bool = False, is_self_update: bool = False, matricula: str = None, permisos: str = None, calendar_url: str = None) -> tuple[bool, str]:
     """Actualiza los datos de un usuario con opción de asociar/desasociar matrícula."""
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -2287,6 +2330,14 @@ def actualizar_usuario(id_usuario: int, nuevo_usuario: str, nuevo_email: str, pa
         if reset_lock:
             sql += ", intentos_fallidos = 0, bloqueado_hasta = 0"
             
+        if permisos is not None:
+            sql += ", permisos = ?"
+            params.append(permisos)
+            
+        if calendar_url is not None:
+            sql += ", calendar_url = ?"
+            params.append(calendar_url)
+            
         sql += " WHERE id = ?"
         params.append(id_usuario)
         
@@ -2296,6 +2347,22 @@ def actualizar_usuario(id_usuario: int, nuevo_usuario: str, nuevo_email: str, pa
         return True, "Usuario actualizado correctamente"
     except Exception as e:
         return False, f"Error al actualizar el usuario: {str(e)}"
+
+def obtener_detalles_usuario(user_id: int) -> dict | None:
+    """Devuelve los detalles de un usuario dado su ID, incluyendo rol, permisos y calendar_url."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, usuario, email, rol, permisos, calendar_url FROM usuarios WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return dict(row)
+        return None
+    except Exception as e:
+        print(f"Error al obtener detalles de usuario: {e}")
+        return None
 
 def eliminar_usuario(id_usuario: int) -> bool:
     """Elimina un usuario por su ID y desvincula cualquier matrícula asociada."""

@@ -160,14 +160,14 @@ class DataManager:
         self.on_update_available: Optional[Callable[[str], None]] = None
         self.on_update_error: Optional[Callable[[str], None]] = None
 
-    def initialize(self, user_id: int = None, role: str = None):
+    def initialize(self, user_id: int = None, role: str = None, regional_only: bool = False):
         """
         Punto de entrada principal:
         Carga registros de la base de datos SQLite con soporte para roles.
         """
         try:
             from ssn_test import obtener_todos_db
-            db_records = obtener_todos_db(user_id=user_id, role=role)
+            db_records = obtener_todos_db(user_id=user_id, role=role, regional_only=regional_only)
             
             self.records = []
             for db_rec in db_records:

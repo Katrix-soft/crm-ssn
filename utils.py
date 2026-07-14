@@ -49,12 +49,22 @@ EXTRA_COLS_NOTE = (
 _INDEX: List[Tuple[str, str, Dict[str, Any]]] = []
 
 
+_NORM_CACHE: Dict[str, str] = {}
+
+
 def normalize(text: str) -> str:
     if not text:
         return ""
-    nfd = unicodedata.normalize("NFD", str(text))
-    without_accents = "".join(c for c in nfd if unicodedata.category(c) != "Mn")
-    return without_accents.lower().strip()
+    val = str(text)
+    if val in _NORM_CACHE:
+        return _NORM_CACHE[val]
+    
+    nfd = unicodedata.normalize("NFD", val)
+    without_accents = nfd.encode("ascii", "ignore").decode("ascii")
+    res = without_accents.lower().strip()
+    _NORM_CACHE[val] = res
+    return res
+
 
 
 def build_index(records: List[Dict[str, Any]]) -> None:

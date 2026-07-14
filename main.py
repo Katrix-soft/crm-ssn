@@ -113,7 +113,7 @@ def main(page: ft.Page):
     page.padding           = 0
     page.spacing           = 0
     page.theme             = ft.Theme(color_scheme_seed=COLORS["primary"])
-    page.theme_mode        = ft.ThemeMode.DARK
+    page.theme_mode        = ft.ThemeMode.LIGHT
 
     icon_path = get_asset_path(os.path.join("assets", "icon.png"))
     if os.path.exists(icon_path):
@@ -151,6 +151,8 @@ def main(page: ft.Page):
         "username":     None,
         "role":         None,
         "user_id":      None,
+        "permisos":     {"comercial", "buscador", "cartera"},
+        "calendar_url": "",
         "error_login":  None,
         "viewing_detail": False,
         "viewing_admin": False,
@@ -161,6 +163,7 @@ def main(page: ft.Page):
         "mostly_complete": False,
         "sort_column": "matricula",
         "sort_descending": False,
+        "regional_only": False,
     }
 
     from api_client import APIClient
@@ -244,7 +247,7 @@ def main(page: ft.Page):
                     count, incompletos = parsear_e_importar_archivo(file_path)
                     
                     # Reinicializar DataManager para recargar los registros de la DB
-                    dm.initialize(user_id=state["user_id"], role=state["role"])
+                    dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False))
                     
                     # Cerrar modal
                     loading_import_dlg.open = False
@@ -254,9 +257,16 @@ def main(page: ft.Page):
                     if incompletos > 0:
                         leyenda_incompletos = f"\n\n⚠️ Atención: En la base de datos hay {incompletos} registros con datos incompletos (sin teléfono o email). Podés usar el botón 'Extraer' en la vista de detalle para completarlos."
                         
+                    from ssn_test import obtener_total_cached
+                    total_db = obtener_total_cached()
+                    visibility_str = "Regionales (Cuyo)" if state.get("regional_only", False) else "Nacionales (Todo el país)"
+                    
                     show_alert_dialog(
                         "Importación Exitosa", 
-                        f"Se han importado o actualizado {count} productores. Se conservaron todos los datos previamente enriquecidos de forma inteligente.{leyenda_incompletos}"
+                        f"Se han procesado {count} productores del archivo de forma exitosa.\n\n"
+                        f"📊 Total de productores en Base de Datos: {total_db}\n"
+                        f"👁️ Vista Activa: {visibility_str} ({len(dm.records)} productores visibles en pantalla).\n"
+                        f"Se conservaron todos los datos previamente enriquecidos.{leyenda_incompletos}"
                     )
                     if state["username"]:
                         registrar_log(state["username"], "IMPORT_FILE", f"Importados exitosamente {count} registros desde {os.path.basename(file_path)}")
@@ -285,7 +295,7 @@ def main(page: ft.Page):
         def _confirm_delete(ev):
             from ssn_test import vaciar_base_de_datos
             count = vaciar_base_de_datos()
-            dm.initialize(user_id=state["user_id"], role=state["role"])
+            dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False))
             dlg.open = False
             page.update()
             if state["username"]:
@@ -421,6 +431,54 @@ def main(page: ft.Page):
 
     def render_content():
         if content_area.current is None:
+            return
+
+        def go_to_authorized():
+            if "buscador" in state.get("permisos", set()):
+                sidebar_selected["index"] = 1
+                state["viewing_dashboard"] = False
+                state["viewing_cartera"] = False
+                state["viewing_admin"] = False
+                state["viewing_profile"] = False
+            elif "comercial" in state.get("permisos", set()):
+                sidebar_selected["index"] = 0
+                state["viewing_dashboard"] = True
+                state["viewing_cartera"] = False
+                state["viewing_admin"] = False
+                state["viewing_profile"] = False
+            elif "cartera" in state.get("permisos", set()):
+                sidebar_selected["index"] = 2
+                state["viewing_cartera"] = True
+                state["viewing_dashboard"] = False
+                state["viewing_admin"] = False
+                state["viewing_profile"] = False
+            else:
+                on_logout(None)
+                return
+            update_page_layout()
+            render_content()
+
+        # Enforce permission checks
+        if state.get("viewing_dashboard") and "comercial" not in state.get("permisos", set()):
+            from ui_components import build_access_denied_view
+            content_area.current.controls = [build_access_denied_view("Gestión Comercial", on_go_back=go_to_authorized)]
+            safe_update(content_area.current)
+            return
+
+        if state.get("viewing_cartera") and "cartera" not in state.get("permisos", set()):
+            from ui_components import build_access_denied_view
+            content_area.current.controls = [build_access_denied_view("Cartera & Operaciones", on_go_back=go_to_authorized)]
+            safe_update(content_area.current)
+            return
+
+        if (not state.get("viewing_admin") and 
+            not state.get("viewing_profile") and 
+            not state.get("viewing_dashboard") and 
+            not state.get("viewing_cartera") and 
+            "buscador" not in state.get("permisos", set())):
+            from ui_components import build_access_denied_view
+            content_area.current.controls = [build_access_denied_view("Red de PAS (Buscador)", on_go_back=go_to_authorized)]
+            safe_update(content_area.current)
             return
 
         if state.get("viewing_admin"):
@@ -582,12 +640,9 @@ def main(page: ft.Page):
         if content_area.current is not None:
             from ui_components import build_admin_dashboard
             
-            def on_crear_usuario(username, email, password, rol="agente", requiere_cambio=1, matricula=None):
+            def on_crear_usuario(username, email, password, rol="agente", requiere_cambio=1, matricula=None, permisos="comercial,buscador,cartera"):
                 from ssn_test import crear_usuario
-                res = crear_usuario(username, email, password, rol=rol, requiere_cambio=requiere_cambio, matricula=matricula)
-                if isinstance(res, tuple):
-                    return res[0]
-                return res
+                return crear_usuario(username, email, password, rol=rol, requiere_cambio=requiere_cambio, matricula=matricula, permisos=permisos)
                 
             def on_eliminar_usuario(user_id):
                 from ssn_test import eliminar_usuario
@@ -608,7 +663,7 @@ def main(page: ft.Page):
                 page=page,
             )
             content_area.current.controls = [admin_view]
-            content_area.current.update()
+            safe_update(content_area.current)
 
     def open_dashboard_panel(e=None):
         state["viewing_dashboard"] = True
@@ -715,9 +770,10 @@ def main(page: ft.Page):
                 on_back=exit_dashboard_panel,
                 on_filter_click=apply_dashboard_filter,
                 page=page,
+                state=state,
             )
             content_area.current.controls = [dash_view]
-            content_area.current.update()
+            safe_update(content_area.current)
 
     def go_to_page(new_page: int):
         state["page"] = new_page
@@ -827,6 +883,8 @@ def main(page: ft.Page):
             sort_descending_value=state.get("sort_descending", False),
             on_sort_direction_change=on_sort_direction_change,
             selected_ramo=state.get("ramo"),
+            regional_only_value=state.get("regional_only", False),
+            on_regional_only_change=on_regional_only_change,
         )
         initial_search.content = new_search.content
         initial_search.bgcolor = new_search.bgcolor
@@ -869,22 +927,24 @@ def main(page: ft.Page):
             from ui_components import build_profile_view
             from ssn_test import actualizar_usuario, crear_usuario, eliminar_usuario, cambiar_password_admin
             
-            def on_update_profile(new_uname, new_email, new_pwd):
+            def on_update_profile(new_uname, new_email, new_pwd, new_calendar_url=""):
                 success, msg = actualizar_usuario(
                     state["user_id"],
                     new_uname,
                     new_email,
                     password_txt=new_pwd,
-                    is_self_update=True
+                    is_self_update=True,
+                    calendar_url=new_calendar_url
                 )
                 if success:
-                    registrar_log(state.get("username", "admin"), "PROFILE_UPDATED", f"Usuario actualizó su propio perfil. Nuevo usuario: '{new_uname}' ({new_email})")
+                    registrar_log(state.get("username", "admin"), "PROFILE_UPDATED", f"Usuario actualizó su propio perfil. Nuevo usuario: '{new_uname}' ({new_email}) - Calendar URL: {new_calendar_url}")
                     state["username"] = new_uname
+                    state["calendar_url"] = new_calendar_url
                     update_header()
                 return success, msg
                 
-            def on_crear_usuario_cb(uname, email, pwd, rol, requiere_cambio=1, matricula=None):
-                return crear_usuario(uname, email, pwd, rol=rol, requiere_cambio=requiere_cambio, matricula=matricula)
+            def on_crear_usuario_cb(uname, email, pwd, rol, requiere_cambio=1, matricula=None, permisos="comercial,buscador,cartera"):
+                return crear_usuario(uname, email, pwd, rol=rol, requiere_cambio=requiere_cambio, matricula=matricula, permisos=permisos)
                 
             def on_eliminar_usuario_cb(uid):
                 return eliminar_usuario(uid)
@@ -902,7 +962,7 @@ def main(page: ft.Page):
                 page=page,
             )
             content_area.current.controls = [profile_view]
-            content_area.current.update()
+            safe_update(content_area.current)
 
     def exit_cartera_panel():
         state["viewing_cartera"] = False
@@ -920,7 +980,7 @@ def main(page: ft.Page):
             role=state.get("role"),
         )
         content_area.current.controls = [cartera_container]
-        content_area.current.update()
+        safe_update(content_area.current)
 
     def open_audit_logs_dialog(e):
         import sqlite3
@@ -1592,6 +1652,32 @@ def main(page: ft.Page):
         render_content()
         show_snackbar(f"Orden establecido: {'Descendente' if val else 'Ascendente'}", COLORS["accent"])
 
+    def on_regional_only_change(val):
+        state["regional_only"] = val
+        state["page"]          = 0
+        
+        # Mostrar snackbar indicando el inicio del recargo
+        if val:
+            show_snackbar("Cargando productores regionales (Cuyo)...", COLORS["primary"])
+        else:
+            show_snackbar("Cargando productores nacionales (todo el país)...", COLORS["primary"])
+            
+        def bg_reload():
+            try:
+                # Cargar datos de la base de datos
+                dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=val)
+                # Re-crear dropdowns y filtros
+                recreate_dropdowns_and_search()
+                render_content()
+                if val:
+                    show_snackbar("Vista: Se muestran solo productores de Cuyo (Mendoza, San Juan, San Luis).", COLORS["success"])
+                else:
+                    show_snackbar("Vista: Se muestran productores de todo el país (Nacional).", COLORS["success"])
+            except Exception as ex:
+                show_snackbar(f"Error al recargar base de datos: {ex}", COLORS["warning"])
+                
+        threading.Thread(target=bg_reload, daemon=True).start()
+
     def on_live_search(query_str: str, search_type: str = "AUTO"):
         if query_str == "MANUAL_EXTRACT" or not query_str.isdigit():
             search_type_dd = ft.Dropdown(
@@ -1776,17 +1862,59 @@ def main(page: ft.Page):
             matricula = record.get("productor_matricula")
             if matricula:
                 current_user = state.get("username") or "broker"
-                if actualizar_estado_contacto(matricula, nuevo_estado, usuario=current_user):
-                    record["estado_contacto"] = nuevo_estado
-                    for r in state["records"]:
-                        if r.get("productor_matricula") == matricula:
-                            r["estado_contacto"] = nuevo_estado
-                            break
-                    show_alert_dialog("Estado Actualizado", f"Se actualizó el estado a: {nuevo_estado}")
-                    open_detail(record)
-                    update_stats()
-                else:
-                    show_alert_dialog("Error", "No se pudo actualizar el estado de contacto.")
+                old_status = record.get("estado_contacto", "Sin contactar")
+                if old_status != nuevo_estado:
+                    if actualizar_estado_contacto(matricula, nuevo_estado, usuario=current_user):
+                        record["estado_contacto"] = nuevo_estado
+                        for r in state["records"]:
+                            if r.get("productor_matricula") == matricula:
+                                r["estado_contacto"] = nuevo_estado
+                                break
+                        
+                        # Generate dynamic log entry in bitácora
+                        from datetime import datetime
+                        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
+                        log_entry = f"[{timestamp} - {current_user}]: Cambió el estado de contacto a: {nuevo_estado}"
+                        
+                        old_obs = record.get("observaciones", "") or ""
+                        if old_obs.strip():
+                            updated_obs = old_obs.rstrip("\n") + "\n" + log_entry
+                        else:
+                            updated_obs = log_entry
+                            
+                        if actualizar_observaciones(matricula, updated_obs, usuario=current_user):
+                            record["observaciones"] = updated_obs
+                            for r in state["records"]:
+                                if r.get("productor_matricula") == matricula:
+                                    r["observaciones"] = updated_obs
+                                    break
+                        
+                        # Auto-log a "Llamado" activity in the commercial module
+                        try:
+                            from ssn_test import guardar_actividad_comercial
+                            mes_actual = datetime.now().strftime("%Y-%m")
+                            fecha_actividad = datetime.now().strftime("%Y-%m-%d")
+                            nombre_pas = record.get("nombre") or record.get("productor_apellido_nombre") or f"Matrícula {matricula}"
+                            companias_val = record.get("companias", "") or ""
+                            compania_principal = companias_val.split(",")[0].strip() if companias_val else "Sin Compañía"
+                            
+                            guardar_actividad_comercial(
+                                mes=mes_actual,
+                                fecha_actividad=fecha_actividad,
+                                matricula=str(matricula),
+                                nombre=nombre_pas,
+                                tipo="Llamado",
+                                compania=compania_principal,
+                                observaciones=f"Contacto: {nuevo_estado}"
+                            )
+                        except Exception as e:
+                            print(f"Error logging activity commercial: {e}")
+                                    
+                        show_snackbar(f"Se actualizó el estado a: {nuevo_estado}", COLORS["success"])
+                        open_detail(record)
+                        update_stats()
+                    else:
+                        show_snackbar("No se pudo actualizar el estado de contacto.", COLORS["warning"])
 
         matricula = record.get("productor_matricula", "")
         cuit = record.get("productor_id", "")
@@ -1808,7 +1936,7 @@ def main(page: ft.Page):
             record["observaciones"] = ""
             record["companias"] = ""
 
-        def on_save_notes(obs_text: str):
+        def on_save_notes(obs_text: str, show_alert: bool = True):
             mat = record.get("productor_matricula")
             if mat:
                 current_user = state.get("username") or "broker"
@@ -1818,7 +1946,8 @@ def main(page: ft.Page):
                         if r.get("productor_matricula") == mat:
                             r["observaciones"] = obs_text
                             break
-                    show_alert_dialog("Observaciones Guardadas", "Las notas se guardaron correctamente en la base de datos.")
+                    if show_alert:
+                        show_alert_dialog("Observaciones Guardadas", "Las notas se guardaron correctamente en la base de datos.")
                 else:
                     show_alert_dialog("Error", "No se pudieron guardar las notas.")
 
@@ -1939,9 +2068,11 @@ def main(page: ft.Page):
                 on_save_notes,
                 on_save_companias,
                 on_save_sociedades,
+                calendar_url=state.get("calendar_url", ""),
+                usuario=state.get("username", "broker"),
             )
             content_area.current.controls = [detail_view]
-            content_area.current.update()
+            safe_update(content_area.current)
 
     def on_load_success(records):
         state["records"] = records
@@ -1964,9 +2095,10 @@ def main(page: ft.Page):
         safe_update(provincia_dropdown)
         safe_update(provincia_dropdown2)
         # Call synchronously to prevent concurrent modification of the DOM
-        render_content()
-        update_header()
-        update_stats()
+        if state.get("logged_in") and not state.get("loading_login", False):
+            render_content()
+            update_header()
+            update_stats()
 
     def on_load_error(message: str):
         state["loading"] = False
@@ -2011,6 +2143,23 @@ def main(page: ft.Page):
             state["username"] = email.strip().lower()
             state["role"] = rol or "agente"
             state["user_id"] = user_id
+            
+            from ssn_test import obtener_usuarios
+            try:
+                users_list = obtener_usuarios()
+                curr_user = next((u for u in users_list if u["id"] == user_id), None)
+                if curr_user:
+                    state["calendar_url"] = curr_user.get("calendar_url") or ""
+                    p_str = curr_user.get("permisos") or "comercial,buscador,cartera"
+                    state["permisos"] = {p.strip() for p in p_str.split(",") if p.strip()}
+                else:
+                    state["calendar_url"] = ""
+                    state["permisos"] = {"comercial", "buscador", "cartera"}
+            except Exception as ex:
+                print("Error loading user context on login:", ex)
+                state["calendar_url"] = ""
+                state["permisos"] = {"comercial", "buscador", "cartera"}
+
             if requiere_cambio:
                 new_pass_field = ft.TextField(
                     label="Nueva contraseña",
@@ -2045,8 +2194,12 @@ def main(page: ft.Page):
                         
                         def bg_initialize():
                             import time
-                            time.sleep(1.2)
-                            dm.initialize(user_id=state["user_id"], role=state["role"])
+                            t_start = time.time()
+                            dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False))
+                            elapsed = time.time() - t_start
+                            remaining = 0.5 - elapsed
+                            if remaining > 0:
+                                time.sleep(remaining)
                             state["loading_login"] = False
                             update_page_layout()
                             render_content()
@@ -2105,8 +2258,12 @@ def main(page: ft.Page):
                 
                 def bg_initialize():
                     import time
-                    time.sleep(1.2)
-                    dm.initialize(user_id=state["user_id"], role=state["role"])
+                    t_start = time.time()
+                    dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False))
+                    elapsed = time.time() - t_start
+                    remaining = 0.5 - elapsed
+                    if remaining > 0:
+                        time.sleep(remaining)
                     state["loading_login"] = False
                     update_page_layout()
                     render_content()
@@ -2127,7 +2284,7 @@ def main(page: ft.Page):
         state["error_login"] = None
         current_user_context["user_id"] = None
         current_user_context["role"] = None
-        dm.initialize()
+        dm.initialize(regional_only=state.get("regional_only", False))
         show_snackbar("Sesión cerrada")
         update_page_layout()
 
@@ -2270,32 +2427,55 @@ def main(page: ft.Page):
 
     def build_sidebar():
         is_dark = COLORS["surface"] == "#1E293B"
-        sidebar_bg     = "#111827" if is_dark else "#1E3A5F"
+        sidebar_bg     = "#111827" if is_dark else "#FFFFFF"
         active_color   = COLORS["primary"]
-        inactive_color = "#94A3B8" if is_dark else "#CBD5E1"
+        inactive_color = "#94A3B8" if is_dark else "#64748B"
         logo_bg        = ft.Colors.with_opacity(0.15, active_color)
 
         def nav_item(icon_name, label, index):
             is_active = sidebar_selected["index"] == index
+            
+            # Dynamic permission check
+            is_restricted = False
+            if state.get("logged_in"):
+                if index == 0 and "comercial" not in state.get("permisos", set()):
+                    is_restricted = True
+                elif index == 1 and "buscador" not in state.get("permisos", set()):
+                    is_restricted = True
+                elif index == 2 and "cartera" not in state.get("permisos", set()):
+                    is_restricted = True
+
+            if is_restricted:
+                return None
+
+            display_icon = icon_name
+            display_label = label
+            
+            item_active_color = active_color
+            item_inactive_color = inactive_color
+            
+            icon_color = item_active_color if is_active else item_inactive_color
+            text_color = item_active_color if is_active else item_inactive_color
+
             return ft.Container(
                 content=ft.Column(
                     controls=[
                         ft.Container(
                             content=ft.Icon(
-                                icon_name,
-                                color=active_color if is_active else inactive_color,
+                                display_icon,
+                                color=icon_color,
                                 size=22,
                             ),
-                            bgcolor=ft.Colors.with_opacity(0.18, active_color) if is_active else "transparent",
+                            bgcolor=ft.Colors.with_opacity(0.18, item_active_color) if is_active else "transparent",
                             border_radius=12,
                             padding=10,
                             width=44, height=44,
                             alignment=ft.Alignment(0, 0),
                         ),
                         ft.Text(
-                            label,
+                            display_label,
                             size=10,
-                            color=active_color if is_active else inactive_color,
+                            color=text_color,
                             weight=ft.FontWeight.W_600 if is_active else ft.FontWeight.NORMAL,
                             text_align=ft.TextAlign.CENTER,
                             no_wrap=False,
@@ -2308,7 +2488,7 @@ def main(page: ft.Page):
                 ),
                 padding=ft.Padding(left=8, right=8, top=12, bottom=12),
                 border_radius=14,
-                bgcolor=ft.Colors.with_opacity(0.1, active_color) if is_active else "transparent",
+                bgcolor=ft.Colors.with_opacity(0.1, item_active_color) if is_active else "transparent",
                 on_click=lambda e, i=index: on_sidebar_nav(type('E', (), {'control': type('C', (), {'selected_index': i})()})()),
                 animate=ft.Animation(200, "easeOut"),
             )
@@ -2342,9 +2522,11 @@ def main(page: ft.Page):
                     ),
                     ft.Container(height=8),
                     # Nav items
-                    nav_item(ft.Icons.TRENDING_UP_ROUNDED, "Gestión\nComercial", 0),
-                    nav_item(ft.Icons.SEARCH_ROUNDED, "Red de PAS", 1),
-                    nav_item(ft.Icons.FOLDER_SPECIAL_ROUNDED, "Cartera &\nOperaciones", 2),
+                    *[item for item in [
+                        nav_item(ft.Icons.TRENDING_UP_ROUNDED, "Gestión\nComercial", 0),
+                        nav_item(ft.Icons.SEARCH_ROUNDED, "Red de PAS", 1),
+                        nav_item(ft.Icons.FOLDER_SPECIAL_ROUNDED, "Cartera &\nOperaciones", 2),
+                    ] if item is not None],
                     # Spacer
                     ft.Container(expand=True),
                     # Bottom: Profile & Logout
@@ -2371,9 +2553,10 @@ def main(page: ft.Page):
             bgcolor=sidebar_bg,
             width=80,
             expand=False,
+            border=None if is_dark else ft.Border(right=ft.BorderSide(1, COLORS["border"])),
             shadow=ft.BoxShadow(
                 spread_radius=0, blur_radius=16,
-                color=ft.Colors.with_opacity(0.3, "#000000"),
+                color=ft.Colors.with_opacity(0.05 if not is_dark else 0.3, "#000000"),
                 offset=ft.Offset(2, 0),
             ),
         )
@@ -2408,6 +2591,19 @@ def main(page: ft.Page):
         update_page_layout()
 
     def update_page_layout():
+        if state.get("logged_in") and state.get("user_id"):
+            try:
+                from ssn_test import obtener_usuarios
+                users_list = obtener_usuarios()
+                curr_user = next((u for u in users_list if u["id"] == state["user_id"]), None)
+                if curr_user:
+                    state["calendar_url"] = curr_user.get("calendar_url") or ""
+                    p_str = curr_user.get("permisos") or "comercial,buscador,cartera"
+                    state["permisos"] = {p.strip() for p in p_str.split(",") if p.strip()}
+                    state["role"] = curr_user.get("rol") or "agente"
+            except Exception as ex:
+                print("Error dynamically reloading user permissions:", ex)
+
         layout_container.bgcolor = COLORS["background"]
         if not state.get("license_valid", False):
             from api_client import obtener_fingerprint
@@ -2535,6 +2731,8 @@ def main(page: ft.Page):
         sort_descending_value=state.get("sort_descending", False),
         on_sort_direction_change=on_sort_direction_change,
         selected_ramo=state.get("ramo"),
+        regional_only_value=state.get("regional_only", False),
+        on_regional_only_change=on_regional_only_change,
     )
     initial_footer = build_footer(state["cache_date"])
 
@@ -2555,9 +2753,8 @@ def main(page: ft.Page):
 
     # Validar licencia guardada automáticamente al arrancar
     if client.license_key:
-        ok, msg = client.validar_licencia_online(client.license_key)
-        state["license_valid"] = ok
-        state["error_license"] = None if ok else msg
+        state["license_valid"] = True
+        state["error_license"] = None
     else:
         state["license_valid"] = False
         state["error_license"] = None
@@ -2567,7 +2764,25 @@ def main(page: ft.Page):
 
     def after_render():
         time.sleep(0.1)
-        dm.initialize()
+        dm.initialize(regional_only=state.get("regional_only", False))
+        
+        # Validar la licencia guardada online en background para no bloquear el inicio
+        if client.license_key:
+            def bg_validate_license():
+                ok, msg = client.validar_licencia_online(client.license_key)
+                if not ok:
+                    state["license_valid"] = False
+                    state["error_license"] = msg
+                    if state.get("logged_in", False):
+                        state["logged_in"] = False
+                        state["username"] = None
+                        state["role"] = None
+                        state["user_id"] = None
+                        current_user_context["user_id"] = None
+                        current_user_context["role"] = None
+                    page.run_thread(update_page_layout)
+            
+            threading.Thread(target=bg_validate_license, daemon=True).start()
         
         # Hilo de verificación periódica de licencia (heartbeat de enforcement en tiempo real)
         def check_license_loop():
@@ -2608,7 +2823,6 @@ def main(page: ft.Page):
                                 # Actualizar UI en el hilo principal de Flet
                                 page.run_thread(update_page_layout)
         
-        import threading
         threading.Thread(target=check_license_loop, daemon=True).start()
 
     threading.Thread(target=after_render, daemon=True).start()
