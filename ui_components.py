@@ -4329,8 +4329,19 @@ def build_dashboard_metrics_view(
     import ssn_test as _ssn
     from datetime import datetime as _dt
     
-    # List of available months for planning
-    available_months = ["2026-06", "2026-05", "2026-07", "2026-08", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09"]
+    # Generar meses dinámicamente desde Julio 2026 en adelante (o el mes actual si es posterior)
+    _now = _dt.now()
+    _start_year = 2026
+    _start_month = 7
+    if _now.year > _start_year or (_now.year == _start_year and _now.month > _start_month):
+        _start_year = _now.year
+        _start_month = _now.month
+        
+    available_months = []
+    for i in range(24):
+        _m = (_start_month - 1 + i) % 12 + 1
+        _y = _start_year + (_start_month - 1 + i) // 12
+        available_months.append(f"{_y}-{_m:02d}")
     
     def format_month_label(mes_str):
         try:
@@ -4343,7 +4354,9 @@ def build_dashboard_metrics_view(
         except Exception as ex:
             return mes_str
             
-    mes_actual = _dt.now().strftime("%Y-%m")
+    mes_actual = _now.strftime("%Y-%m")
+    if mes_actual not in available_months:
+        mes_actual = available_months[0]
     mes_label  = format_month_label(mes_actual)
     
     def on_month_plan_change(e):
