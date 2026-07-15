@@ -102,6 +102,202 @@ def get_asset_path(filename: str) -> str:
     return os.path.join(base, filename)
 
 
+def ejecutar_autoupdate(page: ft.Page, download_url: str, version: str):
+    import sys
+    import os
+    import subprocess
+    import requests
+    import threading
+
+    prog_bar = ft.ProgressBar(width=400, value=0.0)
+    prog_text = ft.Text("Descargando actualización (0%)...", size=13, color=COLORS["text_primary"])
+    
+    cancel_download = False
+    
+    def on_cancel(e):
+        nonlocal cancel_download
+        cancel_download = True
+        dlg.open = False
+        page.update()
+        
+    dlg = ft.AlertDialog(
+        modal=True,
+        title=ft.Text(f"Descargando v{version}", size=16, weight=ft.FontWeight.W_700),
+        content=ft.Column(
+            [
+                prog_text,
+                prog_bar,
+            ],
+            tight=True,
+            spacing=15,
+        ),
+        actions=[
+            ft.TextButton("Cancelar", on_click=on_cancel)
+        ],
+    )
+    
+    page.dialog = dlg
+    dlg.open = True
+    page.update()
+    
+    def download_thread():
+        nonlocal cancel_download
+        try:
+            is_frozen = getattr(sys, "frozen", False)
+            if is_frozen:
+                current_exe = sys.executable
+                current_dir = os.path.dirname(current_exe)
+                temp_exe = os.path.join(current_dir, "KatrixBroker_new.exe")
+            else:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                temp_exe = os.path.join(current_dir, "KatrixBroker_latest.exe")
+                
+            response = requests.get(download_url, stream=True, timeout=30)
+            total_size = int(response.headers.get('content-length', 0))
+            
+            downloaded = 0
+            with open(temp_exe, "wb") as f:
+                for chunk in response.iter_content(chunk_size=1024*64):
+                    if cancel_download:
+                        f.close()
+                        try:
+                            os.remove(temp_exe)
+                        except Exception:
+                            pass
+                        return
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total_size > 0:
+                            pct = downloaded / total_size
+                            prog_bar.value = pct
+                            prog_text.value = f"Descargando actualización ({int(pct * 100)}%)..."
+                            page.update()
+            
+            if is_frozen:
+                prog_text.value = "Instalando actualización..."
+                page.update()
+                
+                if sys.platform.startswith("win"):
+                    bat_path = os.path.join(current_dir, "update.bat")
+                    with open(bat_path, "w", encoding="utf-8") as bf:
+                        bf.write(f'''@echo off
+timeout /t 2 /nobreak > nul
+del "{current_exe}"
+rename "{temp_exe}" "{os.path.basename(current_exe)}"
+start "" "{current_exe}"
+del "%~f0"
+''')
+                    subprocess.Popen([bat_path], shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE if hasattr(subprocess, "CREATE_NEW_CONSOLE") else 0)
+                else:
+                    sh_path = os.path.join(current_dir, "update.sh")
+                    with open(sh_path, "w", encoding="utf-8") as sf:
+                        sf.write(f'''#!/bin/bash
+sleep 2
+rm -f "{current_exe}"
+mv "{temp_exe}" "{current_exe}"
+chmod +x "{current_exe}"
+"{current_exe}" &
+rm -f "$0"
+''')
+                    os.chmod(sh_path, 0o755)
+                    subprocess.Popen(["/bin/bash", sh_path], start_new_session=True)
+                
+                page.window.close()
+            else:
+                dlg.open = False
+                page.update()
+                
+                def close_dev_dlg(e):
+                    dev_dlg.open = False
+                    page.update()
+                    
+                dev_dlg = ft.AlertDialog(
+                    title=ft.Text("Modo Desarrollo", size=16, weight=ft.FontWeight.W_700),
+                    content=ft.Text(f"Descarga finalizada. El archivo se guardó como 'KatrixBroker_latest.exe' en {current_dir}.\nNo se reemplazó tu entorno de ejecución Python.", size=13),
+                    actions=[ft.TextButton("Entendido", on_click=close_dev_dlg)]
+                )
+                page.dialog = dev_dlg
+                dev_dlg.open = True
+                page.update()
+                
+        except Exception as err:
+            dlg.open = False
+            page.update()
+            
+            def close_err_dlg(e):
+                err_dlg.open = False
+                page.update()
+                
+            err_dlg = ft.AlertDialog(
+                title=ft.Text("Error al actualizar", size=16, weight=ft.FontWeight.W_700),
+                content=ft.Text(f"No se pudo descargar la actualización:\n{str(err)}", size=13),
+                actions=[ft.TextButton("Cerrar", on_click=close_err_dlg)]
+            )
+            page.dialog = err_dlg
+            err_dlg.open = True
+            page.update()
+
+    threading.Thread(target=download_thread, daemon=True).start()
+
+
+def iniciar_check_actualizacion(page: ft.Page, client):
+    import threading
+    
+    def worker():
+        try:
+            update_info = client.check_update()
+            if not update_info:
+                return
+                
+            latest_version = update_info.get("latest_version")
+            download_url = update_info.get("download_url")
+            
+            if not latest_version or not download_url:
+                return
+                
+            try:
+                curr_parts = [int(x) for x in APP_VERSION.split(".")]
+                latest_parts = [int(x) for x in latest_version.split(".")]
+            except Exception:
+                if APP_VERSION != latest_version:
+                    curr_parts = [0]
+                    latest_parts = [1]
+                else:
+                    return
+                    
+            if latest_parts > curr_parts:
+                def on_accept(e):
+                    confirm_dlg.open = False
+                    page.update()
+                    ejecutar_autoupdate(page, download_url, latest_version)
+                    
+                def on_decline(e):
+                    confirm_dlg.open = False
+                    page.update()
+                    
+                confirm_dlg = ft.AlertDialog(
+                    title=ft.Text("Actualización Disponible", size=16, weight=ft.FontWeight.W_700),
+                    content=ft.Text(
+                        f"Hay una nueva versión disponible (v{latest_version}).\n\n"
+                        f"Notas de la versión:\n{update_info.get('release_notes', 'Mejoras y correcciones menores.')}",
+                        size=13,
+                        color=COLORS["text_secondary"]
+                    ),
+                    actions=[
+                        ft.TextButton("Actualizar ahora", on_click=on_accept),
+                        ft.TextButton("Más tarde", on_click=on_decline),
+                    ]
+                )
+                page.dialog = confirm_dlg
+                confirm_dlg.open = True
+                page.update()
+        except Exception as e:
+            print(f"Error silencioso en check de actualización: {e}")
+            
+    threading.Thread(target=worker, daemon=True).start()
+
+
 def main(page: ft.Page):
     page.title             = APP_NAME
     page.window.width      = WIN_DEFAULT_WIDTH
@@ -168,6 +364,7 @@ def main(page: ft.Page):
 
     from api_client import APIClient
     client = APIClient()
+    iniciar_check_actualizacion(page, client)
 
     search_ref       = ft.Ref[ft.TextField]()
     settings_btn_ref = ft.Ref[ft.IconButton]()

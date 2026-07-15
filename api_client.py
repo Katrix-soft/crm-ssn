@@ -323,3 +323,14 @@ class APIClient:
             return response.status_code == 200
         except Exception:
             return False
+
+    def check_update(self) -> Optional[Dict[str, Any]]:
+        """Consulta al backend por una nueva versión disponible."""
+        url = f"{self.base_url}/check-update"
+        try:
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                return response.json()
+        except Exception:
+            pass
+        return None
