@@ -1480,7 +1480,7 @@ def build_login_view(
         alignment=ft.Alignment(0, 0),
         content=ft.Image(
             src="LogoJCOrg.png",
-            fit=ft.ImageFit.CONTAIN,
+            fit="contain",
         ),
     )
 
