@@ -4329,19 +4329,21 @@ def build_dashboard_metrics_view(
     import ssn_test as _ssn
     from datetime import datetime as _dt
     
-    # Generar meses dinámicamente desde Julio 2026 en adelante (o el mes actual si es posterior)
+    # Generar meses dinámicamente:
+    # 1. Planificación (Mes actual + 4 futuros)
     _now = _dt.now()
-    _start_year = 2026
-    _start_month = 7
-    if _now.year > _start_year or (_now.year == _start_year and _now.month > _start_month):
-        _start_year = _now.year
-        _start_month = _now.month
-        
-    available_months = []
-    for i in range(24):
-        _m = (_start_month - 1 + i) % 12 + 1
-        _y = _start_year + (_start_month - 1 + i) // 12
-        available_months.append(f"{_y}-{_m:02d}")
+    plan_months = []
+    for i in range(5):
+        _m = (_now.month - 1 + i) % 12 + 1
+        _y = _now.year + (_now.month - 1 + i) // 12
+        plan_months.append(f"{_y}-{_m:02d}")
+
+    # 2. Historial (6 meses anteriores)
+    hist_months = []
+    for i in range(1, 7):
+        _m = (_now.month - 1 - i) % 12 + 1
+        _y = _now.year + (_now.month - 1 - i) // 12
+        hist_months.append(f"{_y}-{_m:02d}")
     
     def format_month_label(mes_str):
         try:
@@ -4355,15 +4357,28 @@ def build_dashboard_metrics_view(
             return mes_str
             
     mes_actual = _now.strftime("%Y-%m")
-    if mes_actual not in available_months:
-        mes_actual = available_months[0]
+    if mes_actual not in plan_months and mes_actual not in hist_months:
+        mes_actual = plan_months[0]
     mes_label  = format_month_label(mes_actual)
     
     def on_month_plan_change(e):
         nonlocal mes_actual, mes_label
+        if mes_plan_dropdown.value == "divider":
+            # Revertir al mes actual seleccionado si hace clic en el separador
+            mes_plan_dropdown.value = mes_actual
+            page.update()
+            return
         mes_actual = mes_plan_dropdown.value
         mes_label = format_month_label(mes_actual)
         refresh_dashboard()
+
+    # Construir opciones del dropdown con el separador de historial
+    _options = []
+    for m in plan_months:
+        _options.append(ft.dropdown.Option(m, format_month_label(m)))
+    _options.append(ft.dropdown.Option("divider", "─── Historial ───"))
+    for m in hist_months:
+        _options.append(ft.dropdown.Option(m, format_month_label(m)))
 
     mes_plan_dropdown = ft.Dropdown(
         label="Mes de Planificación",
@@ -4373,7 +4388,7 @@ def build_dashboard_metrics_view(
         text_size=13,
         height=48,
         width=200,
-        options=[ft.dropdown.Option(m, format_month_label(m)) for m in available_months],
+        options=_options,
         value=mes_actual,
     )
     mes_plan_dropdown.on_change = on_month_plan_change
