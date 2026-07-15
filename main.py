@@ -284,7 +284,7 @@ rm -f "$0"
             err_dlg.open = True
             page.update()
 
-    threading.Thread(target=download_thread, daemon=True).start()
+    page.run_thread(download_thread)
 
 
 def iniciar_check_actualizacion(page: ft.Page, client):
@@ -349,7 +349,7 @@ def iniciar_check_actualizacion(page: ft.Page, client):
                 pass
             print(f"Error silencioso en check de actualización: {e}")
             
-    threading.Thread(target=worker, daemon=True).start()
+    page.run_thread(worker)
 
 
 def main(page: ft.Page):
