@@ -239,6 +239,13 @@ rm -f "$0"
                 page.update()
                 
         except Exception as err:
+            import traceback
+            try:
+                with open("update_debug.txt", "a", encoding="utf-8") as lf:
+                    lf.write(f"Exception in download_thread: {str(err)}\n")
+                    lf.write(traceback.format_exc() + "\n")
+            except Exception:
+                pass
             dlg.open = False
             page.update()
             
@@ -312,6 +319,13 @@ def iniciar_check_actualizacion(page: ft.Page, client):
                 confirm_dlg.open = True
                 page.update()
         except Exception as e:
+            import traceback
+            try:
+                with open("update_debug.txt", "a", encoding="utf-8") as lf:
+                    lf.write(f"Exception in check_update worker: {str(e)}\n")
+                    lf.write(traceback.format_exc() + "\n")
+            except Exception:
+                pass
             print(f"Error silencioso en check de actualización: {e}")
             
     threading.Thread(target=worker, daemon=True).start()
