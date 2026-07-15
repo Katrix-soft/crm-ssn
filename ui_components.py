@@ -1475,21 +1475,12 @@ def build_login_view(
 
     # ---------- logo / header ----------
     logo = ft.Container(
-        width=76,
-        height=76,
-        border_radius=20,
-        gradient=ft.LinearGradient(
-            begin=ft.Alignment(-1, -1),
-            end=ft.Alignment(1, 1),
-            colors=[COLORS["primary"], COLORS["primary_dark"]],
-        ),
+        width=120,
+        height=120,
         alignment=ft.Alignment(0, 0),
-        content=ft.Icon(ft.Icons.SHIELD_OUTLINED, color=ft.Colors.WHITE, size=36),
-        shadow=ft.BoxShadow(
-            spread_radius=1,
-            blur_radius=24,
-            color=ft.Colors.with_opacity(0.45, COLORS["primary"]),
-            offset=ft.Offset(0, 8),
+        content=ft.Image(
+            src="LogoJCOrg.png",
+            fit=ft.ImageFit.CONTAIN,
         ),
     )
 
