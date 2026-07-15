@@ -136,7 +136,8 @@ def ejecutar_autoupdate(page: ft.Page, download_url: str, version: str):
         ],
     )
     
-    page.dialog = dlg
+    if dlg not in page.overlay:
+        page.overlay.append(dlg)
     dlg.open = True
     page.update()
     
@@ -217,7 +218,8 @@ rm -f "$0"
                     content=ft.Text(f"Descarga finalizada. El archivo se guardó como 'KatrixBroker_latest.exe' en {current_dir}.\nNo se reemplazó tu entorno de ejecución Python.", size=13),
                     actions=[ft.TextButton("Entendido", on_click=close_dev_dlg)]
                 )
-                page.dialog = dev_dlg
+                if dev_dlg not in page.overlay:
+                    page.overlay.append(dev_dlg)
                 dev_dlg.open = True
                 page.update()
                 
@@ -234,7 +236,8 @@ rm -f "$0"
                 content=ft.Text(f"No se pudo descargar la actualización:\n{str(err)}", size=13),
                 actions=[ft.TextButton("Cerrar", on_click=close_err_dlg)]
             )
-            page.dialog = err_dlg
+            if err_dlg not in page.overlay:
+                page.overlay.append(err_dlg)
             err_dlg.open = True
             page.update()
 
@@ -289,7 +292,8 @@ def iniciar_check_actualizacion(page: ft.Page, client):
                         ft.TextButton("Más tarde", on_click=on_decline),
                     ]
                 )
-                page.dialog = confirm_dlg
+                if confirm_dlg not in page.overlay:
+                    page.overlay.append(confirm_dlg)
                 confirm_dlg.open = True
                 page.update()
         except Exception as e:
@@ -364,7 +368,6 @@ def main(page: ft.Page):
 
     from api_client import APIClient
     client = APIClient()
-    iniciar_check_actualizacion(page, client)
 
     search_ref       = ft.Ref[ft.TextField]()
     settings_btn_ref = ft.Ref[ft.IconButton]()
@@ -3100,6 +3103,9 @@ def main(page: ft.Page):
                                 page.run_thread(update_page_layout)
         
         threading.Thread(target=check_license_loop, daemon=True).start()
+        
+        # Iniciar check de actualización tras renderizar la interfaz
+        iniciar_check_actualizacion(page, client)
 
     threading.Thread(target=after_render, daemon=True).start()
 
