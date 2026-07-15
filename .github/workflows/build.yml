@@ -1,14 +1,9 @@
 name: Build Windows
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Nombre de la versión a publicar (ej: v1.0.2)'
-        required: true
-        default: 'v1.0.2'
 
 jobs:
   build-windows:
@@ -33,11 +28,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/KatrixBroker.exe
-          tag_name: ${{ github.event.inputs.version || github.ref_name }}
-          name: Release ${{ github.event.inputs.version || github.ref_name }}
+          tag_name: v1.0.${{ github.run_number }}
+          name: Release v1.0.${{ github.run_number }}
           body: |
             Actualización automática de Katrix Broker.
-            Versión: ${{ github.event.inputs.version || github.ref_name }}
+            Build: #${{ github.run_number }}
+            Commit: ${{ github.sha }}
           draft: false
           prerelease: false
         env:
