@@ -157,6 +157,9 @@ def ejecutar_autoupdate(page: ft.Page, download_url: str, version: str):
             total_size = int(response.headers.get('content-length', 0))
             
             downloaded = 0
+            import time
+            last_update_time = 0.0
+            
             with open(temp_exe, "wb") as f:
                 for chunk in response.iter_content(chunk_size=1024*64):
                     if cancel_download:
@@ -169,11 +172,23 @@ def ejecutar_autoupdate(page: ft.Page, download_url: str, version: str):
                     if chunk:
                         f.write(chunk)
                         downloaded += len(chunk)
-                        if total_size > 0:
-                            pct = downloaded / total_size
-                            prog_bar.value = pct
-                            prog_text.value = f"Descargando actualización ({int(pct * 100)}%)..."
+                        
+                        current_time = time.time()
+                        if current_time - last_update_time >= 0.25:
+                            last_update_time = current_time
+                            if total_size > 0:
+                                pct = downloaded / total_size
+                                prog_bar.value = pct
+                                prog_text.value = f"Descargando actualización ({int(pct * 100)}%)..."
+                            else:
+                                prog_bar.value = None
+                                prog_text.value = f"Descargando actualización ({downloaded // (1024 * 1024)} MB)..."
                             page.update()
+            
+            if total_size > 0:
+                prog_bar.value = 1.0
+                prog_text.value = "Descargando actualización (100%)..."
+                page.update()
             
             if is_frozen:
                 prog_text.value = "Instalando actualización..."
