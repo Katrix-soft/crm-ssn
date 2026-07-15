@@ -143,7 +143,17 @@ def ejecutar_autoupdate(page: ft.Page, download_url: str, version: str):
     
     def download_thread():
         nonlocal cancel_download
+        import time
+        
+        def log_trace(msg):
+            try:
+                with open("update_debug.txt", "a", encoding="utf-8") as lf:
+                    lf.write(f"[{time.strftime('%H:%M:%S')}] TRACE: {msg}\n")
+            except Exception:
+                pass
+                
         try:
+            log_trace("Started download_thread")
             is_frozen = getattr(sys, "frozen", False)
             if is_frozen:
                 current_exe = sys.executable
@@ -153,16 +163,26 @@ def ejecutar_autoupdate(page: ft.Page, download_url: str, version: str):
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 temp_exe = os.path.join(current_dir, "KatrixBroker_latest.exe")
                 
+            log_trace(f"temp_exe path resolved: {temp_exe}")
+            log_trace(f"Calling requests.get for: {download_url}")
             response = requests.get(download_url, stream=True, timeout=30)
+            log_trace(f"requests.get status code: {response.status_code}")
             total_size = int(response.headers.get('content-length', 0))
+            log_trace(f"total_size parsed: {total_size}")
             
             downloaded = 0
-            import time
             last_update_time = 0.0
             
+            log_trace("Opening temp_exe for writing...")
             with open(temp_exe, "wb") as f:
+                log_trace("File opened. Entering iter_content loop...")
+                chunk_count = 0
                 for chunk in response.iter_content(chunk_size=1024*64):
+                    chunk_count += 1
+                    if chunk_count % 10 == 1 or chunk_count < 5:
+                        log_trace(f"Chunk #{chunk_count} read from stream (len={len(chunk) if chunk else 0})")
                     if cancel_download:
+                        log_trace("Download cancelled by user")
                         f.close()
                         try:
                             os.remove(temp_exe)
@@ -237,6 +257,7 @@ rm -f "$0"
                     page.overlay.append(dev_dlg)
                 dev_dlg.open = True
                 page.update()
+                log_trace("Finished download_thread successfully (non-frozen mode)")
                 
         except Exception as err:
             import traceback
