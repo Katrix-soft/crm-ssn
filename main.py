@@ -2715,6 +2715,7 @@ def main(page: ft.Page):
                     fingerprint=obtener_fingerprint(),
                     saved_username=client.saved_username,
                     saved_password=client.saved_password,
+                    version=APP_VERSION,
                 )
                 content_column.controls = [
                     ft.Container(

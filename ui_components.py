@@ -1083,6 +1083,7 @@ def build_login_view(
     fingerprint: str = "",
     saved_username: str | None = None,
     saved_password: str | None = None,
+    version: str = "",
 ) -> ft.Container:
     import re
     EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -1542,6 +1543,7 @@ def build_login_view(
                     alignment=ft.MainAxisAlignment.CENTER,
                     spacing=0,
                 ),
+                ft.Text(f"Versión {version}" if version else "", size=11, color=COLORS["text_secondary"]),
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=10,
