@@ -1072,121 +1072,496 @@ def build_detail_dialog(
 
 
 def build_login_view(
-    on_login: Callable[[str, str], None],
+    on_login: Callable[[str, str, bool], None],
     on_forgot_password: Callable[[str], None],
+    on_activate: Callable[[str], None],
+    license_valid: bool,
+    initial_tab: str = "login",
     error_text: str | None = None,
+    error_license: str | None = None,
+    current_license_key: str | None = None,
+    fingerprint: str = "",
+    saved_username: str | None = None,
+    saved_password: str | None = None,
 ) -> ft.Container:
-    
+    import re
+    EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+    # ---------- estado ----------
+    modo = {"actual": initial_tab}
+    using_saved = [saved_username is not None]
+
+    # ---------- helpers de validación ----------
+    def limpiar_errores():
+        for f in (email_field, pass_field, licencia_field):
+            f.error_text = None
+        error_banner.visible = False
+
+    def actualizar_visibilidad_campos():
+        is_login = (modo["actual"] == "login")
+        is_lic = (modo["actual"] == "licencia")
+        is_quick = is_login and using_saved[0]
+
+        quick_access_card.visible = is_quick
+
+        email_field.visible = is_login and not using_saved[0]
+        pass_field.visible = is_login and not using_saved[0]
+        remember_chk.visible = is_login and not using_saved[0]
+        forgot_pass_btn.visible = is_login and not using_saved[0]
+        row_actions.visible = is_login and not using_saved[0]
+        submit_btn.visible = is_lic or (is_login and not using_saved[0])
+        
+        licencia_field.visible = is_lic
+        fingerprint_container.visible = is_lic
+
+        submit_btn.content.value = "Ingresar" if modo["actual"] == "login" else "Validar licencia"
+
+    # ---------- campos ----------
     email_field = ft.TextField(
-        label="Usuario",
-        hint_text="broker",
-        border_color=COLORS["border"],
+        label="Email o Usuario",
+        hint_text="nombre@empresa.com",
+        prefix_icon=ft.Icons.ALTERNATE_EMAIL,
+        border_radius=12,
+        filled=True,
+        bgcolor=COLORS["background"],
+        border_color=ft.Colors.TRANSPARENT,
         focused_border_color=COLORS["primary"],
-        border_radius=10,
-        text_size=14,
         color=COLORS["text_primary"],
-        bgcolor=COLORS["surface"],
-        prefix_icon=ft.Icons.PERSON_OUTLINE,
-        width=300,
+        label_style=ft.TextStyle(color=COLORS["text_secondary"]),
+        cursor_color=COLORS["primary"],
+        text_size=14,
+        width=380,
     )
-    
+
     pass_field = ft.TextField(
         label="Contraseña",
         hint_text="••••••••",
-        border_color=COLORS["border"],
-        focused_border_color=COLORS["primary"],
-        border_radius=10,
-        text_size=14,
-        color=COLORS["text_primary"],
-        bgcolor=COLORS["surface"],
-        prefix_icon=ft.Icons.LOCK_OUTLINED,
         password=True,
         can_reveal_password=True,
-        width=300,
+        prefix_icon=ft.Icons.LOCK_OUTLINE,
+        border_radius=12,
+        filled=True,
+        bgcolor=COLORS["background"],
+        border_color=ft.Colors.TRANSPARENT,
+        focused_border_color=COLORS["primary"],
+        color=COLORS["text_primary"],
+        label_style=ft.TextStyle(color=COLORS["text_secondary"]),
+        cursor_color=COLORS["primary"],
+        text_size=14,
+        width=380,
+    )
+
+    licencia_field = ft.TextField(
+        label="Clave de licencia",
+        hint_text="KTX-XXXX-XXXX-XXXX",
+        value=current_license_key or "",
+        prefix_icon=ft.Icons.VPN_KEY_OUTLINED,
+        border_radius=12,
+        filled=True,
+        bgcolor=COLORS["background"],
+        border_color=ft.Colors.TRANSPARENT,
+        focused_border_color=COLORS["primary"],
+        color=COLORS["text_primary"],
+        label_style=ft.TextStyle(color=COLORS["text_secondary"]),
+        cursor_color=COLORS["primary"],
+        text_size=14,
+        width=380,
+        capitalization=ft.TextCapitalization.CHARACTERS,
+    )
+
+    remember_chk = ft.Checkbox(
+        label="Recordarme",
+        value=True,
+        check_color=ft.Colors.WHITE,
+        fill_color={"selected": COLORS["primary"]},
+        label_style=ft.TextStyle(color=COLORS["text_secondary"], size=13),
+    )
+
+    fingerprint_container = ft.Container(
+        content=ft.Row(
+            [
+                ft.Icon(ft.Icons.DEVICES_ROUNDED, size=14, color=COLORS["text_secondary"]),
+                ft.Text(f"ID de Hardware: {fingerprint}", size=11, color=COLORS["text_secondary"], weight=ft.FontWeight.W_500),
+            ],
+            spacing=6,
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        bgcolor=COLORS["background"],
+        padding=ft.Padding(left=12, right=12, top=8, bottom=8),
+        border_radius=10,
+        alignment=ft.Alignment(0, 0),
+        width=380,
+    )
+
+    # ---------- dialog "olvidé mi contraseña" ----------
+    recovery_email = ft.TextField(
+        label="Email de tu cuenta",
+        prefix_icon=ft.Icons.ALTERNATE_EMAIL,
+        border_radius=10,
+        filled=True,
+        bgcolor=COLORS["background"],
+        border_color=ft.Colors.TRANSPARENT,
+        focused_border_color=COLORS["primary"],
+        color=COLORS["text_primary"],
+        label_style=ft.TextStyle(color=COLORS["text_secondary"]),
+        cursor_color=COLORS["primary"],
+    )
+
+    def cerrar_dialog(e=None):
+        recovery_dialog.open = False
+        recovery_email.value = ""
+        recovery_email.error_text = None
+        if e and e.page:
+            e.page.update()
+
+    def enviar_recuperacion(e):
+        recovery_email.error_text = None
+        if not recovery_email.value or not EMAIL_RE.match(recovery_email.value.strip()):
+            recovery_email.error_text = "Ingresá un email válido"
+            e.page.update()
+            return
+        cerrar_dialog(e)
+        on_forgot_password(recovery_email.value.strip())
+
+    recovery_dialog = ft.AlertDialog(
+        modal=True,
+        bgcolor=COLORS["surface"],
+        shape=ft.RoundedRectangleBorder(radius=16),
+        title=ft.Row(
+            [
+                ft.Icon(ft.Icons.LOCK_RESET, color=COLORS["primary"]),
+                ft.Text("Recuperar contraseña", color=COLORS["text_primary"], size=17, weight=ft.FontWeight.W_600),
+            ],
+            spacing=8,
+        ),
+        content=ft.Container(
+            width=340,
+            content=ft.Column(
+                [
+                    ft.Text(
+                        "Te mandamos un link o contraseña provisoria para restablecer tu cuenta.",
+                        color=COLORS["text_secondary"],
+                        size=13,
+                    ),
+                    recovery_email,
+                ],
+                tight=True,
+                spacing=14,
+            ),
+        ),
+        actions=[
+            ft.TextButton("Cancelar", on_click=cerrar_dialog, style=ft.ButtonStyle(color=COLORS["text_secondary"])),
+            ft.ElevatedButton(
+                "Enviar",
+                on_click=enviar_recuperacion,
+                style=ft.ButtonStyle(
+                    bgcolor=COLORS["primary"],
+                    color=ft.Colors.WHITE,
+                    shape=ft.RoundedRectangleBorder(radius=10),
+                ),
+            ),
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+
+    def abrir_recuperacion(e):
+        e.page.overlay.append(recovery_dialog)
+        recovery_dialog.open = True
+        e.page.update()
+
+    forgot_pass_btn = ft.TextButton(
+        "¿Olvidaste tu contraseña?",
+        on_click=abrir_recuperacion,
+        style=ft.ButtonStyle(color=COLORS["primary"]),
+    )
+
+    row_actions = ft.Row(
+        [remember_chk, forgot_pass_btn],
+        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        width=380,
+    )
+
+    def use_other_account(e):
+        using_saved[0] = False
+        limpiar_errores()
+        actualizar_visibilidad_campos()
+        if e and e.page:
+            e.page.update()
+
+    def do_quick_login(e):
+        on_login(saved_username, saved_password, True)
+
+    quick_access_card = ft.Container(
+        content=ft.Column(
+            [
+                ft.Container(
+                    content=ft.Icon(ft.Icons.PERSON_ROUNDED, size=36, color=COLORS["primary"]),
+                    bgcolor=ft.Colors.with_opacity(0.12, COLORS["primary"]),
+                    shape=ft.BoxShape.CIRCLE,
+                    padding=16,
+                ),
+                ft.Text("¡Hola de nuevo!", size=16, weight=ft.FontWeight.W_600, color=COLORS["text_primary"]),
+                ft.Text(saved_username or "", size=13, color=COLORS["text_secondary"], weight=ft.FontWeight.W_500),
+                ft.Container(height=10),
+                ft.ElevatedButton(
+                    content=ft.Text("Ingresar directo", weight=ft.FontWeight.W_600, size=14, color=ft.Colors.WHITE),
+                    on_click=do_quick_login,
+                    style=ft.ButtonStyle(
+                        bgcolor={"": COLORS["primary"], "hovered": COLORS["primary_dark"]},
+                        color=ft.Colors.WHITE,
+                        shape=ft.RoundedRectangleBorder(radius=12),
+                        padding=ft.Padding(left=0, right=0, top=14, bottom=14),
+                        elevation={"": 0},
+                    ),
+                    width=380,
+                    height=48,
+                ),
+                ft.TextButton(
+                    "Usar otra cuenta",
+                    on_click=use_other_account,
+                    style=ft.ButtonStyle(color=COLORS["text_secondary"]),
+                ),
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10,
+        ),
+        visible=using_saved[0],
+        width=380,
+    )
+
+    # ---------- lógica de submit ----------
+    def validar_login():
+        ok = True
+        username_val = (email_field.value or "").strip()
+        if not username_val:
+            email_field.error_text = "Usuario o Email requerido"
+            ok = False
+        if not pass_field.value or len(pass_field.value) < 4:
+            pass_field.error_text = "Contraseña muy corta"
+            ok = False
+        return ok
+
+    def validar_licencia():
+        ok = True
+        val = (licencia_field.value or "").strip()
+        if len(val) < 8:
+            licencia_field.error_text = "Clave de licencia inválida"
+            ok = False
+        return ok
+
+    def on_submit_click(e):
+        limpiar_errores()
+        if modo["actual"] == "login":
+            if not license_valid:
+                error_banner.visible = True
+                error_banner_text.value = "Debe validar una licencia activa antes de iniciar sesión."
+                error_banner.update()
+                return
+            if using_saved[0]:
+                on_login(saved_username, saved_password, True)
+            else:
+                if not validar_login():
+                    email_field.update()
+                    pass_field.update()
+                    return
+                on_login(email_field.value.strip(), pass_field.value, remember_chk.value)
+        else:
+            if not validar_licencia():
+                licencia_field.update()
+                return
+            on_activate(licencia_field.value.strip())
+
+    submit_btn = ft.ElevatedButton(
+        content=ft.Text("Ingresar", weight=ft.FontWeight.W_600, size=15, color=ft.Colors.WHITE),
+        on_click=on_submit_click,
+        style=ft.ButtonStyle(
+            bgcolor={"": COLORS["primary"], "hovered": COLORS["primary_dark"]},
+            color=ft.Colors.WHITE,
+            shape=ft.RoundedRectangleBorder(radius=12),
+            padding=ft.Padding(left=0, right=0, top=16, bottom=16),
+            elevation={"": 0},
+        ),
+        width=380,
+        height=50,
+    )
+
+    error_banner_text = ft.Text("", color=ft.Colors.RED_900, size=12, weight=ft.FontWeight.W_500, expand=True)
+    error_banner = ft.Container(
+        content=ft.Row(
+            controls=[
+                ft.Icon(ft.Icons.WARNING_AMBER_ROUNDED, color=ft.Colors.RED_700, size=18),
+                error_banner_text
+            ],
+            spacing=8,
+        ),
+        bgcolor=ft.Colors.RED_50,
+        border=ft.Border.all(1, ft.Colors.RED_200),
+        border_radius=8,
+        padding=10,
+        width=380,
+        margin=ft.Margin(0, 0, 0, 12),
+        visible=False,
+    )
+
+    # ---------- selector de modo (segmented) ----------
+    def cambiar_modo(nuevo_modo, update_page=True):
+        modo["actual"] = nuevo_modo
+        limpiar_errores()
+
+        login_tab_btn.bgcolor = COLORS["primary"] if nuevo_modo == "login" else ft.Colors.TRANSPARENT
+        login_tab_btn.content.color = ft.Colors.WHITE if nuevo_modo == "login" else COLORS["text_secondary"]
+        lic_tab_btn.bgcolor = COLORS["primary"] if nuevo_modo == "licencia" else ft.Colors.TRANSPARENT
+        lic_tab_btn.content.color = ft.Colors.WHITE if nuevo_modo == "licencia" else COLORS["text_secondary"]
+
+        actualizar_visibilidad_campos()
+
+        if nuevo_modo == "login" and error_text:
+            error_banner.visible = True
+            error_banner_text.value = error_text
+        elif nuevo_modo == "licencia" and error_license:
+            error_banner.visible = True
+            error_banner_text.value = error_license
+        else:
+            error_banner.visible = False
+            
+        if update_page:
+            try:
+                login_tab_btn.update()
+                lic_tab_btn.update()
+                email_field.update()
+                pass_field.update()
+                remember_chk.update()
+                forgot_pass_btn.update()
+                licencia_field.update()
+                fingerprint_container.update()
+                submit_btn.update()
+                error_banner.update()
+                row_actions.update()
+                quick_access_card.update()
+            except Exception:
+                pass
+
+    login_tab_btn = ft.Container(
+        content=ft.Text("Usuario", color=ft.Colors.WHITE, weight=ft.FontWeight.W_600, size=13),
+        bgcolor=COLORS["primary"],
+        border_radius=10,
+        padding=ft.Padding(left=0, right=0, top=10, bottom=10),
+        alignment=ft.Alignment(0, 0),
+        expand=True,
+        on_click=lambda e: cambiar_modo("login"),
+        animate=ft.Animation(200, ft.AnimationCurve.EASE_IN_OUT),
     )
     
-    def do_login(e):
-        on_login(email_field.value, pass_field.value)
-        
-    def do_forgot(e):
-        on_forgot_password(email_field.value)
-
-    login_btn = ft.FilledButton(
-        "Iniciar Sesión",
-        on_click=do_login,
-        style=ft.ButtonStyle(
-            bgcolor=COLORS["primary"],
-            color=COLORS["text_on_primary"],
-            shape=ft.RoundedRectangleBorder(radius=10),
-            padding=ft.Padding(left=24, right=24, top=14, bottom=14),
-        ),
-        width=300,
+    lic_tab_btn = ft.Container(
+        content=ft.Text("Licencia", color=COLORS["text_secondary"], weight=ft.FontWeight.W_600, size=13),
+        bgcolor=ft.Colors.TRANSPARENT,
+        border_radius=10,
+        padding=ft.Padding(left=0, right=0, top=10, bottom=10),
+        alignment=ft.Alignment(0, 0),
+        expand=True,
+        on_click=lambda e: cambiar_modo("licencia"),
+        animate=ft.Animation(200, ft.AnimationCurve.EASE_IN_OUT),
     )
 
-    forgot_btn = ft.TextButton(
-        "¿Olvidaste tu contraseña?",
-        on_click=do_forgot,
-        style=ft.ButtonStyle(
-            color=COLORS["primary"],
+    switch_container = ft.Container(
+        content=ft.Row([login_tab_btn, lic_tab_btn], spacing=6),
+        bgcolor=COLORS["background"],
+        border_radius=12,
+        padding=6,
+        width=380,
+        visible=False,
+    )
+
+    # ---------- logo / header ----------
+    logo = ft.Container(
+        width=76,
+        height=76,
+        border_radius=20,
+        gradient=ft.LinearGradient(
+            begin=ft.Alignment(-1, -1),
+            end=ft.Alignment(1, 1),
+            colors=[COLORS["primary"], COLORS["primary_dark"]],
+        ),
+        alignment=ft.Alignment(0, 0),
+        content=ft.Icon(ft.Icons.SHIELD_OUTLINED, color=ft.Colors.WHITE, size=36),
+        shadow=ft.BoxShadow(
+            spread_radius=1,
+            blur_radius=24,
+            color=ft.Colors.with_opacity(0.45, COLORS["primary"]),
+            offset=ft.Offset(0, 8),
         ),
     )
 
-    column_controls = [
-        ft.Container(
-            content=ft.Icon(ft.Icons.SHIELD_OUTLINED, size=52, color=COLORS["primary"]),
-            alignment=ft.Alignment(0, 0),
-        ),
-        ft.Container(
-            content=ft.Text("Katrix ERP", size=24, weight=ft.FontWeight.W_800, color=COLORS["primary"]),
-            alignment=ft.Alignment(0, 0),
-        ),
-        ft.Container(
-            content=ft.Text("Gestión Integral de Productores, Cartera y Siniestros", size=12, color=COLORS["text_secondary"]),
-            alignment=ft.Alignment(0, 0),
-            margin=ft.Margin(0, 0, 0, 16),
-        ),
-    ]
+    # Initialize visibility/state
+    cambiar_modo(initial_tab, update_page=False)
 
-    if error_text:
-        error_banner = ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Icon(ft.Icons.WARNING_AMBER_ROUNDED, color=ft.Colors.RED_700, size=18),
-                    ft.Text(error_text, color=ft.Colors.RED_900, size=12, weight=ft.FontWeight.W_500, expand=True)
-                ],
-                spacing=8,
-            ),
-            bgcolor=ft.Colors.RED_50,
-            border=ft.Border.all(1, ft.Colors.RED_200),
-            border_radius=8,
-            padding=10,
-            width=300,
-            margin=ft.Margin(0, 0, 0, 12),
-        )
-        column_controls.append(error_banner)
-
-    column_controls.extend([
-        email_field,
-        ft.Container(height=8),
-        pass_field,
-        ft.Container(height=16),
-        login_btn,
-        ft.Container(height=8),
-        forgot_btn,
-    ])
-
-    return ft.Container(
+    card = ft.Container(
+        width=440,
+        padding=ft.Padding(left=30, right=30, top=40, bottom=40),
+        border_radius=24,
+        bgcolor=COLORS["surface"],
+        border=ft.Border.all(1, COLORS["divider"]),
+        shadow=ft.BoxShadow(
+            spread_radius=0,
+            blur_radius=32,
+            color=ft.Colors.with_opacity(0.10, COLORS["shadow"] if "shadow" in COLORS else "#3A3560"),
+            offset=ft.Offset(0, 10),
+        ),
         content=ft.Column(
-            controls=column_controls,
+            [
+                logo,
+                ft.Container(height=14),
+                ft.Text("Katrix Broker", size=24, weight=ft.FontWeight.W_700, color=COLORS["text_primary"]),
+                ft.Text(
+                    "Accedé con tu usuario o validá tu licencia",
+                    size=13,
+                    color=COLORS["text_secondary"],
+                ),
+                ft.Container(height=22),
+                switch_container,
+                ft.Container(height=18, visible=False),
+                error_banner,
+                quick_access_card,
+                email_field,
+                pass_field,
+                licencia_field,
+                fingerprint_container,
+                row_actions,
+                ft.Container(height=6),
+                submit_btn,
+                ft.Container(height=8),
+                ft.Row(
+                    [
+                        ft.Text("¿No tenés cuenta?", color=COLORS["text_secondary"], size=13),
+                        ft.TextButton(
+                            "Contactar a soporte",
+                            style=ft.ButtonStyle(color=COLORS["primary"]),
+                            on_click=lambda e: e.page.launch_url("mailto:soporte@katrix.com.ar?subject=Contacto%20Soporte%20Katrix"),
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=0,
+                ),
+            ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=4,
+            spacing=10,
             tight=True,
         ),
-        bgcolor=COLORS["surface"],
-        border_radius=16,
-        padding=32,
-        width=360,
-        shadow=ft.BoxShadow(spread_radius=1, blur_radius=12, color=ft.Colors.with_opacity(0.12, "#000000")),
+    )
+
+    email_field.on_submit = on_submit_click
+    pass_field.on_submit = on_submit_click
+    licencia_field.on_submit = on_submit_click
+
+    return ft.Container(
+        expand=True,
+        alignment=ft.Alignment(0, 0),
+        gradient=ft.RadialGradient(
+            center=ft.Alignment(0, -1),
+            radius=1.4,
+            colors=[ft.Colors.with_opacity(0.12, COLORS["primary"]), COLORS["background"]],
+        ),
+        content=card,
     )
 
 
@@ -1580,6 +1955,8 @@ def build_detail_view(
     on_save_sociedades: Optional[Callable[[str], None]] = None,
     calendar_url: str = "",
     usuario: str = "broker",
+    state: Optional[Dict[str, Any]] = None,
+    on_register_visit_click: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> ft.Container:
     nombre    = record.get(COL_NOMBRE, "Productor")
     matricula = record.get(COL_MATRICULA, "")
@@ -2073,22 +2450,14 @@ def build_detail_view(
             )
         )
     else:
-        def show_calendar_warning(e):
-            page.snack_bar = ft.SnackBar(
-                content=ft.Text("⚠️ Por favor configure su Link de Calendario en Mi Perfil para agendar reuniones.", color=ft.Colors.WHITE, size=13, weight=ft.FontWeight.W_500),
-                bgcolor=COLORS["warning"],
-                duration=4000,
-                dismiss_direction=ft.DismissDirection.HORIZONTAL,
-            )
-            page.snack_bar.open = True
-            page.update()
+        # Fallback: registrar reunión localmente en el Plan de Visitas si no hay URL externa configurada
         quick_actions.append(
             ft.IconButton(
                 icon=ft.Icons.CALENDAR_MONTH_ROUNDED,
-                icon_color=COLORS["text_secondary"],
+                icon_color="#EC4899",
                 icon_size=24,
-                tooltip="Agendar Reunión (Link de calendario no configurado)",
-                on_click=show_calendar_warning,
+                tooltip="Registrar Reunión en Plan de Visitas",
+                on_click=lambda e: handle_register_visit_click(e),
             )
         )
 
@@ -2208,6 +2577,12 @@ def build_detail_view(
             refresh_notes_history_ui()
             try: page.update()
             except: pass
+
+            if state and state.get("refresh_dashboard"):
+                try:
+                    state["refresh_dashboard"]()
+                except Exception as ex:
+                    print(f"Error refreshing dashboard from save_visit_record: {ex}")
             
         def close_visit_dialog(ev):
             visit_dialog.open = False
@@ -2246,10 +2621,17 @@ def build_detail_view(
             actions_alignment=ft.MainAxisAlignment.END,
         )
         
-        page.dialog = visit_dialog
+        if visit_dialog not in page.overlay:
+            page.overlay.append(visit_dialog)
         visit_dialog.open = True
         try: page.update()
         except: pass
+
+    def handle_register_visit_click(e):
+        if on_register_visit_click:
+            on_register_visit_click(record)
+        else:
+            open_log_visit_dialog(e)
 
     quick_actions.append(
         ft.IconButton(
@@ -2257,7 +2639,7 @@ def build_detail_view(
             icon_color="#FF9800",
             icon_size=24,
             tooltip="Registrar Visita/Reunión",
-            on_click=open_log_visit_dialog,
+            on_click=handle_register_visit_click,
         )
     )
 
@@ -4101,6 +4483,15 @@ def build_dashboard_metrics_view(
                     _ssn.eliminar_visita(vid)
                     refresh_dashboard()
                 return _del
+            def make_click_visita(v_rec):
+                def _click(e):
+                    mat = v_rec.get("matricula")
+                    if mat:
+                        if state and "open_detail_by_matricula" in state:
+                            state["open_detail_by_matricula"](mat)
+                    else:
+                        show_snackbar("Este PAS fue creado manualmente sin matrícula vinculada.", is_error=True)
+                return _click
             chk = ft.Checkbox(value=(v["estado"]=="realizada"), fill_color=COLORS["primary"])
             chk.on_change = make_toggle_visita()
             items.append(ft.Container(
@@ -4111,6 +4502,13 @@ def build_dashboard_metrics_view(
                             ft.Text(v["nombre"], size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
                             _status_chip(v.get("campaña") or "Sin Compañía", COLORS["primary"] if v.get("campaña") else "#475569"),
                         ], spacing=6),
+                        ft.Row([
+                            ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED, size=12, color=COLORS["text_secondary"]),
+                            ft.Text(v.get("fecha") or "Sin fecha", size=11, color=COLORS["text_secondary"]),
+                            ft.Container(width=10),
+                            ft.Icon(ft.Icons.LOCATION_ON_ROUNDED, size=12, color=COLORS["text_secondary"]),
+                            ft.Text(v.get("lugar") or "Sin ubicación", size=11, color=COLORS["text_secondary"]),
+                        ], spacing=4) if (v.get("fecha") or v.get("lugar")) else ft.Container(),
                     ], spacing=3, expand=True),
                     ft.IconButton(ft.Icons.DELETE_OUTLINE_ROUNDED, icon_color=ft.Colors.RED_400, icon_size=16, on_click=make_del_visita()),
                 ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
@@ -4123,6 +4521,7 @@ def build_dashboard_metrics_view(
                 ),
                 border_radius=8,
                 padding=ft.Padding(16, 12, 16, 12),
+                on_click=make_click_visita(v),
             ))
         if not items:
             pas_list_col.controls = [ft.Container(
@@ -4143,10 +4542,13 @@ def build_dashboard_metrics_view(
     search_field.on_change = _on_search_change
 
     # ── Diálogo Agregar PAS ────────────────────────────────────────────────
-    add_nombre_tf = ft.TextField(label="Nombre del PAS *", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-    add_compania_tf = ft.TextField(label="Compañía", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-    add_matricula_tf = ft.TextField(label="Matrícula (opcional)", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-    add_nota_tf = ft.TextField(label="Nota / Productividad (opcional)", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+    from datetime import datetime
+    add_nombre_tf = ft.TextField(label="Nombre del PAS *", border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+    add_compania_tf = ft.TextField(label="Compañía", border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13, expand=1)
+    add_matricula_tf = ft.TextField(label="Matrícula (opcional)", border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13, expand=1)
+    add_fecha_tf = ft.TextField(label="Fecha y Hora *", value=datetime.now().strftime("%Y-%m-%d %H:%M"), border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13, expand=1)
+    add_lugar_tf = ft.TextField(label="Lugar / Dirección", border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13, expand=1)
+    add_nota_tf = ft.TextField(label="Nota / Productividad (opcional)", border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
     
     def close_dialog(e):
         add_dialog.open = False
@@ -4161,16 +4563,36 @@ def build_dashboard_metrics_view(
             except: pass
             return
             
+        fecha_val = (add_fecha_tf.value or "").strip()
+        if not fecha_val:
+            add_fecha_tf.error_text = "La fecha y hora es obligatoria"
+            try: add_fecha_tf.update()
+            except: pass
+            return
+
         compania = (add_compania_tf.value or "").strip()
         matricula = (add_matricula_tf.value or "").strip()
+        lugar = (add_lugar_tf.value or "").strip()
         nota = (add_nota_tf.value or "").strip()
         
-        _ssn.guardar_visita(mes_actual, matricula, nombre, estado='pendiente', productividad=nota, campaña=compania)
+        _ssn.guardar_visita(
+            mes=mes_actual,
+            matricula=matricula,
+            nombre=nombre,
+            estado='pendiente',
+            productividad=nota,
+            campaña=compania,
+            lugar=lugar,
+            fecha=fecha_val
+        )
         
         add_nombre_tf.value = ""
         add_nombre_tf.error_text = None
         add_compania_tf.value = ""
         add_matricula_tf.value = ""
+        add_fecha_tf.value = datetime.now().strftime("%Y-%m-%d %H:%M")
+        add_fecha_tf.error_text = None
+        add_lugar_tf.value = "Oficina"
         add_nota_tf.value = ""
         
         add_dialog.open = False
@@ -4180,12 +4602,19 @@ def build_dashboard_metrics_view(
         
     add_dialog = ft.AlertDialog(
         title=ft.Text("Agregar Nuevo PAS", weight=ft.FontWeight.BOLD),
-        content=ft.Column([
-            add_nombre_tf,
-            add_compania_tf,
-            add_matricula_tf,
-            add_nota_tf,
-        ], spacing=10, tight=True, width=400),
+        content=ft.Container(
+            content=ft.Column([
+                ft.Text("DATOS DEL PRODUCTOR (PAS)", size=10, weight=ft.FontWeight.BOLD, color=COLORS["primary"]),
+                add_nombre_tf,
+                ft.Row([add_compania_tf, add_matricula_tf], spacing=10),
+                ft.Divider(height=10, color=COLORS["divider"]),
+                ft.Text("DETALLES DE LA REUNIÓN / VISITA", size=10, weight=ft.FontWeight.BOLD, color=COLORS["primary"]),
+                add_fecha_tf,
+                add_nota_tf,
+            ], spacing=12, tight=True),
+            width=550,
+            padding=ft.Padding(0, 10, 0, 10),
+        ),
         actions=[
             ft.TextButton("Cancelar", on_click=close_dialog),
             ft.FilledButton("Guardar", bgcolor=COLORS["primary"], on_click=save_new_pas),
@@ -4194,10 +4623,63 @@ def build_dashboard_metrics_view(
     )
     
     def open_add_pas_dialog(e):
-        page.dialog = add_dialog
-        add_dialog.open = True
-        try: page.update()
-        except: pass
+        try:
+            print("[dialog] open_add_pas_dialog called")
+            if state and state.get("prefill_new_visit"):
+                prefill = state.pop("prefill_new_visit")
+                print(f"[dialog] Prefilling data: {prefill}")
+                add_dialog.title = ft.Text(f"Agendar Visita/Reunión con {prefill.get('nombre')}", weight=ft.FontWeight.BOLD)
+                
+                # Assign values for backend saving
+                add_nombre_tf.value = prefill.get("nombre") or ""
+                add_compania_tf.value = prefill.get("compania") or ""
+                add_matricula_tf.value = str(prefill.get("matricula") or "")
+                
+                # Make these fields visible and editable so they can be modified
+                add_nombre_tf.visible = True
+                add_nombre_tf.disabled = False
+                add_nombre_tf.error_text = None
+                
+                add_compania_tf.value = prefill.get("compania") or ""
+                add_compania_tf.visible = True
+                add_compania_tf.disabled = False
+                
+                add_matricula_tf.value = str(prefill.get("matricula") or "")
+                add_matricula_tf.visible = True
+                add_matricula_tf.disabled = False
+                
+                add_fecha_tf.value = datetime.now().strftime("%Y-%m-%d %H:%M")
+                add_lugar_tf.value = "Oficina"
+                add_nota_tf.value = ""
+            else:
+                print("[dialog] Resetting fields to empty")
+                add_dialog.title = ft.Text("Agregar Nuevo PAS", weight=ft.FontWeight.BOLD)
+                
+                # Show all fields for manual entry
+                add_nombre_tf.value = ""
+                add_nombre_tf.visible = True
+                add_nombre_tf.error_text = None
+                
+                add_compania_tf.value = ""
+                add_compania_tf.visible = True
+                
+                add_matricula_tf.value = ""
+                add_matricula_tf.visible = True
+                
+                add_fecha_tf.value = datetime.now().strftime("%Y-%m-%d %H:%M")
+                add_fecha_tf.error_text = None
+                add_lugar_tf.value = "Oficina"
+                add_nota_tf.value = ""
+
+            if add_dialog not in page.overlay:
+                page.overlay.append(add_dialog)
+            add_dialog.open = True
+            page.update()
+            print("[dialog] dialog opened and page.update() called successfully")
+        except Exception as ex:
+            import traceback
+            print("[dialog] CRITICAL ERROR in open_add_pas_dialog:", ex)
+            traceback.print_exc()
 
     btn_agregar_pas = ft.FilledButton(
         "+ Agregar PAS",
@@ -4813,10 +5295,24 @@ def build_dashboard_metrics_view(
         tabs_list.append(ft.Tab(label="Sin Accesos", icon=ft.Icons.LOCK_ROUNDED))
         views_list.append(ft.Container(content=ft.Text("No tenés permisos para ver ninguna sección de este módulo.", color=COLORS["text_secondary"]), padding=16))
 
+    # Determine initially selected tab index based on state
+    initial_tab_idx = 0
+    if state and state.get("active_dashboard_tab"):
+        tab_label_to_find = state["active_dashboard_tab"]
+        for idx, tab in enumerate(tabs_list):
+            if tab.label == tab_label_to_find:
+                initial_tab_idx = idx
+                break
+
+    def on_tab_change(e):
+        if state and tabs.selected_index is not None:
+            state["active_dashboard_tab"] = tabs_list[tabs.selected_index].label
+
     tabs = ft.Tabs(
         length=len(tabs_list),
-        selected_index=0,
+        selected_index=initial_tab_idx,
         animation_duration=300,
+        on_change=on_tab_change,
         content=ft.Column(
             expand=True,
             controls=[
@@ -5303,8 +5799,13 @@ def build_dashboard_metrics_view(
             print("Error populating Gestion Comercial dashboard:", e)
             traceback.print_exc()
 
-    import threading
-    threading.Thread(target=run_initial_refresh, daemon=True).start()
+
+
+    page.run_thread(run_initial_refresh)
+
+    if state is not None:
+        state["refresh_dashboard"] = refresh_dashboard
+        state["open_add_pas_dialog"] = open_add_pas_dialog
 
     # Assembly
     return ft.Container(

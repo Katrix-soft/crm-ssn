@@ -237,6 +237,13 @@ def inicializar_db():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_prod_estado ON productores_detalle(estado_contacto)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_prod_provincia ON productores_detalle(provincia)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_prod_localidad ON productores_detalle(localidad)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_prod_usuario ON productores_detalle(usuario_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_polizas_estado ON polizas(estado)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_polizas_matricula ON polizas(pas_matricula)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_visitas_mes ON visitas_pas(mes)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_actividades_mes ON actividades_comerciales(mes)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_candidatos_mes ON candidatos_captacion(mes)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_acciones_mes ON acciones_mensuales(mes)")
 
     # Crear tabla de relación muchos a muchos productor_sociedad (Eloquent style)
     cursor.execute("""
@@ -379,7 +386,7 @@ def inicializar_db():
         )
     """)
     # Migrar columnas faltantes por si la tabla ya existe
-    for col in [("campaña", "TEXT DEFAULT ''"), ("productividad", "TEXT DEFAULT ''"), ("estado_org", "TEXT DEFAULT ''")]:
+    for col in [("campaña", "TEXT DEFAULT ''"), ("productividad", "TEXT DEFAULT ''"), ("estado_org", "TEXT DEFAULT ''"), ("lugar", "TEXT DEFAULT ''")]:
         try:
             cursor.execute(f"ALTER TABLE visitas_pas ADD COLUMN {col[0]} {col[1]}")
         except Exception:
@@ -589,24 +596,36 @@ def obtener_visitas(mes: str = None) -> list:
     return [dict(r) for r in rows]
 
 def guardar_visita(mes: str, matricula: str, nombre: str, estado: str = "pendiente",
-                   productividad: str = "", estado_org: str = "", campaña: str = "") -> int:
+                   productividad: str = "", estado_org: str = "", campaña: str = "",
+                   lugar: str = "", fecha: str = None) -> int:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO visitas_pas (mes, matricula, nombre, estado, productividad, estado_org, campaña)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (mes, matricula, nombre, estado, productividad, estado_org, campaña))
+    if fecha:
+        cursor.execute("""
+            INSERT INTO visitas_pas (mes, matricula, nombre, estado, productividad, estado_org, campaña, lugar, fecha)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (mes, matricula, nombre, estado, productividad, estado_org, campaña, lugar, fecha))
+    else:
+        cursor.execute("""
+            INSERT INTO visitas_pas (mes, matricula, nombre, estado, productividad, estado_org, campaña, lugar)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (mes, matricula, nombre, estado, productividad, estado_org, campaña, lugar))
     row_id = cursor.lastrowid
     conn.commit()
     conn.close()
     return row_id
 
-def actualizar_visita(visita_id: int, estado: str, productividad: str = "", estado_org: str = "", campaña: str = "") -> bool:
+def actualizar_visita(visita_id: int, estado: str, productividad: str = "", estado_org: str = "", campaña: str = "", lugar: str = "", fecha: str = None) -> bool:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE visitas_pas SET estado=?, productividad=?, estado_org=?, campaña=? WHERE id=?
-    """, (estado, productividad, estado_org, campaña, visita_id))
+    if fecha:
+        cursor.execute("""
+            UPDATE visitas_pas SET estado=?, productividad=?, estado_org=?, campaña=?, lugar=?, fecha=? WHERE id=?
+        """, (estado, productividad, estado_org, campaña, lugar, fecha, visita_id))
+    else:
+        cursor.execute("""
+            UPDATE visitas_pas SET estado=?, productividad=?, estado_org=?, campaña=?, lugar=? WHERE id=?
+        """, (estado, productividad, estado_org, campaña, lugar, visita_id))
     ok = cursor.rowcount > 0
     conn.commit()
     conn.close()
@@ -1024,10 +1043,7 @@ def obtener_todos_db(user_id: int = None, role: str = None, regional_only: bool 
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
-                       (SELECT GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ')
-                        FROM productor_sociedad ps
-                        JOIN sociedades s ON ps.sociedad_matricula = s.matricula
-                        WHERE ps.productor_matricula = p.matricula) as sociedades
+                       '' as sociedades
                 FROM productores_detalle p
                 WHERE (p.usuario_id = ? 
                    OR p.usuario_id IN (SELECT usuario_propietario_id FROM permisos_visibilidad WHERE usuario_lector_id = ?)
@@ -1039,10 +1055,7 @@ def obtener_todos_db(user_id: int = None, role: str = None, regional_only: bool 
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
-                       (SELECT GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ')
-                        FROM productor_sociedad ps
-                        JOIN sociedades s ON ps.sociedad_matricula = s.matricula
-                        WHERE ps.productor_matricula = p.matricula) as sociedades
+                       '' as sociedades
                 FROM productores_detalle p
                 WHERE 1=1 {regional_clause}
             """)
@@ -1083,10 +1096,7 @@ def obtener_cartera_db(user_id: int = None, role: str = None, regional_only: boo
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
-                       (SELECT GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ')
-                        FROM productor_sociedad ps
-                        JOIN sociedades s ON ps.sociedad_matricula = s.matricula
-                        WHERE ps.productor_matricula = p.matricula) as sociedades
+                       '' as sociedades
                 FROM productores_detalle p
                 WHERE (
                     p.usuario_id = ? 
@@ -1100,10 +1110,7 @@ def obtener_cartera_db(user_id: int = None, role: str = None, regional_only: boo
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
-                       (SELECT GROUP_CONCAT(s.denominacion || ' (Mat: ' || s.matricula || ')', '; ')
-                        FROM productor_sociedad ps
-                        JOIN sociedades s ON ps.sociedad_matricula = s.matricula
-                        WHERE ps.productor_matricula = p.matricula) as sociedades
+                       '' as sociedades
                 FROM productores_detalle p
                 WHERE {cartera_filter}
             """)

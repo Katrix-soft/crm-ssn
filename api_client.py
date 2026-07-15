@@ -97,8 +97,10 @@ class APIClient:
         self.user_id: Optional[int] = None
         self.license_key: Optional[str] = None
         self.last_validation_time: Optional[datetime] = None
+        self.saved_username: Optional[str] = None
+        self.saved_password: Optional[str] = None
         
-        # Intentar cargar licencia guardada localmente
+        # Intentar cargar licencia y credenciales guardadas localmente
         self._load_local_license()
 
     def _get_headers(self) -> Dict[str, str]:
@@ -112,7 +114,7 @@ class APIClient:
     # ─────────────────────────────────────────────────────────────────────────
 
     def _load_local_license(self):
-        """Carga y desencripta los datos de licencia de la configuración local."""
+        """Carga y desencripta los datos de licencia y credenciales de la configuración local."""
         path = _get_config_path()
         if os.path.exists(path):
             try:
@@ -122,21 +124,17 @@ class APIClient:
                 decrypted_data = f_cipher.decrypt(encrypted_data)
                 data = json.loads(decrypted_data.decode("utf-8"))
                 self.license_key = data.get("license_key")
+                self.saved_username = data.get("saved_username")
+                self.saved_password = data.get("saved_password")
             except Exception:
                 self.license_key = None
+                self.saved_username = None
+                self.saved_password = None
 
     def save_local_license(self, license_key: str):
         """Guarda la licencia localmente encriptada usando la huella del equipo."""
-        path = _get_config_path()
         self.license_key = license_key.strip().upper()
-        try:
-            data_bytes = json.dumps({"license_key": self.license_key}).encode("utf-8")
-            f_cipher = Fernet(_get_encryption_key())
-            encrypted_data = f_cipher.encrypt(data_bytes)
-            with open(path, "wb") as f:
-                f.write(encrypted_data)
-        except Exception as e:
-            print(f"Error al guardar configuración de licencia cifrada: {e}")
+        self._save_config_file()
 
     def remove_local_license(self):
         """Elimina el registro de licencia local (desactivación)."""
@@ -147,6 +145,37 @@ class APIClient:
             except Exception:
                 pass
         self.license_key = None
+        self.saved_username = None
+        self.saved_password = None
+
+    def save_credentials(self, username, password):
+        """Guarda las credenciales del usuario encriptadas localmente."""
+        self.saved_username = username
+        self.saved_password = password
+        self._save_config_file()
+
+    def clear_credentials(self):
+        """Borra las credenciales guardadas localmente sin eliminar la licencia."""
+        self.saved_username = None
+        self.saved_password = None
+        self._save_config_file()
+
+    def _save_config_file(self):
+        """Guarda toda la información de configuración actual de forma cifrada."""
+        path = _get_config_path()
+        try:
+            payload = {
+                "license_key": self.license_key,
+                "saved_username": self.saved_username,
+                "saved_password": self.saved_password,
+            }
+            data_bytes = json.dumps(payload).encode("utf-8")
+            f_cipher = Fernet(_get_encryption_key())
+            encrypted_data = f_cipher.encrypt(data_bytes)
+            with open(path, "wb") as f:
+                f.write(encrypted_data)
+        except Exception as e:
+            print(f"Error al guardar archivo de configuración: {e}")
 
     def validar_licencia_online(self, license_key: str, email_cliente: str = "") -> Tuple[bool, str]:
         """

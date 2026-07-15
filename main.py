@@ -294,14 +294,18 @@ def main(page: ft.Page):
     def on_vaciar_db_click(e):
         def _confirm_delete(ev):
             from ssn_test import vaciar_base_de_datos
-            count = vaciar_base_de_datos()
-            dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False))
-            dlg.open = False
-            page.update()
-            if state["username"]:
-                registrar_log(state["username"], "EMPTY_DB", f"Vaciada la base de datos ({count} registros borrados).")
-            show_alert_dialog("Base de Datos Vaciada", f"Se han eliminado {count} registros permanentemente.")
-            render_content()
+            
+            def bg_delete():
+                count = vaciar_base_de_datos()
+                dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False))
+                dlg.open = False
+                page.update()
+                if state["username"]:
+                    registrar_log(state["username"], "EMPTY_DB", f"Vaciada la base de datos ({count} registros borrados).")
+                show_alert_dialog("Base de Datos Vaciada", f"Se han eliminado {count} registros permanentemente.")
+                render_content()
+                
+            page.run_thread(bg_delete)
             
         dlg = ft.AlertDialog(
             title=ft.Row([ft.Icon(ft.Icons.WARNING_ROUNDED, color=ft.Colors.RED_500), ft.Text("Atención: Vaciar Base de Datos")]),
@@ -1848,8 +1852,15 @@ def main(page: ft.Page):
     def open_detail(record: dict):
         state["selected_record"] = record
         def on_back():
-            state["viewing_detail"] = False
-            state["selected_record"] = None
+            if state.get("detail_back_to_dashboard"):
+                state["viewing_detail"] = False
+                state["selected_record"] = None
+                state["viewing_dashboard"] = True
+                sidebar_selected["index"] = 0
+                state["detail_back_to_dashboard"] = False
+            else:
+                state["viewing_detail"] = False
+                state["selected_record"] = None
             update_page_layout()
             render_content()
 
@@ -1857,6 +1868,37 @@ def main(page: ft.Page):
             text = record_to_clipboard(rec)
             page.set_clipboard(text)
             show_snackbar("Datos copiados al portapapeles ✓")
+
+        def on_register_visit_click(rec: dict):
+            state["viewing_dashboard"] = True
+            state["viewing_detail"]    = False
+            state["viewing_cartera"]   = False
+            state["viewing_admin"]     = False
+            state["viewing_profile"]   = False
+            sidebar_selected["index"] = 0
+            state["active_dashboard_tab"] = "Plan de Visitas"
+            
+            domicilio = rec.get("domicilio", "") or ""
+            localidad = rec.get("localidad", "") or ""
+            provincia = rec.get("provincia", "") or ""
+            lugar_parts = [p.strip() for p in [domicilio, localidad, provincia] if p.strip() and p.strip() != "—"]
+            lugar_str = ", ".join(lugar_parts)
+
+            state["prefill_new_visit"] = {
+                "nombre": rec.get("productor_apellido_nombre") or rec.get("nombre") or "",
+                "matricula": rec.get("productor_matricula") or rec.get("matricula") or "",
+                "compania": (rec.get("companias") or "").split(",")[0].strip(),
+                "lugar": lugar_str
+            }
+            update_page_layout()
+            render_content()
+            
+            import time
+            def trigger_dialog():
+                time.sleep(0.4)
+                if "open_add_pas_dialog" in state:
+                    state["open_add_pas_dialog"](None)
+            page.run_thread(trigger_dialog)
 
         def on_status_change(nuevo_estado: str):
             matricula = record.get("productor_matricula")
@@ -1913,6 +1955,12 @@ def main(page: ft.Page):
                         show_snackbar(f"Se actualizó el estado a: {nuevo_estado}", COLORS["success"])
                         open_detail(record)
                         update_stats()
+
+                        if state.get("refresh_dashboard"):
+                            try:
+                                state["refresh_dashboard"]()
+                            except Exception as ex:
+                                print(f"Error calling refresh_dashboard from status change: {ex}")
                     else:
                         show_snackbar("No se pudo actualizar el estado de contacto.", COLORS["warning"])
 
@@ -2070,9 +2118,33 @@ def main(page: ft.Page):
                 on_save_sociedades,
                 calendar_url=state.get("calendar_url", ""),
                 usuario=state.get("username", "broker"),
+                state=state,
+                on_register_visit_click=on_register_visit_click,
             )
             content_area.current.controls = [detail_view]
             safe_update(content_area.current)
+
+    def open_detail_by_matricula(matricula_val):
+        if not matricula_val:
+            return
+        try:
+            from ssn_test import obtener_de_db
+            rec = obtener_de_db(str(matricula_val))
+            if rec:
+                state["detail_back_to_dashboard"] = True
+                state["viewing_dashboard"] = False
+                state["viewing_detail"] = True
+                state["viewing_cartera"] = False
+                state["viewing_admin"] = False
+                state["viewing_profile"] = False
+                sidebar_selected["index"] = 1
+                open_detail(rec)
+            else:
+                show_snackbar("No se encontró el productor en la base de datos local.", color=COLORS["warning"])
+        except Exception as e:
+            print("Error opening detail by matricula:", e)
+
+    state["open_detail_by_matricula"] = open_detail_by_matricula
 
     def on_load_success(records):
         state["records"] = records
@@ -2136,13 +2208,18 @@ def main(page: ft.Page):
             color=COLORS["warning"],
         ))
 
-    def on_login(email: str, password_txt: str):
+    def on_login(email: str, password_txt: str, remember: bool = False):
         success, requiere_cambio, msg_error, rol, user_id = verificar_login_status(email, password_txt)
         if success:
             state["error_login"] = None
             state["username"] = email.strip().lower()
             state["role"] = rol or "agente"
             state["user_id"] = user_id
+            
+            if remember:
+                client.save_credentials(email, password_txt)
+            else:
+                client.clear_credentials()
             
             from ssn_test import obtener_usuarios
             try:
@@ -2204,8 +2281,7 @@ def main(page: ft.Page):
                             update_page_layout()
                             render_content()
                         
-                        import threading
-                        threading.Thread(target=bg_initialize, daemon=True).start()
+                        page.run_thread(bg_initialize)
                     else:
                         show_snackbar("Error al actualizar la contraseña", color=COLORS["warning"])
 
@@ -2268,8 +2344,7 @@ def main(page: ft.Page):
                     update_page_layout()
                     render_content()
                 
-                import threading
-                threading.Thread(target=bg_initialize, daemon=True).start()
+                page.run_thread(bg_initialize)
         else:
             state["error_login"] = msg_error
             update_page_layout()
@@ -2282,11 +2357,17 @@ def main(page: ft.Page):
         state["role"] = None
         state["user_id"] = None
         state["error_login"] = None
+        if "refresh_dashboard" in state:
+            state["refresh_dashboard"] = None
         current_user_context["user_id"] = None
         current_user_context["role"] = None
-        dm.initialize(regional_only=state.get("regional_only", False))
+        
         show_snackbar("Sesión cerrada")
         update_page_layout()
+        
+        def bg_logout_init():
+            dm.initialize(regional_only=state.get("regional_only", False))
+        page.run_thread(bg_logout_init)
 
     def on_forgot_password(username: str):
         if not username:
@@ -2605,47 +2686,44 @@ def main(page: ft.Page):
                 print("Error dynamically reloading user permissions:", ex)
 
         layout_container.bgcolor = COLORS["background"]
-        if not state.get("license_valid", False):
-            from api_client import obtener_fingerprint
-            def clear_lic_error():
-                state["error_license"] = None
-                update_page_layout()
-            lic_card = build_licensing_view(
-                on_activate,
-                error_text=state.get("error_license"),
-                fingerprint=obtener_fingerprint(),
-                on_clear_error=clear_lic_error
-            )
-            content_column.controls = [
-                ft.Container(
-                    content=lic_card,
-                    alignment=ft.Alignment(0, 0),
-                    expand=True,
+        if not state.get("license_valid", False) or not state.get("logged_in", False):
+            if state.get("reactivating_license", False):
+                from ui_components import build_reactivation_loading_view
+                reactivation_view = build_reactivation_loading_view()
+                content_column.controls = [
+                    ft.Container(
+                        content=reactivation_view,
+                        alignment=ft.Alignment(0, 0),
+                        expand=True,
+                    )
+                ]
+                main_row.controls = [content_column]
+            else:
+                from api_client import obtener_fingerprint
+                license_valid = state.get("license_valid", False)
+                initial_tab = "licencia" if not license_valid else "login"
+                
+                login_card = build_login_view(
+                    on_login=on_login,
+                    on_forgot_password=on_forgot_password,
+                    on_activate=on_activate,
+                    license_valid=license_valid,
+                    initial_tab=initial_tab,
+                    error_text=state.get("error_login"),
+                    error_license=state.get("error_license"),
+                    current_license_key=client.license_key,
+                    fingerprint=obtener_fingerprint(),
+                    saved_username=client.saved_username,
+                    saved_password=client.saved_password,
                 )
-            ]
-            main_row.controls = [content_column]
-        elif state.get("reactivating_license", False):
-            from ui_components import build_reactivation_loading_view
-            reactivation_view = build_reactivation_loading_view()
-            content_column.controls = [
-                ft.Container(
-                    content=reactivation_view,
-                    alignment=ft.Alignment(0, 0),
-                    expand=True,
-                )
-            ]
-            main_row.controls = [content_column]
-        elif not state["logged_in"]:
-            # Sin sidebar en login
-            login_card = build_login_view(on_login, on_forgot_password, error_text=state.get("error_login"))
-            content_column.controls = [
-                ft.Container(
-                    content=login_card,
-                    alignment=ft.Alignment(0, 0),
-                    expand=True,
-                )
-            ]
-            main_row.controls = [content_column]
+                content_column.controls = [
+                    ft.Container(
+                        content=login_card,
+                        alignment=ft.Alignment(0, 0),
+                        expand=True,
+                    )
+                ]
+                main_row.controls = [content_column]
         elif state.get("loading_login", False):
             # Pantalla de bienvenida intermedia
             welcome_view = build_welcome_loading_view(state.get("username", ""))
