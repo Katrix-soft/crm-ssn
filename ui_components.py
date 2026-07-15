@@ -4873,7 +4873,8 @@ def build_dashboard_metrics_view(
     )
 
     def open_add_act_dialog(e):
-        page.dialog = add_act_dialog
+        if add_act_dialog not in page.overlay:
+            page.overlay.append(add_act_dialog)
         add_act_dialog.open = True
         try: page.update()
         except: pass
@@ -5089,7 +5090,9 @@ def build_dashboard_metrics_view(
         except: pass
         refresh_dashboard()
     def _open_cand_dialog(e):
-        page.dialog = cand_dialog; cand_dialog.open = True
+        if cand_dialog not in page.overlay:
+            page.overlay.append(cand_dialog)
+        cand_dialog.open = True
         try: page.update()
         except: pass
 
@@ -5191,7 +5194,9 @@ def build_dashboard_metrics_view(
         except: pass
         refresh_dashboard()
     def _open_acc_dialog(e):
-        page.dialog = acc_dialog; acc_dialog.open = True
+        if acc_dialog not in page.overlay:
+            page.overlay.append(acc_dialog)
+        acc_dialog.open = True
         try: page.update()
         except: pass
 
