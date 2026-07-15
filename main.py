@@ -147,7 +147,9 @@ def ejecutar_autoupdate(page: ft.Page, download_url: str, version: str):
         
         def log_trace(msg):
             try:
-                with open("update_debug.txt", "a", encoding="utf-8") as lf:
+                import tempfile
+                log_path = os.path.join(tempfile.gettempdir(), "update_debug.txt")
+                with open(log_path, "a", encoding="utf-8") as lf:
                     lf.write(f"[{time.strftime('%H:%M:%S')}] TRACE: {msg}\n")
             except Exception:
                 pass
@@ -160,8 +162,9 @@ def ejecutar_autoupdate(page: ft.Page, download_url: str, version: str):
                 current_dir = os.path.dirname(current_exe)
                 temp_exe = os.path.join(current_dir, "KatrixBroker_new.exe")
             else:
+                import tempfile
                 current_dir = os.path.dirname(os.path.abspath(__file__))
-                temp_exe = os.path.join(current_dir, "KatrixBroker_latest.exe")
+                temp_exe = os.path.join(tempfile.gettempdir(), "KatrixBroker_latest.exe")
                 
             log_trace(f"temp_exe path resolved: {temp_exe}")
             log_trace(f"Calling requests.get for: {download_url}")
@@ -250,7 +253,7 @@ rm -f "$0"
                     
                 dev_dlg = ft.AlertDialog(
                     title=ft.Text("Modo Desarrollo", size=16, weight=ft.FontWeight.W_700),
-                    content=ft.Text(f"Descarga finalizada. El archivo se guardó como 'KatrixBroker_latest.exe' en {current_dir}.\nNo se reemplazó tu entorno de ejecución Python.", size=13),
+                    content=ft.Text(f"Descarga finalizada. El archivo se guardó como 'KatrixBroker_latest.exe' en {os.path.dirname(temp_exe)}.\nNo se reemplazó tu entorno de ejecución Python.", size=13),
                     actions=[ft.TextButton("Entendido", on_click=close_dev_dlg)]
                 )
                 if dev_dlg not in page.overlay:
@@ -262,7 +265,9 @@ rm -f "$0"
         except Exception as err:
             import traceback
             try:
-                with open("update_debug.txt", "a", encoding="utf-8") as lf:
+                import tempfile
+                log_path = os.path.join(tempfile.gettempdir(), "update_debug.txt")
+                with open(log_path, "a", encoding="utf-8") as lf:
                     lf.write(f"Exception in download_thread: {str(err)}\n")
                     lf.write(traceback.format_exc() + "\n")
             except Exception:
@@ -342,7 +347,9 @@ def iniciar_check_actualizacion(page: ft.Page, client):
         except Exception as e:
             import traceback
             try:
-                with open("update_debug.txt", "a", encoding="utf-8") as lf:
+                import tempfile
+                log_path = os.path.join(tempfile.gettempdir(), "update_debug.txt")
+                with open(log_path, "a", encoding="utf-8") as lf:
                     lf.write(f"Exception in check_update worker: {str(e)}\n")
                     lf.write(traceback.format_exc() + "\n")
             except Exception:
