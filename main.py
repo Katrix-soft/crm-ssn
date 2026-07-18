@@ -2403,6 +2403,17 @@ def main(page: ft.Page):
         update_page_layout()
 
         if content_area.current is not None:
+            def _go_to_cartera():
+                state["viewing_cartera"]   = True
+                state["viewing_dashboard"] = False
+                state["viewing_detail"]    = False
+                state["viewing_admin"]     = False
+                state["viewing_profile"]   = False
+                sidebar_selected["index"]  = 2
+                update_page_layout()
+                render_content()
+                update_header()
+
             detail_view = build_detail_view(
                 record,
                 on_back,
@@ -2417,6 +2428,7 @@ def main(page: ft.Page):
                 usuario=state.get("username", "broker"),
                 state=state,
                 on_register_visit_click=on_register_visit_click,
+                on_go_cartera=_go_to_cartera,
             )
             content_area.current.controls = [detail_view]
             safe_update(content_area.current)

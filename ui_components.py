@@ -1953,6 +1953,7 @@ def build_detail_view(
     usuario: str = "broker",
     state: Optional[Dict[str, Any]] = None,
     on_register_visit_click: Optional[Callable[[Dict[str, Any]], None]] = None,
+    on_go_cartera: Optional[Callable] = None,
 ) -> ft.Container:
     nombre    = record.get(COL_NOMBRE, "Productor")
     matricula = record.get(COL_MATRICULA, "")
@@ -1961,6 +1962,62 @@ def build_detail_view(
 
     # Check for contact info
     has_contact_info = any(record.get(k) and record.get(k) != "—" for k in ["telefono", "email", "provincia"])
+
+    # ── Toggle "En la organización" ──────────────────────────────────────────
+    import ssn_test as _ssn_det
+    _en_org_state = {"value": _ssn_det.get_en_organizacion(matricula)}
+
+    org_btn_ref = ft.Ref[ft.ElevatedButton]()
+
+    def _build_org_btn_style(active: bool):
+        return ft.ButtonStyle(
+            bgcolor="#1B5E20" if active else COLORS["surface"],
+            color="#FFFFFF" if active else COLORS["text_secondary"],
+            side=ft.BorderSide(
+                1.5,
+                "#2E7D32" if active else COLORS["border"],
+            ),
+            shape=ft.RoundedRectangleBorder(radius=8),
+            padding=ft.Padding(14, 10, 14, 10),
+        )
+
+    def _on_org_toggle(e):
+        new_val = not _en_org_state["value"]
+        _en_org_state["value"] = new_val
+        _ssn_det.toggle_en_organizacion(matricula, new_val, usuario)
+        if org_btn_ref.current:
+            org_btn_ref.current.icon = ft.Icons.BUSINESS_CENTER_ROUNDED if new_val else ft.Icons.BUSINESS_CENTER_OUTLINED
+            org_btn_ref.current.text = "En la organización" if new_val else "Sin organización"
+            org_btn_ref.current.style = _build_org_btn_style(new_val)
+            org_btn_ref.current.tooltip = "Quitar de la organización · Ver Cartera" if new_val else "Marcar como miembro de la organización"
+            try:
+                org_btn_ref.current.update()
+            except Exception:
+                pass
+
+    def _on_org_long_press(e):
+        """Ir a la vista Cartera al mantener presionado el botón."""
+        if on_go_cartera:
+            on_go_cartera()
+
+    org_toggle_btn = ft.ElevatedButton(
+        ref=org_btn_ref,
+        text="En la organización" if _en_org_state["value"] else "Sin organización",
+        icon=ft.Icons.BUSINESS_CENTER_ROUNDED if _en_org_state["value"] else ft.Icons.BUSINESS_CENTER_OUTLINED,
+        tooltip="Quitar de la organización · Mantener para ir a Cartera" if _en_org_state["value"] else "Marcar como miembro de la organización · Mantener para ir a Cartera",
+        on_click=_on_org_toggle,
+        style=_build_org_btn_style(_en_org_state["value"]),
+    )
+
+    go_cartera_btn = ft.TextButton(
+        "Ver Cartera →",
+        icon=ft.Icons.FOLDER_SHARED_ROUNDED,
+        icon_color=COLORS["primary"],
+        style=ft.ButtonStyle(color=COLORS["primary"]),
+        on_click=lambda e: on_go_cartera() if on_go_cartera else None,
+        tooltip="Ir a la vista Cartera de Productores",
+        visible=bool(on_go_cartera),
+    )
 
     # Back button, title and copy button
     header_row = ft.Row(
@@ -1978,16 +2035,23 @@ def build_detail_view(
                 ],
                 spacing=8,
             ),
-            ft.ElevatedButton(
-                "Copiar Datos",
-                icon=ft.Icons.CONTENT_COPY_ROUNDED,
-                on_click=lambda e: on_copy(record),
-                style=ft.ButtonStyle(
-                    bgcolor=COLORS["primary"],
-                    color=COLORS["text_on_primary"],
-                    shape=ft.RoundedRectangleBorder(radius=8),
-                    padding=ft.Padding(16, 10, 16, 10),
-                )
+            ft.Row(
+                controls=[
+                    go_cartera_btn,
+                    org_toggle_btn,
+                    ft.ElevatedButton(
+                        "Copiar Datos",
+                        icon=ft.Icons.CONTENT_COPY_ROUNDED,
+                        on_click=lambda e: on_copy(record),
+                        style=ft.ButtonStyle(
+                            bgcolor=COLORS["primary"],
+                            color=COLORS["text_on_primary"],
+                            shape=ft.RoundedRectangleBorder(radius=8),
+                            padding=ft.Padding(16, 10, 16, 10),
+                        )
+                    ),
+                ],
+                spacing=8,
             ),
         ],
         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,

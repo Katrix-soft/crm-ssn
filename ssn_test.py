@@ -349,6 +349,12 @@ def inicializar_db():
     except sqlite3.OperationalError:
         pass
 
+    # Asegurar columna en_organizacion en productores_detalle
+    try:
+        cursor.execute("ALTER TABLE productores_detalle ADD COLUMN en_organizacion INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+
     # Asegurar tabla permisos_visibilidad
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS permisos_visibilidad (
@@ -1451,6 +1457,42 @@ def actualizar_observaciones(matricula: str, observaciones: str, usuario: str = 
         registrar_log(usuario, "OBSERVACIONES_CHANGED", f"Matrícula {matricula}: observaciones actualizadas.")
     return changed
 
+
+def get_en_organizacion(matricula: str) -> bool:
+    """Devuelve True si el productor tiene el flag en_organizacion activo."""
+    if not matricula:
+        return False
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT en_organizacion FROM productores_detalle WHERE matricula = ?", (matricula,))
+        row = cursor.fetchone()
+        conn.close()
+        return bool(row[0]) if row else False
+    except Exception:
+        return False
+
+
+def toggle_en_organizacion(matricula: str, valor: bool, usuario: str = "broker") -> bool:
+    """Activa o desactiva el flag en_organizacion para el productor."""
+    if not matricula:
+        return False
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE productores_detalle SET en_organizacion = ? WHERE matricula = ?",
+            (1 if valor else 0, matricula)
+        )
+        changed = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        if changed:
+            accion = "EN_ORGANIZACION_ACTIVADO" if valor else "EN_ORGANIZACION_DESACTIVADO"
+            registrar_log(usuario, accion, f"Matrícula {matricula}")
+        return changed
+    except Exception:
+        return False
 
 def actualizar_companias(matricula: str, companias: str, usuario: str = "broker") -> bool:
     if not matricula:
