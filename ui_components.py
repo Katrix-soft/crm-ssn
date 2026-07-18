@@ -2012,14 +2012,14 @@ def build_detail_view(
         content=ft.Row(
             controls=[
                 ft.Icon(
+                    ft.Icons.BUSINESS_CENTER_ROUNDED if _active else ft.Icons.BUSINESS_CENTER_OUTLINED,
                     ref=org_icon_ref,
-                    name=ft.Icons.BUSINESS_CENTER_ROUNDED if _active else ft.Icons.BUSINESS_CENTER_OUTLINED,
                     color="#FFFFFF" if _active else COLORS["text_secondary"],
                     size=16,
                 ),
                 ft.Text(
+                    "En la organización" if _active else "Sin organización",
                     ref=org_text_ref,
-                    value="En la organización" if _active else "Sin organización",
                     color="#FFFFFF" if _active else COLORS["text_secondary"],
                     size=13,
                     weight=ft.FontWeight.W_500,
