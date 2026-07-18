@@ -1083,16 +1083,10 @@ def obtener_cartera_db(user_id: int = None, role: str = None, regional_only: boo
         cursor = conn.cursor()
         
         regional_clause = "AND UPPER(p.provincia) IN ('MENDOZA', 'SAN JUAN', 'SAN LUIS')" if regional_only else ""
-        # Filtro de cartera: estado de contacto activo, con pólizas, en visitas, en candidatos, o asignado a un usuario
-        # Se requiere nombre válido para no tener vacíos al principio y restringir a Mendoza y San Juan si regional_only.
+        # Filtro de cartera: ahora los productores de la cartera son exclusivamente los que tienen la marca 'en_organizacion = 1'
+        # Se requiere nombre válido para no tener vacíos al principio y restringir por región si regional_only.
         cartera_filter = f"""
-            (
-                (p.estado_contacto NOT IN ('Sin contactar', 'Sin contacto', '') AND p.estado_contacto IS NOT NULL)
-                OR p.usuario_id IS NOT NULL
-                OR p.matricula IN (SELECT DISTINCT pas_matricula FROM polizas)
-                OR p.matricula IN (SELECT DISTINCT matricula FROM visitas_pas)
-                OR p.matricula IN (SELECT DISTINCT matricula FROM candidatos_captacion)
-            )
+            p.en_organizacion = 1
             AND p.nombre IS NOT NULL AND p.nombre != '' AND p.nombre != '—'
             {regional_clause}
         """
