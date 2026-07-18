@@ -1967,49 +1967,70 @@ def build_detail_view(
     import ssn_test as _ssn_det
     _en_org_state = {"value": _ssn_det.get_en_organizacion(matricula)}
 
-    org_btn_ref = ft.Ref[ft.ElevatedButton]()
+    org_icon_ref = ft.Ref[ft.Icon]()
+    org_text_ref = ft.Ref[ft.Text]()
+    org_btn_ref  = ft.Ref[ft.ElevatedButton]()
+
+    def _get_org_color(active):
+        return "#2E7D32" if active else COLORS["text_secondary"]
 
     def _build_org_btn_style(active: bool):
         return ft.ButtonStyle(
             bgcolor="#1B5E20" if active else COLORS["surface"],
             color="#FFFFFF" if active else COLORS["text_secondary"],
-            side=ft.BorderSide(
-                1.5,
-                "#2E7D32" if active else COLORS["border"],
-            ),
+            side=ft.BorderSide(1.5, "#2E7D32" if active else COLORS["border"]),
             shape=ft.RoundedRectangleBorder(radius=8),
             padding=ft.Padding(14, 10, 14, 10),
+            overlay_color=ft.Colors.with_opacity(0.08, "#2E7D32" if active else COLORS["text_secondary"]),
         )
 
     def _on_org_toggle(e):
         new_val = not _en_org_state["value"]
         _en_org_state["value"] = new_val
         _ssn_det.toggle_en_organizacion(matricula, new_val, usuario)
-        if org_btn_ref.current:
-            try:
-                org_btn_ref.current.text = "En la organización" if new_val else "Sin organización"
-                org_btn_ref.current.icon = ft.Icons.BUSINESS_CENTER_ROUNDED if new_val else ft.Icons.BUSINESS_CENTER_OUTLINED
+        # Actualizar controles internos del botón (siempre funciona en Flet 0.86)
+        try:
+            if org_icon_ref.current:
+                org_icon_ref.current.name = ft.Icons.BUSINESS_CENTER_ROUNDED if new_val else ft.Icons.BUSINESS_CENTER_OUTLINED
+                org_icon_ref.current.color = "#FFFFFF" if new_val else COLORS["text_secondary"]
+                org_icon_ref.current.update()
+            if org_text_ref.current:
+                org_text_ref.current.value = "En la organización" if new_val else "Sin organización"
+                org_text_ref.current.color = "#FFFFFF" if new_val else COLORS["text_secondary"]
+                org_text_ref.current.update()
+            if org_btn_ref.current:
                 org_btn_ref.current.style = _build_org_btn_style(new_val)
-                org_btn_ref.current.tooltip = "Quitar de la organización" if new_val else "Marcar como miembro de la organización"
+                org_btn_ref.current.tooltip = "Quitar de la organización" if new_val else "Agregar a la organización"
                 org_btn_ref.current.update()
-            except Exception:
-                pass
+        except Exception:
+            pass
 
-    def _on_org_long_press(e):
-        """Ir a la vista Cartera al mantener presionado el botón."""
-        if on_go_cartera:
-            on_go_cartera()
-
-    _org_initial_text = "En la organización" if _en_org_state["value"] else "Sin organización"
-    _org_initial_icon = ft.Icons.BUSINESS_CENTER_ROUNDED if _en_org_state["value"] else ft.Icons.BUSINESS_CENTER_OUTLINED
+    _active = _en_org_state["value"]
 
     org_toggle_btn = ft.ElevatedButton(
-        _org_initial_text,
         ref=org_btn_ref,
-        icon=_org_initial_icon,
-        tooltip="Quitar de la organización" if _en_org_state["value"] else "Marcar como miembro de la organización",
+        content=ft.Row(
+            controls=[
+                ft.Icon(
+                    ref=org_icon_ref,
+                    name=ft.Icons.BUSINESS_CENTER_ROUNDED if _active else ft.Icons.BUSINESS_CENTER_OUTLINED,
+                    color="#FFFFFF" if _active else COLORS["text_secondary"],
+                    size=16,
+                ),
+                ft.Text(
+                    ref=org_text_ref,
+                    value="En la organización" if _active else "Sin organización",
+                    color="#FFFFFF" if _active else COLORS["text_secondary"],
+                    size=13,
+                    weight=ft.FontWeight.W_500,
+                ),
+            ],
+            spacing=6,
+            tight=True,
+        ),
+        tooltip="Quitar de la organización" if _active else "Agregar a la organización",
         on_click=_on_org_toggle,
-        style=_build_org_btn_style(_en_org_state["value"]),
+        style=_build_org_btn_style(_active),
     )
 
     go_cartera_btn = ft.TextButton(
@@ -2019,6 +2040,7 @@ def build_detail_view(
         tooltip="Ir a la vista Cartera de Productores",
         visible=bool(on_go_cartera),
     )
+
 
 
     # Back button, title and copy button
