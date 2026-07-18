@@ -1986,11 +1986,11 @@ def build_detail_view(
         _en_org_state["value"] = new_val
         _ssn_det.toggle_en_organizacion(matricula, new_val, usuario)
         if org_btn_ref.current:
-            org_btn_ref.current.icon = ft.Icons.BUSINESS_CENTER_ROUNDED if new_val else ft.Icons.BUSINESS_CENTER_OUTLINED
-            org_btn_ref.current.text = "En la organización" if new_val else "Sin organización"
-            org_btn_ref.current.style = _build_org_btn_style(new_val)
-            org_btn_ref.current.tooltip = "Quitar de la organización · Ver Cartera" if new_val else "Marcar como miembro de la organización"
             try:
+                org_btn_ref.current.text = "En la organización" if new_val else "Sin organización"
+                org_btn_ref.current.icon = ft.Icons.BUSINESS_CENTER_ROUNDED if new_val else ft.Icons.BUSINESS_CENTER_OUTLINED
+                org_btn_ref.current.style = _build_org_btn_style(new_val)
+                org_btn_ref.current.tooltip = "Quitar de la organización" if new_val else "Marcar como miembro de la organización"
                 org_btn_ref.current.update()
             except Exception:
                 pass
@@ -2000,24 +2000,26 @@ def build_detail_view(
         if on_go_cartera:
             on_go_cartera()
 
+    _org_initial_text = "En la organización" if _en_org_state["value"] else "Sin organización"
+    _org_initial_icon = ft.Icons.BUSINESS_CENTER_ROUNDED if _en_org_state["value"] else ft.Icons.BUSINESS_CENTER_OUTLINED
+
     org_toggle_btn = ft.ElevatedButton(
+        _org_initial_text,
         ref=org_btn_ref,
-        text="En la organización" if _en_org_state["value"] else "Sin organización",
-        icon=ft.Icons.BUSINESS_CENTER_ROUNDED if _en_org_state["value"] else ft.Icons.BUSINESS_CENTER_OUTLINED,
-        tooltip="Quitar de la organización · Mantener para ir a Cartera" if _en_org_state["value"] else "Marcar como miembro de la organización · Mantener para ir a Cartera",
+        icon=_org_initial_icon,
+        tooltip="Quitar de la organización" if _en_org_state["value"] else "Marcar como miembro de la organización",
         on_click=_on_org_toggle,
         style=_build_org_btn_style(_en_org_state["value"]),
     )
 
     go_cartera_btn = ft.TextButton(
-        "Ver Cartera →",
+        "Ver Cartera",
         icon=ft.Icons.FOLDER_SHARED_ROUNDED,
-        icon_color=COLORS["primary"],
-        style=ft.ButtonStyle(color=COLORS["primary"]),
         on_click=lambda e: on_go_cartera() if on_go_cartera else None,
         tooltip="Ir a la vista Cartera de Productores",
         visible=bool(on_go_cartera),
     )
+
 
     # Back button, title and copy button
     header_row = ft.Row(
