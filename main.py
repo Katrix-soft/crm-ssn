@@ -1165,6 +1165,28 @@ def main(page: ft.Page):
     def update_header():
         if header_ref.current is not None:
             if state["logged_in"]:
+                # Determinar título según la vista activa
+                if state.get("viewing_cartera"):
+                    header_title = "Cartera de Productores"
+                    header_subtitle = "Gestión y análisis de tu cartera de productores PAS"
+                elif state.get("viewing_dashboard"):
+                    header_title = "Gestión Comercial"
+                    header_subtitle = "Panel de seguimiento y actividad comercial"
+                elif state.get("viewing_admin"):
+                    header_title = "Administración"
+                    header_subtitle = "Gestión de usuarios, licencias y configuración"
+                elif state.get("viewing_profile"):
+                    header_title = "Perfil de Usuario"
+                    header_subtitle = "Configuración y datos de tu cuenta"
+                elif state.get("viewing_detail"):
+                    record = state.get("selected_record") or {}
+                    nombre = record.get("productor_apellido_nombre") or record.get("nombre") or "Productor"
+                    header_title = f"Detalle — {nombre}"
+                    header_subtitle = "Ficha completa del Productor Asesor de Seguros"
+                else:
+                    header_title = "Buscador de Productores"
+                    header_subtitle = "Asesores de Seguros · SSN Argentina"
+
                 new_h = build_header(
                     len(state["records"]),
                     on_logout_click=on_logout,
@@ -1172,6 +1194,8 @@ def main(page: ft.Page):
                     on_theme_click=toggle_theme,
                     on_dashboard_click=open_dashboard_panel,
                     on_profile_click=open_profile_panel,
+                    title=header_title,
+                    subtitle=header_subtitle,
                 )
             else:
                 new_h = build_header(0, on_theme_click=toggle_theme)
@@ -2771,6 +2795,7 @@ def main(page: ft.Page):
             state["viewing_cartera"]   = False
         update_page_layout()
         render_content()
+        update_header()
 
     def build_sidebar():
         is_dark = COLORS["surface"] == "#1E293B"

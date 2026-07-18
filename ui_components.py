@@ -114,6 +114,8 @@ def build_header(
     on_theme_click: Optional[Callable[[Any], None]] = None,
     on_dashboard_click: Optional[Callable[[Any], None]] = None,
     on_profile_click: Optional[Callable[[Any], None]] = None,
+    title: str = "Buscador de Productores",
+    subtitle: str = "Asesores de Seguros · SSN Argentina",
 ) -> ft.Container:
     return ft.Container(
         content=ft.Row(
@@ -123,8 +125,8 @@ def build_header(
                         ft.Icon(ft.Icons.SHIELD_OUTLINED, color=COLORS["header_text"], size=28),
                         ft.Column(
                             controls=[
-                                ft.Text("Buscador de Productores", size=18, weight=ft.FontWeight.W_700, color=COLORS["header_text"]),
-                                ft.Text("Asesores de Seguros · SSN Argentina", size=11, color=ft.Colors.with_opacity(0.8, COLORS["header_text"])),
+                                ft.Text(title, size=18, weight=ft.FontWeight.W_700, color=COLORS["header_text"]),
+                                ft.Text(subtitle, size=11, color=ft.Colors.with_opacity(0.8, COLORS["header_text"])),
                             ],
                             spacing=1, tight=True,
                         ),
