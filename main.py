@@ -1169,23 +1169,40 @@ def main(page: ft.Page):
                 if state.get("viewing_cartera"):
                     header_title = "Cartera de Productores"
                     header_subtitle = "Gestión y análisis de tu cartera de productores PAS"
+                    # Obtener conteo de cartera de la organización
+                    try:
+                        from ssn_test import obtener_cartera_db
+                        cartera = obtener_cartera_db(
+                            user_id=state.get("user_id"),
+                            role=state.get("role"),
+                            regional_only=state.get("regional_only", False),
+                        )
+                        cartera_count = len(cartera) if cartera else 0
+                    except Exception:
+                        cartera_count = 0
+                    header_stat = f"{cartera_count} productor{'es' if cartera_count != 1 else ''} en tu organización"
                 elif state.get("viewing_dashboard"):
                     header_title = "Gestión Comercial"
                     header_subtitle = "Panel de seguimiento y actividad comercial"
+                    header_stat = None
                 elif state.get("viewing_admin"):
                     header_title = "Administración"
                     header_subtitle = "Gestión de usuarios, licencias y configuración"
+                    header_stat = None
                 elif state.get("viewing_profile"):
                     header_title = "Perfil de Usuario"
                     header_subtitle = "Configuración y datos de tu cuenta"
+                    header_stat = None
                 elif state.get("viewing_detail"):
                     record = state.get("selected_record") or {}
                     nombre = record.get("productor_apellido_nombre") or record.get("nombre") or "Productor"
                     header_title = f"Detalle — {nombre}"
                     header_subtitle = "Ficha completa del Productor Asesor de Seguros"
+                    header_stat = None
                 else:
                     header_title = "Buscador de Productores"
                     header_subtitle = "Asesores de Seguros · SSN Argentina"
+                    header_stat = None
 
                 new_h = build_header(
                     len(state["records"]),
@@ -1196,6 +1213,7 @@ def main(page: ft.Page):
                     on_profile_click=open_profile_panel,
                     title=header_title,
                     subtitle=header_subtitle,
+                    stat_label=header_stat,
                 )
             else:
                 new_h = build_header(0, on_theme_click=toggle_theme)

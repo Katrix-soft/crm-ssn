@@ -116,6 +116,7 @@ def build_header(
     on_profile_click: Optional[Callable[[Any], None]] = None,
     title: str = "Buscador de Productores",
     subtitle: str = "Asesores de Seguros · SSN Argentina",
+    stat_label: Optional[str] = None,
 ) -> ft.Container:
     return ft.Container(
         content=ft.Row(
@@ -138,7 +139,7 @@ def build_header(
                     controls=[
                         ft.Container(
                             content=ft.Text(
-                                f"{total_records:,} productores registrados".replace(",", "."),
+                                stat_label if stat_label is not None else f"{total_records:,} productores SSN".replace(",", "."),
                                 size=12,
                                 color=COLORS["primary"] if COLORS["header_bg"] == "#FFFFFF" else ft.Colors.with_opacity(0.85, COLORS["header_text"]),
                                 weight=ft.FontWeight.BOLD if COLORS["header_bg"] == "#FFFFFF" else ft.FontWeight.NORMAL,
