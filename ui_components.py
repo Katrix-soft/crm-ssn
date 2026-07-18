@@ -7132,11 +7132,8 @@ def build_cartera_view(
     search_pas.on_change = on_search_change
 
     # ── Cargar datos ────────────────────────────────────────────────────────
-    try:
-        all_pas = _ssn.obtener_cartera_db(user_id=user_id, role=role) or []
-    except Exception as ex:
-        print("Error cargando PAS:", ex)
-        all_pas = []
+    # TODO: poblar desde fuente externa (API de la organización)
+    all_pas = []
 
     build_pas_list()
     render_empty_detail()
