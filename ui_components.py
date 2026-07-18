@@ -4608,32 +4608,34 @@ def build_dashboard_metrics_view(
             chk.on_change = make_toggle_visita()
             items.append(ft.Container(
                 content=ft.Row([
-                    chk,
                     ft.Column([
                         ft.Row([
-                            ft.Text(v["nombre"], size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                            _status_chip(v.get("campaña") or "Sin Compañía", COLORS["primary"] if v.get("campaña") else "#475569"),
-                        ], spacing=6),
+                            ft.Text(v["nombre"], size=14, weight=ft.FontWeight.W_600, color=COLORS["text_primary"]),
+                            _status_chip(v.get("campaña") or "Sin Compañía", COLORS["primary"] if v.get("campaña") else "#64748b"),
+                        ], spacing=8),
                         ft.Row([
-                            ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED, size=12, color=COLORS["text_secondary"]),
-                            ft.Text(v.get("fecha") or "Sin fecha", size=11, color=COLORS["text_secondary"]),
-                            ft.Container(width=10),
-                            ft.Icon(ft.Icons.LOCATION_ON_ROUNDED, size=12, color=COLORS["text_secondary"]),
-                            ft.Text(v.get("lugar") or "Sin ubicación", size=11, color=COLORS["text_secondary"]),
+                            ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED, size=14, color=COLORS["primary"]),
+                            ft.Text(v.get("fecha") or "Sin fecha", size=12, color=COLORS["text_secondary"]),
+                            ft.Container(width=12),
+                            ft.Icon(ft.Icons.LOCATION_ON_ROUNDED, size=14, color=COLORS["accent"]),
+                            ft.Text(v.get("lugar") or "Sin ubicación", size=12, color=COLORS["text_secondary"]),
                         ], spacing=4) if (v.get("fecha") or v.get("lugar")) else ft.Container(),
-                    ], spacing=3, expand=True),
-                    ft.IconButton(ft.Icons.DELETE_OUTLINE_ROUNDED, icon_color=ft.Colors.RED_400, icon_size=16, on_click=make_del_visita()),
+                    ], spacing=6, expand=True),
+                    ft.Row([
+                        chk,
+                        ft.IconButton(ft.Icons.DELETE_OUTLINE_ROUNDED, icon_color=ft.Colors.RED_400, icon_size=18, on_click=make_del_visita()),
+                    ], spacing=4)
                 ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 bgcolor=COLORS["surface"],
                 border=ft.Border(
-                    left=ft.BorderSide(4, COLORS["success"] if v["estado"]=="realizada" else COLORS["primary"]),
+                    left=ft.BorderSide(6, COLORS["success"] if v["estado"]=="realizada" else COLORS["primary"]),
                     top=ft.BorderSide(1, COLORS["border"]),
                     right=ft.BorderSide(1, COLORS["border"]),
                     bottom=ft.BorderSide(1, COLORS["border"])
                 ),
-                border_radius=8,
-                padding=ft.Padding(16, 12, 16, 12),
-                shadow=ft.BoxShadow(spread_radius=0, blur_radius=4, color=ft.Colors.with_opacity(0.04, "#000000"), offset=ft.Offset(0, 2)),
+                border_radius=12,
+                padding=ft.Padding(20, 16, 16, 16),
+                shadow=ft.BoxShadow(spread_radius=1, blur_radius=8, color=ft.Colors.with_opacity(0.08, "#000000"), offset=ft.Offset(0, 4)),
                 on_click=make_click_visita(v),
             ))
         if not items:
@@ -5159,27 +5161,29 @@ def build_dashboard_metrics_view(
             chk_cand.on_change = make_toggle_cand()
             items.append(ft.Container(
                 content=ft.Row([
-                    chk_cand,
                     ft.Column([
-                        ft.Text(c["nombre"], size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                        ft.Text(c["nombre"], size=14, weight=ft.FontWeight.W_600, color=COLORS["text_primary"]),
                         ft.Row([
-                            ft.Text(f"Mat: {c.get('matricula') or '—'}", size=10, color=COLORS["text_secondary"]),
-                            ft.Text("•", size=10, color=COLORS["text_secondary"]),
-                            ft.Text("Con cartera" if c.get("tiene_cartera") else "Sin cartera", size=10, color=COLORS["text_secondary"]),
-                        ], spacing=4),
-                        ft.Text(c.get("notas") or "", size=10, italic=True, color=COLORS["text_secondary"]),
-                    ], spacing=2, expand=True),
-                    ft.IconButton(ft.Icons.DELETE_OUTLINE_ROUNDED, icon_color=ft.Colors.RED_400, icon_size=16, on_click=make_del_cand()),
-                ], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                            ft.Text(f"Mat: {c.get('matricula') or '—'}", size=12, color=COLORS["text_secondary"]),
+                            ft.Text("•", size=12, color=COLORS["text_secondary"]),
+                            ft.Text("Con cartera" if c.get("tiene_cartera") else "Sin cartera", size=12, color=COLORS["text_secondary"]),
+                        ], spacing=6),
+                        ft.Text(c.get("notas") or "", size=11, italic=True, color=COLORS["text_secondary"]) if c.get("notas") else ft.Container(),
+                    ], spacing=4, expand=True),
+                    ft.Row([
+                        chk_cand,
+                        ft.IconButton(ft.Icons.DELETE_OUTLINE_ROUNDED, icon_color=ft.Colors.RED_400, icon_size=18, on_click=make_del_cand()),
+                    ], spacing=4),
+                ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 bgcolor=COLORS["surface"],
                 border=ft.Border(
-                    left=ft.BorderSide(4, est_color),
+                    left=ft.BorderSide(6, est_color),
                     top=ft.BorderSide(1, COLORS["border"]),
                     right=ft.BorderSide(1, COLORS["border"]),
                     bottom=ft.BorderSide(1, COLORS["border"]),
                 ),
-                border_radius=8, padding=ft.Padding(14, 10, 14, 10),
-                shadow=ft.BoxShadow(spread_radius=0, blur_radius=4, color=ft.Colors.with_opacity(0.04, "#000000"), offset=ft.Offset(0, 2)),
+                border_radius=12, padding=ft.Padding(16, 12, 12, 12),
+                shadow=ft.BoxShadow(spread_radius=1, blur_radius=8, color=ft.Colors.with_opacity(0.08, "#000000"), offset=ft.Offset(0, 4)),
             ))
         candidatos_list_col.controls = items or [ft.Container(
             content=ft.Column([
@@ -5242,8 +5246,8 @@ def build_dashboard_metrics_view(
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             candidatos_list_col,
         ], spacing=12),
-        bgcolor=COLORS["surface"],
-        border=ft.Border.all(1, COLORS["border"]),
+        bgcolor="#F0F9FF",  # Light blue background for Candidatos
+        border=ft.Border.all(1, "#BAE6FD"),
         border_radius=12, padding=16,
     )
 
@@ -5271,25 +5275,24 @@ def build_dashboard_metrics_view(
             tipo_color = {"visita": COLORS["primary"], "llamado": COLORS["accent"], "reunion": COLORS["warning"]}.get(a.get("tipo","").lower(), "#475569")
             items.append(ft.Container(
                 content=ft.Row([
-                    chk_acc,
                     ft.Column([
-                        ft.Row([
-                            ft.Text(a.get("tipo","Acción").capitalize(), size=12, weight=ft.FontWeight.BOLD, color=tipo_color),
-                            ft.Text("•", size=10, color=COLORS["text_secondary"]),
-                            ft.Text(a.get("descripcion") or "Sin descripción", size=12, color=COLORS["text_primary"]),
-                        ], spacing=6),
+                        ft.Text(a.get("tipo","Acción").capitalize(), size=12, weight=ft.FontWeight.BOLD, color=tipo_color),
+                        ft.Text(a.get("descripcion") or "Sin descripción", size=14, color=COLORS["text_primary"]),
                     ], spacing=2, expand=True),
-                    ft.IconButton(ft.Icons.DELETE_OUTLINE_ROUNDED, icon_color=ft.Colors.RED_400, icon_size=16, on_click=make_del_acc()),
-                ], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                    ft.Row([
+                        chk_acc,
+                        ft.IconButton(ft.Icons.DELETE_OUTLINE_ROUNDED, icon_color=ft.Colors.RED_400, icon_size=18, on_click=make_del_acc()),
+                    ], spacing=4),
+                ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 bgcolor=COLORS["surface"],
                 border=ft.Border(
-                    left=ft.BorderSide(4, COLORS["success"] if a["estado"]=="realizada" else tipo_color),
+                    left=ft.BorderSide(6, COLORS["success"] if a["estado"]=="realizada" else tipo_color),
                     top=ft.BorderSide(1, COLORS["border"]),
                     right=ft.BorderSide(1, COLORS["border"]),
                     bottom=ft.BorderSide(1, COLORS["border"]),
                 ),
-                border_radius=8, padding=ft.Padding(14, 10, 14, 10),
-                shadow=ft.BoxShadow(spread_radius=0, blur_radius=4, color=ft.Colors.with_opacity(0.04, "#000000"), offset=ft.Offset(0, 2)),
+                border_radius=12, padding=ft.Padding(16, 12, 12, 12),
+                shadow=ft.BoxShadow(spread_radius=1, blur_radius=8, color=ft.Colors.with_opacity(0.08, "#000000"), offset=ft.Offset(0, 4)),
             ))
         acciones_list_col.controls = items or [ft.Container(
             content=ft.Column([
@@ -5355,8 +5358,8 @@ def build_dashboard_metrics_view(
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             acciones_list_col,
         ], spacing=12),
-        bgcolor=COLORS["surface"],
-        border=ft.Border.all(1, COLORS["border"]),
+        bgcolor="#FFFBEB",  # Light amber background for Acciones
+        border=ft.Border.all(1, "#FDE68A"),
         border_radius=12, padding=16,
     )
 
