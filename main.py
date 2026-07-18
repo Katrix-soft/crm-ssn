@@ -1169,18 +1169,7 @@ def main(page: ft.Page):
                 if state.get("viewing_cartera"):
                     header_title = "Cartera de Productores"
                     header_subtitle = "Gestión y análisis de tu cartera de productores PAS"
-                    # Obtener conteo de cartera de la organización
-                    try:
-                        from ssn_test import obtener_cartera_db
-                        cartera = obtener_cartera_db(
-                            user_id=state.get("user_id"),
-                            role=state.get("role"),
-                            regional_only=state.get("regional_only", False),
-                        )
-                        cartera_count = len(cartera) if cartera else 0
-                    except Exception:
-                        cartera_count = 0
-                    header_stat = f"{cartera_count} productor{'es' if cartera_count != 1 else ''} en tu organización"
+                    header_stat = "0 productores en tu organización"
                 elif state.get("viewing_dashboard"):
                     header_title = "Gestión Comercial"
                     header_subtitle = "Panel de seguimiento y actividad comercial"
