@@ -4633,13 +4633,18 @@ def build_dashboard_metrics_view(
                 ),
                 border_radius=8,
                 padding=ft.Padding(16, 12, 16, 12),
+                shadow=ft.BoxShadow(spread_radius=0, blur_radius=4, color=ft.Colors.with_opacity(0.04, "#000000"), offset=ft.Offset(0, 2)),
                 on_click=make_click_visita(v),
             ))
         if not items:
             pas_list_col.controls = [ft.Container(
-                content=ft.Text("No se encontraron productores con los filtros seleccionados.",
-                                size=12, italic=True, color=COLORS["text_secondary"]),
-                padding=20,
+                content=ft.Column([
+                    ft.Icon(ft.Icons.EVENT_BUSY_ROUNDED, size=48, color=COLORS["border"]),
+                    ft.Text("No hay visitas planificadas", size=14, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
+                    ft.Text("Intentá cambiar los filtros o agregá un nuevo PAS a la lista.", size=12, color=COLORS["text_secondary"], text_align=ft.TextAlign.CENTER),
+                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
+                alignment=ft.alignment.center,
+                padding=40,
             )]
         else:
             pas_list_col.controls = items
@@ -5174,9 +5179,15 @@ def build_dashboard_metrics_view(
                     bottom=ft.BorderSide(1, COLORS["border"]),
                 ),
                 border_radius=8, padding=ft.Padding(14, 10, 14, 10),
+                shadow=ft.BoxShadow(spread_radius=0, blur_radius=4, color=ft.Colors.with_opacity(0.04, "#000000"), offset=ft.Offset(0, 2)),
             ))
         candidatos_list_col.controls = items or [ft.Container(
-            content=ft.Text("No hay candidatos este mes. ¡Agregá uno!", size=12, italic=True, color=COLORS["text_secondary"]), padding=16
+            content=ft.Column([
+                ft.Icon(ft.Icons.PERSON_OFF_ROUNDED, size=40, color=COLORS["border"]),
+                ft.Text("No hay candidatos este mes", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
+                ft.Text("¡Agregá uno para empezar a trackearlos!", size=12, color=COLORS["text_secondary"]),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
+            alignment=ft.alignment.center, padding=30
         )]
         try: candidatos_list_col.update()
         except: pass
@@ -5219,15 +5230,18 @@ def build_dashboard_metrics_view(
         content=ft.Column([
             ft.Row([
                 ft.Row([
-                    ft.Icon(ft.Icons.PERSON_ADD_ALT_1_ROUNDED, size=18, color=COLORS["accent"]),
-                    ft.Text("Captación de Candidatos", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                    candidatos_count_text,
-                ], spacing=6),
+                    ft.Container(
+                        content=ft.Icon(ft.Icons.PERSON_ADD_ALT_1_ROUNDED, size=16, color=COLORS["text_on_primary"]),
+                        bgcolor=COLORS["accent"], padding=6, border_radius=8
+                    ),
+                    ft.Text("Captación de Candidatos", size=14, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                    ft.Container(content=candidatos_count_text, bgcolor=ft.Colors.with_opacity(0.1, COLORS["accent"]), padding=ft.Padding(6,2,6,2), border_radius=12)
+                ], spacing=8),
                 ft.FilledButton("+ Candidato", bgcolor=COLORS["accent"], color=COLORS["text_on_primary"],
-                                on_click=_open_cand_dialog, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)), height=36),
+                                on_click=_open_cand_dialog, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)), height=32),
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             candidatos_list_col,
-        ], spacing=10),
+        ], spacing=12),
         bgcolor=COLORS["surface"],
         border=ft.Border.all(1, COLORS["border"]),
         border_radius=12, padding=16,
@@ -5275,9 +5289,15 @@ def build_dashboard_metrics_view(
                     bottom=ft.BorderSide(1, COLORS["border"]),
                 ),
                 border_radius=8, padding=ft.Padding(14, 10, 14, 10),
+                shadow=ft.BoxShadow(spread_radius=0, blur_radius=4, color=ft.Colors.with_opacity(0.04, "#000000"), offset=ft.Offset(0, 2)),
             ))
         acciones_list_col.controls = items or [ft.Container(
-            content=ft.Text("No hay acciones planificadas. ¡Agregá una!", size=12, italic=True, color=COLORS["text_secondary"]), padding=16
+            content=ft.Column([
+                ft.Icon(ft.Icons.ASSIGNMENT_LATE_ROUNDED, size=40, color=COLORS["border"]),
+                ft.Text("No hay acciones planificadas", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
+                ft.Text("Agregá tareas, llamadas o reuniones para este mes.", size=12, color=COLORS["text_secondary"]),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
+            alignment=ft.alignment.center, padding=30
         )]
         try: acciones_list_col.update()
         except: pass
@@ -5323,15 +5343,18 @@ def build_dashboard_metrics_view(
         content=ft.Column([
             ft.Row([
                 ft.Row([
-                    ft.Icon(ft.Icons.TASK_ALT_ROUNDED, size=18, color=COLORS["warning"]),
-                    ft.Text("Acciones Mensuales", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                    acciones_count_text,
-                ], spacing=6),
+                    ft.Container(
+                        content=ft.Icon(ft.Icons.TASK_ALT_ROUNDED, size=16, color=COLORS["text_on_primary"]),
+                        bgcolor=COLORS["warning"], padding=6, border_radius=8
+                    ),
+                    ft.Text("Acciones Mensuales", size=14, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                    ft.Container(content=acciones_count_text, bgcolor=ft.Colors.with_opacity(0.1, COLORS["warning"]), padding=ft.Padding(6,2,6,2), border_radius=12)
+                ], spacing=8),
                 ft.FilledButton("+ Acción", bgcolor=COLORS["warning"], color=COLORS["text_on_primary"],
-                                on_click=_open_acc_dialog, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)), height=36),
+                                on_click=_open_acc_dialog, style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)), height=32),
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             acciones_list_col,
-        ], spacing=10),
+        ], spacing=12),
         bgcolor=COLORS["surface"],
         border=ft.Border.all(1, COLORS["border"]),
         border_radius=12, padding=16,
