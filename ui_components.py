@@ -4693,12 +4693,44 @@ def build_dashboard_metrics_view(
 
     # ── Diálogo Agregar PAS ────────────────────────────────────────────────
     from datetime import datetime
-    add_nombre_tf = ft.TextField(label="Nombre del PAS *", border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-    add_compania_tf = ft.TextField(label="Compañía", border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13, expand=1)
-    add_matricula_tf = ft.TextField(label="Matrícula (opcional)", border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13, expand=1)
-    add_fecha_tf = ft.TextField(label="Fecha y Hora *", value=datetime.now().strftime("%Y-%m-%d %H:%M"), border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13, expand=1)
-    add_lugar_tf = ft.TextField(label="Lugar / Dirección", border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13, expand=1)
-    add_nota_tf = ft.TextField(label="Nota / Productividad (opcional)", border_color="#94A3B8", focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+    add_nombre_tf = ft.TextField(
+        label="Nombre del PAS *", 
+        prefix_icon=ft.Icons.PERSON_OUTLINE_ROUNDED,
+        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
+    )
+    add_compania_tf = ft.TextField(
+        label="Compañía", 
+        prefix_icon=ft.Icons.BUSINESS_ROUNDED,
+        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
+    )
+    add_matricula_tf = ft.TextField(
+        label="Matrícula (opcional)", 
+        prefix_icon=ft.Icons.BADGE_OUTLINED,
+        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
+    )
+    add_fecha_tf = ft.TextField(
+        label="Fecha y Hora *", 
+        prefix_icon=ft.Icons.CALENDAR_TODAY_ROUNDED,
+        value=datetime.now().strftime("%Y-%m-%d %H:%M"), 
+        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
+    )
+    add_lugar_tf = ft.TextField(
+        label="Lugar / Dirección", 
+        prefix_icon=ft.Icons.LOCATION_ON_OUTLINED,
+        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
+    )
+    add_nota_tf = ft.TextField(
+        label="Nota / Productividad (opcional)", 
+        prefix_icon=ft.Icons.NOTES_ROUNDED,
+        multiline=True, min_lines=2, max_lines=4,
+        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, content_padding=ft.Padding(12, 12, 12, 12)
+    )
     
     def close_dialog(e):
         add_dialog.open = False
@@ -4750,26 +4782,50 @@ def build_dashboard_metrics_view(
         except: pass
         refresh_dashboard()
         
+    add_dialog_title = ft.Row([
+        ft.Icon(ft.Icons.EVENT_AVAILABLE_ROUNDED, color=COLORS["primary"], size=24),
+        ft.Text("Agendar Nueva Visita", size=18, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])
+    ], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
     add_dialog = ft.AlertDialog(
-        title=ft.Text("Agregar Nuevo PAS", weight=ft.FontWeight.BOLD),
+        title=add_dialog_title,
+        title_padding=ft.Padding(24, 24, 24, 0),
+        content_padding=ft.Padding(24, 20, 24, 20),
+        actions_padding=ft.Padding(16, 0, 24, 24),
         content=ft.Container(
             content=ft.Column([
-                ft.Text("DATOS DEL PRODUCTOR (PAS)", size=10, weight=ft.FontWeight.BOLD, color=COLORS["primary"]),
+                ft.Row([
+                    ft.Icon(ft.Icons.ACCOUNT_CIRCLE_ROUNDED, size=16, color=COLORS["primary"]),
+                    ft.Text("DATOS DEL PRODUCTOR (PAS)", size=11, weight=ft.FontWeight.BOLD, color=COLORS["primary"])
+                ], spacing=6),
                 add_nombre_tf,
-                ft.Row([add_compania_tf, add_matricula_tf], spacing=10),
-                ft.Divider(height=10, color=COLORS["divider"]),
-                ft.Text("DETALLES DE LA REUNIÓN / VISITA", size=10, weight=ft.FontWeight.BOLD, color=COLORS["primary"]),
-                add_fecha_tf,
+                ft.Row([add_compania_tf, add_matricula_tf], spacing=12),
+                ft.Divider(height=16, color=COLORS["divider"]),
+                ft.Row([
+                    ft.Icon(ft.Icons.MEETING_ROOM_ROUNDED, size=16, color=COLORS["primary"]),
+                    ft.Text("DETALLES DE LA REUNIÓN / VISITA", size=11, weight=ft.FontWeight.BOLD, color=COLORS["primary"])
+                ], spacing=6),
+                ft.Row([add_fecha_tf, add_lugar_tf], spacing=12),
                 add_nota_tf,
-            ], spacing=12, tight=True),
-            width=550,
-            padding=ft.Padding(0, 10, 0, 10),
+            ], spacing=14, tight=True),
+            width=600,
         ),
         actions=[
-            ft.TextButton("Cancelar", on_click=close_dialog),
-            ft.FilledButton("Guardar", bgcolor=COLORS["primary"], on_click=save_new_pas),
+            ft.TextButton(
+                "Cancelar", 
+                style=ft.ButtonStyle(color=COLORS["text_secondary"]),
+                on_click=close_dialog
+            ),
+            ft.FilledButton(
+                "Guardar Visita", 
+                bgcolor=COLORS["primary"], 
+                icon=ft.Icons.SAVE_ROUNDED,
+                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+                on_click=save_new_pas
+            ),
         ],
         actions_alignment=ft.MainAxisAlignment.END,
+        shape=ft.RoundedRectangleBorder(radius=16)
     )
     
     def open_add_pas_dialog(e):
@@ -4778,7 +4834,12 @@ def build_dashboard_metrics_view(
             if state and state.get("prefill_new_visit"):
                 prefill = state.pop("prefill_new_visit")
                 print(f"[dialog] Prefilling data: {prefill}")
-                add_dialog.title = ft.Text(f"Agendar Visita/Reunión con {prefill.get('nombre')}", weight=ft.FontWeight.BOLD)
+                
+                # Override title with prefill info using the same style
+                add_dialog.title = ft.Row([
+                    ft.Icon(ft.Icons.EVENT_AVAILABLE_ROUNDED, color=COLORS["primary"], size=24),
+                    ft.Text(f"Agendar Visita con {prefill.get('nombre')}", size=18, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])
+                ], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER)
                 
                 # Assign values for backend saving
                 add_nombre_tf.value = prefill.get("nombre") or ""
@@ -5253,19 +5314,72 @@ def build_dashboard_metrics_view(
         try: candidatos_list_col.update()
         except: pass
 
-    # Diálogo agregar candidato
-    cand_nombre_tf = ft.TextField(label="Nombre *", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-    cand_matricula_tf = ft.TextField(label="Matrícula (opcional)", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-    cand_notas_tf = ft.TextField(label="Notas", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-    cand_cartera_chk = ft.Checkbox(label="¿Tiene cartera propia?", value=False, fill_color=COLORS["primary"])
+    cand_nombre_tf = ft.TextField(
+        label="Nombre Completo *", 
+        prefix_icon=ft.Icons.PERSON_OUTLINE_ROUNDED,
+        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
+    )
+    cand_matricula_tf = ft.TextField(
+        label="Matrícula (Opcional)", 
+        prefix_icon=ft.Icons.BADGE_OUTLINED,
+        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
+    )
+    cand_notas_tf = ft.TextField(
+        label="Notas o Comentarios", 
+        prefix_icon=ft.Icons.STICKY_NOTE_2_OUTLINED,
+        multiline=True, min_lines=2, max_lines=4,
+        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, content_padding=ft.Padding(12, 12, 12, 12)
+    )
+    cand_cartera_chk = ft.Switch(
+        label="¿Tiene cartera propia?", 
+        value=False, 
+        active_color=COLORS["primary"],
+        label_position=ft.LabelPosition.LEFT
+    )
+    
+    cand_dialog_title = ft.Row([
+        ft.Icon(ft.Icons.PERSON_ADD_ALT_1_ROUNDED, color=COLORS["primary"], size=24),
+        ft.Text("Nuevo Candidato", size=18, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])
+    ], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
     cand_dialog = ft.AlertDialog(
-        title=ft.Text("Agregar Candidato", weight=ft.FontWeight.BOLD),
-        content=ft.Column([cand_nombre_tf, cand_matricula_tf, cand_cartera_chk, cand_notas_tf], spacing=10, tight=True, width=380),
+        title=cand_dialog_title,
+        title_padding=ft.Padding(24, 24, 24, 0),
+        content_padding=ft.Padding(24, 20, 24, 20),
+        actions_padding=ft.Padding(16, 0, 24, 24),
+        content=ft.Container(
+            content=ft.Column([
+                cand_nombre_tf, 
+                cand_matricula_tf,
+                ft.Container(
+                    content=cand_cartera_chk,
+                    padding=ft.Padding(12, 4, 12, 4),
+                    bgcolor=COLORS["surface"],
+                    border=ft.Border.all(1, COLORS["border"]),
+                    border_radius=12
+                ),
+                cand_notas_tf
+            ], spacing=16, tight=True, width=400),
+        ),
         actions=[
-            ft.TextButton("Cancelar", on_click=lambda e: (setattr(cand_dialog, 'open', False), page.update())),
-            ft.FilledButton("Guardar", bgcolor=COLORS["primary"], on_click=lambda e: _save_candidato(e)),
+            ft.TextButton(
+                "Cancelar", 
+                style=ft.ButtonStyle(color=COLORS["text_secondary"]),
+                on_click=lambda e: (setattr(cand_dialog, 'open', False), page.update())
+            ),
+            ft.FilledButton(
+                "Guardar Candidato", 
+                bgcolor=COLORS["primary"], 
+                icon=ft.Icons.SAVE_ROUNDED,
+                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+                on_click=lambda e: _save_candidato(e)
+            ),
         ],
         actions_alignment=ft.MainAxisAlignment.END,
+        shape=ft.RoundedRectangleBorder(radius=16)
     )
     def _save_candidato(e):
         nombre = (cand_nombre_tf.value or "").strip()
@@ -5391,19 +5505,49 @@ def build_dashboard_metrics_view(
     # Diálogo agregar acción
     acc_tipo_dropdown = ft.Dropdown(
         label="Tipo de Acción",
+        prefix_icon=ft.Icons.CATEGORY_ROUNDED,
         options=[ft.dropdown.Option(t, t.capitalize()) for t in ["visita", "llamado", "reunion", "email", "otro"]],
         value="visita",
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13,
+        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
     )
-    acc_desc_tf = ft.TextField(label="Descripción *", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+    acc_desc_tf = ft.TextField(
+        label="Descripción de la tarea *", 
+        prefix_icon=ft.Icons.DESCRIPTION_OUTLINED,
+        multiline=True, min_lines=2, max_lines=4,
+        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, content_padding=ft.Padding(12, 12, 12, 12)
+    )
+    
+    acc_dialog_title = ft.Row([
+        ft.Icon(ft.Icons.ADD_TASK_ROUNDED, color=COLORS["warning"], size=24),
+        ft.Text("Nueva Acción", size=18, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])
+    ], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
     acc_dialog = ft.AlertDialog(
-        title=ft.Text("Agregar Acción Mensual", weight=ft.FontWeight.BOLD),
-        content=ft.Column([acc_tipo_dropdown, acc_desc_tf], spacing=10, tight=True, width=380),
+        title=acc_dialog_title,
+        title_padding=ft.Padding(24, 24, 24, 0),
+        content_padding=ft.Padding(24, 20, 24, 20),
+        actions_padding=ft.Padding(16, 0, 24, 24),
+        content=ft.Container(
+            content=ft.Column([acc_tipo_dropdown, acc_desc_tf], spacing=16, tight=True, width=400)
+        ),
         actions=[
-            ft.TextButton("Cancelar", on_click=lambda e: (setattr(acc_dialog, 'open', False), page.update())),
-            ft.FilledButton("Guardar", bgcolor=COLORS["warning"], on_click=lambda e: _save_accion(e)),
+            ft.TextButton(
+                "Cancelar", 
+                style=ft.ButtonStyle(color=COLORS["text_secondary"]),
+                on_click=lambda e: (setattr(acc_dialog, 'open', False), page.update())
+            ),
+            ft.FilledButton(
+                "Guardar Acción", 
+                bgcolor=COLORS["warning"], 
+                icon=ft.Icons.SAVE_ROUNDED,
+                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+                on_click=lambda e: _save_accion(e)
+            ),
         ],
         actions_alignment=ft.MainAxisAlignment.END,
+        shape=ft.RoundedRectangleBorder(radius=16)
     )
     def _save_accion(e):
         desc = (acc_desc_tf.value or "").strip()
