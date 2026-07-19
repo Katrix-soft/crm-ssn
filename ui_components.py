@@ -4650,7 +4650,7 @@ def build_dashboard_metrics_view(
                     ft.Text("No hay visitas planificadas", size=14, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
                     ft.Text("Intentá cambiar los filtros o agregá un nuevo PAS a la lista.", size=12, color=COLORS["text_secondary"], text_align=ft.TextAlign.CENTER),
                 ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
-                alignment=ft.alignment.center,
+                alignment=ft.Alignment(0, 0),
                 padding=40,
             )]
         else:
@@ -5196,7 +5196,7 @@ def build_dashboard_metrics_view(
                 ft.Text("No hay candidatos este mes", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
                 ft.Text("¡Agregá uno para empezar a trackearlos!", size=12, color=COLORS["text_secondary"]),
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
-            alignment=ft.alignment.center, padding=30
+            alignment=ft.Alignment(0, 0), padding=30
         )]
         try: candidatos_list_col.update()
         except: pass
@@ -5305,7 +5305,7 @@ def build_dashboard_metrics_view(
                 ft.Text("No hay acciones planificadas", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
                 ft.Text("Agregá tareas, llamadas o reuniones para este mes.", size=12, color=COLORS["text_secondary"]),
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
-            alignment=ft.alignment.center, padding=30
+            alignment=ft.Alignment(0, 0), padding=30
         )]
         try: acciones_list_col.update()
         except: pass
