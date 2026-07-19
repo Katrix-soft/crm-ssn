@@ -4999,14 +4999,46 @@ def build_dashboard_metrics_view(
     )
 
     # Diálogo Agregar Actividad Manualmente
-    add_act_nombre_tf = ft.TextField(label="Nombre del Productor *", border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-    add_act_compania_tf = ft.TextField(label="Compañía", border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+    def on_act_date_change(e):
+        if add_act_date_picker.value:
+            add_act_fecha_tf.value = add_act_date_picker.value.strftime("%Y-%m-%d")
+            add_act_fecha_tf.error_text = None
+            try: add_act_fecha_tf.update()
+            except: pass
+
+    add_act_date_picker = ft.DatePicker(
+        on_change=on_act_date_change,
+        first_date=_dt(2020, 1, 1),
+        last_date=_dt(2035, 12, 31),
+    )
+
+    btn_act_date = ft.IconButton(
+        icon=ft.Icons.CALENDAR_MONTH_ROUNDED,
+        icon_color=COLORS["primary"],
+        on_click=lambda _: add_act_date_picker.pick_date(),
+    )
+
+    add_act_nombre_tf = ft.TextField(
+        label="Nombre del Productor *", 
+        prefix_icon=ft.Icons.PERSON_OUTLINE_ROUNDED,
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
+    )
+    add_act_compania_tf = ft.TextField(
+        label="Compañía", 
+        prefix_icon=ft.Icons.BUSINESS_ROUNDED,
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
+    )
     add_act_tipo_dropdown = ft.Dropdown(
         label="Tipo de Actividad",
         border_color="#94A3B8", bgcolor=COLORS["surface"],
         focused_border_color=COLORS["primary"],
-        border_radius=8,
+        border_radius=12,
         text_size=13,
+        height=48,
+        expand=1,
+        content_padding=ft.Padding(12, 0, 12, 0),
         options=[
             ft.dropdown.Option("Llamado", "Llamado Telefónico"),
             ft.dropdown.Option("Reunión", "Reunión Presencial"),
@@ -5015,13 +5047,24 @@ def build_dashboard_metrics_view(
     )
     add_act_fecha_tf = ft.TextField(
         label="Fecha (AAAA-MM-DD) *",
+        prefix_icon=ft.Icons.CALENDAR_TODAY_ROUNDED,
+        suffix=btn_act_date,
+        expand=1,
         value=_dt.now().strftime("%Y-%m-%d"),
         border_color="#94A3B8", bgcolor=COLORS["surface"],
         focused_border_color=COLORS["primary"],
-        border_radius=8,
-        text_size=13
+        border_radius=12,
+        text_size=13,
+        height=48,
+        content_padding=ft.Padding(12, 0, 12, 0)
     )
-    add_act_obs_tf = ft.TextField(label="Observaciones (opcional)", border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+    add_act_obs_tf = ft.TextField(
+        label="Observaciones (opcional)", 
+        prefix_icon=ft.Icons.NOTES_ROUNDED,
+        multiline=True, min_lines=2, max_lines=4,
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
+        border_radius=12, text_size=13, content_padding=ft.Padding(12, 12, 12, 12)
+    )
 
     def close_act_dialog(e):
         add_act_dialog.open = False
@@ -5074,23 +5117,50 @@ def build_dashboard_metrics_view(
         show_snackbar("Actividad registrada con éxito")
         refresh_dashboard()
 
+    add_act_dialog_title = ft.Row([
+        ft.Icon(ft.Icons.ADD_TASK_ROUNDED, color=COLORS["primary"], size=24),
+        ft.Text("Registrar Actividad Comercial", size=18, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])
+    ], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
     add_act_dialog = ft.AlertDialog(
-        title=ft.Text("Registrar Actividad Comercial", weight=ft.FontWeight.BOLD),
-        content=ft.Column([
-            add_act_nombre_tf,
-            add_act_compania_tf,
-            add_act_tipo_dropdown,
-            add_act_fecha_tf,
-            add_act_obs_tf,
-        ], spacing=10, tight=True, width=400),
+        title=add_act_dialog_title,
+        title_padding=ft.Padding(24, 24, 24, 0),
+        content_padding=ft.Padding(24, 20, 24, 20),
+        actions_padding=ft.Padding(16, 0, 24, 24),
+        content=ft.Container(
+            content=ft.Column([
+                ft.Row([
+                    ft.Icon(ft.Icons.INFO_OUTLINE_ROUNDED, size=16, color=COLORS["primary"]),
+                    ft.Text("DETALLES DE LA ACTIVIDAD", size=11, weight=ft.FontWeight.BOLD, color=COLORS["primary"])
+                ], spacing=6),
+                add_act_nombre_tf,
+                add_act_compania_tf,
+                ft.Row([add_act_tipo_dropdown, add_act_fecha_tf], spacing=12),
+                add_act_obs_tf,
+            ], spacing=14, tight=True),
+            width=550,
+        ),
         actions=[
-            ft.TextButton("Cancelar", on_click=close_act_dialog),
-            ft.FilledButton("Guardar", bgcolor=COLORS["primary"], on_click=save_new_activity),
+            ft.TextButton(
+                "Cancelar", 
+                style=ft.ButtonStyle(color=COLORS["text_secondary"]),
+                on_click=close_act_dialog
+            ),
+            ft.FilledButton(
+                "Guardar Actividad", 
+                bgcolor=COLORS["primary"], 
+                icon=ft.Icons.SAVE_ROUNDED,
+                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+                on_click=save_new_activity
+            ),
         ],
         actions_alignment=ft.MainAxisAlignment.END,
+        shape=ft.RoundedRectangleBorder(radius=16)
     )
 
     def open_add_act_dialog(e):
+        if add_act_date_picker not in page.overlay:
+            page.overlay.append(add_act_date_picker)
         if add_act_dialog not in page.overlay:
             page.overlay.append(add_act_dialog)
         add_act_dialog.open = True
