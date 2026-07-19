@@ -5012,10 +5012,15 @@ def build_dashboard_metrics_view(
         last_date=_dt(2035, 12, 31),
     )
 
+    def open_date_picker(e):
+        add_act_date_picker.open = True
+        try: page.update()
+        except: pass
+
     btn_act_date = ft.IconButton(
         icon=ft.Icons.CALENDAR_MONTH_ROUNDED,
         icon_color=COLORS["primary"],
-        on_click=lambda _: add_act_date_picker.pick_date(),
+        on_click=open_date_picker,
     )
 
     add_act_nombre_tf = ft.TextField(
