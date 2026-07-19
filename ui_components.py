@@ -5183,16 +5183,20 @@ def build_dashboard_metrics_view(
 
     excel_filters_row = ft.Row(
         controls=[excel_search_field, excel_type_btn, btn_sync_excel, btn_add_excel],
-        spacing=10,
+        spacing=12,
         alignment=ft.MainAxisAlignment.START,
         vertical_alignment=ft.CrossAxisAlignment.CENTER,
     )
     excel_filters_container = ft.Container(
         content=excel_filters_row,
         bgcolor=COLORS["surface"],
-        border=ft.Border.all(1, COLORS["border"]),
-        border_radius=12,
+        border_radius=16,
         padding=ft.Padding(16, 12, 16, 12),
+        shadow=ft.BoxShadow(
+            spread_radius=0, blur_radius=8,
+            color=ft.Colors.with_opacity(0.05, ft.Colors.BLACK),
+            offset=ft.Offset(0, 2)
+        )
     )
 
     activities_list_col = ft.Column(spacing=8, scroll=ft.ScrollMode.AUTO, expand=True)
@@ -5202,23 +5206,23 @@ def build_dashboard_metrics_view(
         return ft.Container(
             content=ft.Row([
                 ft.Container(
-                    content=ft.Icon(icon, color=color, size=22),
+                    content=ft.Icon(icon, color=color, size=24),
                     bgcolor=ft.Colors.with_opacity(0.12, color),
-                    border_radius=8, padding=10,
+                    border_radius=12, padding=12,
                 ),
                 ft.Column([
-                    ft.Text(str(value), size=24, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                    ft.Text(title, size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                ], spacing=1, tight=True),
-            ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                    ft.Text(str(value), size=28, weight=ft.FontWeight.W_800, color=COLORS["text_primary"]),
+                    ft.Text(title, size=13, weight=ft.FontWeight.W_500, color=COLORS["text_secondary"]),
+                ], spacing=2, tight=True),
+            ], spacing=16, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             bgcolor=COLORS["surface"],
-            border=ft.Border(
-                left=ft.BorderSide(4, color),
-                top=ft.BorderSide(1, COLORS["border"]),
-                right=ft.BorderSide(1, COLORS["border"]),
-                bottom=ft.BorderSide(1, COLORS["border"])
-            ),
-            border_radius=12, padding=14, expand=True,
+            border=ft.Border.all(1, COLORS["border"]),
+            border_radius=16, padding=20, expand=True,
+            shadow=ft.BoxShadow(
+                spread_radius=0, blur_radius=10,
+                color=ft.Colors.with_opacity(0.04, ft.Colors.BLACK),
+                offset=ft.Offset(0, 4)
+            )
         )
 
     card_excel_calls = excel_kpi_card("Llamados Telefónicos", "0", ft.Icons.PHONE_ROUNDED, ft.Colors.BLUE_700)
@@ -5253,25 +5257,26 @@ def build_dashboard_metrics_view(
             items.append(ft.Container(
                 content=ft.Row([
                     ft.Container(
-                        content=type_icon if isinstance(type_icon, ft.Control) else ft.Icon(type_icon, color=type_color, size=16),
+                        content=type_icon if isinstance(type_icon, ft.Control) else ft.Icon(type_icon, color=type_color, size=18),
                         bgcolor=ft.Colors.with_opacity(0.12, type_color),
-                        border_radius=6, padding=6,
+                        border_radius=10, padding=10,
                     ),
                     ft.Column([
                         ft.Row([
-                            ft.Text(a["nombre"], size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                            _status_chip(a.get("compania") or "Sin Compañía", COLORS["primary"] if a.get("compania") else "#475569"),
-                        ], spacing=6),
+                            ft.Text(a["nombre"], size=14, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                            _status_chip(a.get("compania") or "Sin Compañía", COLORS["primary"] if a.get("compania") else "#64748B"),
+                        ], spacing=8),
                         ft.Row([
-                            ft.Text(f"Fecha: {a['fecha_actividad']}", size=11, color=COLORS["text_secondary"]),
-                            ft.Text("•", size=11, color=COLORS["text_secondary"]),
-                            ft.Text(a["tipo"], size=11, weight=ft.FontWeight.BOLD, color=type_color),
-                            ft.Text("•", size=11, color=COLORS["text_secondary"]),
-                            ft.Text(a.get("observaciones") or "Sin observaciones", size=11, italic=True, color=COLORS["text_secondary"], max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                        ], spacing=6),
-                    ], spacing=2, expand=True),
-                    ft.IconButton(ft.Icons.DELETE_OUTLINE_ROUNDED, icon_color=ft.Colors.RED_400, icon_size=16, on_click=make_del_act()),
-                ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                            ft.Icon(ft.Icons.CALENDAR_TODAY_ROUNDED, size=12, color=COLORS["text_secondary"]),
+                            ft.Text(a['fecha_actividad'], size=12, color=COLORS["text_secondary"]),
+                            ft.Text("•", size=12, color=COLORS["text_secondary"]),
+                            ft.Text(a["tipo"], size=12, weight=ft.FontWeight.BOLD, color=type_color),
+                            ft.Text("•", size=12, color=COLORS["text_secondary"]),
+                            ft.Text(a.get("observaciones") or "Sin observaciones", size=12, italic=True, color=COLORS["text_secondary"], max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
+                        ], spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                    ], spacing=4, expand=True),
+                    ft.IconButton(ft.Icons.DELETE_OUTLINE_ROUNDED, icon_color=ft.Colors.RED_400, icon_size=18, on_click=make_del_act()),
+                ], spacing=16, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 bgcolor=COLORS["surface"],
                 border=ft.Border(
                     left=ft.BorderSide(4, type_color),
@@ -5279,8 +5284,14 @@ def build_dashboard_metrics_view(
                     right=ft.BorderSide(1, COLORS["border"]),
                     bottom=ft.BorderSide(1, COLORS["border"])
                 ),
-                border_radius=8,
-                padding=ft.Padding(16, 12, 16, 12),
+                border_radius=12,
+                padding=ft.Padding(16, 16, 16, 16),
+                shadow=ft.BoxShadow(
+                    spread_radius=0, blur_radius=4,
+                    color=ft.Colors.with_opacity(0.02, ft.Colors.BLACK),
+                    offset=ft.Offset(0, 2)
+                ),
+                margin=ft.Margin(0, 0, 0, 4)
             ))
             
         if not items:
