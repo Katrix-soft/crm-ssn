@@ -4696,39 +4696,39 @@ def build_dashboard_metrics_view(
     add_nombre_tf = ft.TextField(
         label="Nombre del PAS *", 
         prefix_icon=ft.Icons.PERSON_OUTLINE_ROUNDED,
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
     )
     add_compania_tf = ft.TextField(
         label="Compañía", 
         prefix_icon=ft.Icons.BUSINESS_ROUNDED,
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
     )
     add_matricula_tf = ft.TextField(
         label="Matrícula (opcional)", 
         prefix_icon=ft.Icons.BADGE_OUTLINED,
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
     )
     add_fecha_tf = ft.TextField(
         label="Fecha y Hora *", 
         prefix_icon=ft.Icons.CALENDAR_TODAY_ROUNDED,
         value=datetime.now().strftime("%Y-%m-%d %H:%M"), 
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
     )
     add_lugar_tf = ft.TextField(
         label="Lugar / Dirección", 
         prefix_icon=ft.Icons.LOCATION_ON_OUTLINED,
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
     )
     add_nota_tf = ft.TextField(
         label="Nota / Productividad (opcional)", 
         prefix_icon=ft.Icons.NOTES_ROUNDED,
         multiline=True, min_lines=2, max_lines=4,
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, content_padding=ft.Padding(12, 12, 12, 12)
     )
     
@@ -4922,7 +4922,7 @@ def build_dashboard_metrics_view(
     excel_search_field = ft.TextField(
         hint_text="Buscar por nombre o compañía...",
         prefix_icon=ft.Icons.SEARCH_ROUNDED,
-        border_color=COLORS["border"],
+        border_color="#94A3B8", bgcolor=COLORS["surface"],
         focused_border_color=COLORS["primary"],
         border_radius=8,
         text_size=13,
@@ -4999,11 +4999,11 @@ def build_dashboard_metrics_view(
     )
 
     # Diálogo Agregar Actividad Manualmente
-    add_act_nombre_tf = ft.TextField(label="Nombre del Productor *", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-    add_act_compania_tf = ft.TextField(label="Compañía", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+    add_act_nombre_tf = ft.TextField(label="Nombre del Productor *", border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+    add_act_compania_tf = ft.TextField(label="Compañía", border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
     add_act_tipo_dropdown = ft.Dropdown(
         label="Tipo de Actividad",
-        border_color=COLORS["border"],
+        border_color="#94A3B8", bgcolor=COLORS["surface"],
         focused_border_color=COLORS["primary"],
         border_radius=8,
         text_size=13,
@@ -5016,12 +5016,12 @@ def build_dashboard_metrics_view(
     add_act_fecha_tf = ft.TextField(
         label="Fecha (AAAA-MM-DD) *",
         value=_dt.now().strftime("%Y-%m-%d"),
-        border_color=COLORS["border"],
+        border_color="#94A3B8", bgcolor=COLORS["surface"],
         focused_border_color=COLORS["primary"],
         border_radius=8,
         text_size=13
     )
-    add_act_obs_tf = ft.TextField(label="Observaciones (opcional)", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+    add_act_obs_tf = ft.TextField(label="Observaciones (opcional)", border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
 
     def close_act_dialog(e):
         add_act_dialog.open = False
@@ -5317,20 +5317,20 @@ def build_dashboard_metrics_view(
     cand_nombre_tf = ft.TextField(
         label="Nombre Completo *", 
         prefix_icon=ft.Icons.PERSON_OUTLINE_ROUNDED,
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
     )
     cand_matricula_tf = ft.TextField(
         label="Matrícula (Opcional)", 
         prefix_icon=ft.Icons.BADGE_OUTLINED,
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
     )
     cand_notas_tf = ft.TextField(
         label="Notas o Comentarios", 
         prefix_icon=ft.Icons.STICKY_NOTE_2_OUTLINED,
         multiline=True, min_lines=2, max_lines=4,
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, content_padding=ft.Padding(12, 12, 12, 12)
     )
     cand_cartera_chk = ft.Switch(
@@ -5507,14 +5507,14 @@ def build_dashboard_metrics_view(
         label="Tipo de Acción",
         options=[ft.dropdown.Option(t, t.capitalize()) for t in ["visita", "llamado", "reunion", "email", "otro"]],
         value="visita",
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
     )
     acc_desc_tf = ft.TextField(
         label="Descripción de la tarea *", 
         prefix_icon=ft.Icons.DESCRIPTION_OUTLINED,
         multiline=True, min_lines=2, max_lines=4,
-        border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, content_padding=ft.Padding(12, 12, 12, 12)
     )
     
@@ -6237,7 +6237,7 @@ def build_profile_view(
     uname_field = ft.TextField(
         value=curr_uname, 
         label="Nombre de Usuario", 
-        border_color=COLORS["border"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], 
         focused_border_color=COLORS["primary"], 
         border_radius=8, 
         text_size=14,
@@ -6248,7 +6248,7 @@ def build_profile_view(
     email_field = ft.TextField(
         value=curr_email, 
         label="Correo Electrónico", 
-        border_color=COLORS["border"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], 
         focused_border_color=COLORS["primary"], 
         border_radius=8, 
         text_size=14,
@@ -6258,7 +6258,7 @@ def build_profile_view(
         label="Nueva Contraseña", 
         password=True, 
         can_reveal_password=True, 
-        border_color=COLORS["border"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], 
         focused_border_color=COLORS["primary"], 
         border_radius=8, 
         text_size=14,
@@ -6268,7 +6268,7 @@ def build_profile_view(
     calendar_url_field = ft.TextField(
         value=state.get("calendar_url", ""), 
         label="Mi Enlace de Cal.com / Agenda (URL)", 
-        border_color=COLORS["border"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], 
         focused_border_color=COLORS["primary"], 
         border_radius=8, 
         text_size=14,
@@ -6507,7 +6507,7 @@ def build_profile_view(
                         ft.dropdown.Option("admin", "Admin"),
                         ft.dropdown.Option("agente", "Agente"),
                     ],
-                    border_color=COLORS["border"],
+                    border_color="#94A3B8", bgcolor=COLORS["surface"],
                     focused_border_color=COLORS["primary"],
                     border_radius=6,
                     height=30,
@@ -6638,9 +6638,9 @@ def build_profile_view(
         print("[DEBUG] open_create_user_dialog profile clicked!")
         import traceback
         try:
-            uname_field = ft.TextField(label="Nombre de Usuario", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-            email_field = ft.TextField(label="Correo Electrónico", border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
-            pass_field = ft.TextField(label="Contraseña", password=True, can_reveal_password=True, border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+            uname_field = ft.TextField(label="Nombre de Usuario", border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+            email_field = ft.TextField(label="Correo Electrónico", border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+            pass_field = ft.TextField(label="Contraseña", password=True, can_reveal_password=True, border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
             role_field = ft.Dropdown(
                 label="Rol de Usuario",
                 options=[
@@ -6648,7 +6648,7 @@ def build_profile_view(
                     ft.dropdown.Option("admin", "Admin"),
                 ],
                 value="agente",
-                border_color=COLORS["border"],
+                border_color="#94A3B8", bgcolor=COLORS["surface"],
                 focused_border_color=COLORS["primary"],
                 border_radius=8,
                 text_size=13,
@@ -6656,7 +6656,7 @@ def build_profile_view(
             
             matricula_field = ft.TextField(
                 label="Matrícula Asociada (opcional)",
-                border_color=COLORS["border"],
+                border_color="#94A3B8", bgcolor=COLORS["surface"],
                 focused_border_color=COLORS["primary"],
                 border_radius=8,
                 text_size=13
@@ -6806,7 +6806,7 @@ def build_profile_view(
         uname_field_e = ft.TextField(
             value=username, 
             label="Nombre de Usuario", 
-            border_color=COLORS["border"], 
+            border_color="#94A3B8", bgcolor=COLORS["surface"], 
             focused_border_color=COLORS["primary"], 
             border_radius=8, 
             text_size=13
@@ -6814,7 +6814,7 @@ def build_profile_view(
         email_field_e = ft.TextField(
             value=email, 
             label="Correo Electrónico", 
-            border_color=COLORS["border"], 
+            border_color="#94A3B8", bgcolor=COLORS["surface"], 
             focused_border_color=COLORS["primary"], 
             border_radius=8, 
             text_size=13
@@ -6826,7 +6826,7 @@ def build_profile_view(
                 ft.dropdown.Option("admin", "Admin"),
             ],
             value=rol,
-            border_color=COLORS["border"],
+            border_color="#94A3B8", bgcolor=COLORS["surface"],
             focused_border_color=COLORS["primary"],
             border_radius=8,
             text_size=13,
@@ -6835,7 +6835,7 @@ def build_profile_view(
         matricula_field_e = ft.TextField(
             value=current_matricula,
             label="Matrícula Asociada (opcional)",
-            border_color=COLORS["border"],
+            border_color="#94A3B8", bgcolor=COLORS["surface"],
             focused_border_color=COLORS["primary"],
             border_radius=8,
             text_size=13
@@ -6843,7 +6843,7 @@ def build_profile_view(
         calendar_url_field_e = ft.TextField(
             value=calendar_url,
             label="Enlace de Agenda / Cal.com (URL)",
-            border_color=COLORS["border"],
+            border_color="#94A3B8", bgcolor=COLORS["surface"],
             focused_border_color=COLORS["primary"],
             border_radius=8,
             text_size=13
@@ -6852,7 +6852,7 @@ def build_profile_view(
             label="Nueva Contraseña (opcional)", 
             password=True, 
             can_reveal_password=True, 
-            border_color=COLORS["border"], 
+            border_color="#94A3B8", bgcolor=COLORS["surface"], 
             focused_border_color=COLORS["primary"], 
             border_radius=8, 
             text_size=13,
@@ -7036,7 +7036,7 @@ def build_profile_view(
         page.update()
 
     def open_change_pw_dialog(user_id, username):
-        pass_field_pw = ft.TextField(label="Nueva Contraseña", password=True, can_reveal_password=True, border_color=COLORS["border"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
+        pass_field_pw = ft.TextField(label="Nueva Contraseña", password=True, can_reveal_password=True, border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], border_radius=8, text_size=13)
         
         def close_dialog(ev):
             dlg.open = False
@@ -7412,7 +7412,7 @@ def build_cartera_view(
     search_pas = ft.TextField(
         hint_text="Buscar por nombre o matrícula...",
         prefix_icon=ft.Icons.SEARCH_ROUNDED,
-        border_color=COLORS["border"],
+        border_color="#94A3B8", bgcolor=COLORS["surface"],
         focused_border_color=COLORS["primary"],
         border_radius=8,
         text_size=13,
