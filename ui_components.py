@@ -5010,6 +5010,13 @@ def build_dashboard_metrics_view(
         on_change=on_act_date_change,
         first_date=_dt(2020, 1, 1),
         last_date=_dt(2035, 12, 31),
+        help_text="Seleccionar fecha",
+        cancel_text="Cancelar",
+        confirm_text="Aceptar",
+        error_format_text="Formato inválido",
+        error_invalid_text="Fecha inválida",
+        field_hint_text="Mes/Día/Año",
+        field_label_text="Ingresar fecha",
     )
 
     def open_date_picker(e):
