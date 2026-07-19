@@ -4608,6 +4608,11 @@ def build_dashboard_metrics_view(
             chk.on_change = make_toggle_visita()
             items.append(ft.Container(
                 content=ft.Row([
+                    ft.CircleAvatar(
+                        content=ft.Text(v["nombre"][0].upper() if v["nombre"] else "?", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_on_primary"]),
+                        bgcolor=COLORS["primary"],
+                        radius=20,
+                    ),
                     ft.Column([
                         ft.Row([
                             ft.Text(v["nombre"], size=14, weight=ft.FontWeight.W_600, color=COLORS["text_primary"]),
@@ -4818,9 +4823,9 @@ def build_dashboard_metrics_view(
     filters_container = ft.Container(
         content=filters_row,
         bgcolor=COLORS["surface"],
-        border=ft.Border.all(1, COLORS["border"]),
         border_radius=12,
         padding=ft.Padding(16, 12, 16, 12),
+        shadow=ft.BoxShadow(spread_radius=1, blur_radius=8, color=ft.Colors.with_opacity(0.06, "#000000"), offset=ft.Offset(0, 4)),
     )
 
     # ── Componentes de Seguimiento Diario (Excel) ─────────────────────────
@@ -5363,16 +5368,27 @@ def build_dashboard_metrics_view(
         border_radius=12, padding=16,
     )
 
-    visits_column = ft.Column([
-        ft.Text("Plan de Visitas y Actividades Comerciales", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
-        filters_container,
-        ft.Container(height=4),
-        pas_list_container,
-        ft.Divider(height=16, color=COLORS["border"]),
-        candidatos_section,
-        ft.Container(height=8),
-        acciones_section,
-    ], spacing=10, scroll=ft.ScrollMode.AUTO, expand=True)
+    visits_column = ft.Container(
+        content=ft.Row([
+            # Columna Izquierda (Visitas)
+            ft.Column([
+                ft.Text("Plan de Visitas", size=16, weight=ft.FontWeight.W_700, color=COLORS["text_primary"]),
+                filters_container,
+                pas_list_container,
+            ], spacing=12, expand=65),  # 65% width
+            
+            # Columna Derecha (Candidatos y Acciones)
+            ft.Column([
+                ft.Text("Actividades Extra", size=16, weight=ft.FontWeight.W_700, color=COLORS["text_primary"]),
+                candidatos_section,
+                acciones_section,
+            ], spacing=16, expand=35),  # 35% width
+        ], spacing=24, vertical_alignment=ft.CrossAxisAlignment.START, expand=True),
+        bgcolor="#F8FAFC",  # Fondo gris clarito para resaltar las tarjetas
+        padding=24,
+        border_radius=12,
+        expand=True,
+    )
 
     # ── Excel: exportar CSV ───────────────────────────────────────────────
     def export_actividades_csv(e):
