@@ -5505,7 +5505,6 @@ def build_dashboard_metrics_view(
     # Diálogo agregar acción
     acc_tipo_dropdown = ft.Dropdown(
         label="Tipo de Acción",
-        prefix_icon=ft.Icons.CATEGORY_ROUNDED,
         options=[ft.dropdown.Option(t, t.capitalize()) for t in ["visita", "llamado", "reunion", "email", "otro"]],
         value="visita",
         border_color=COLORS["border"], focused_border_color=COLORS["primary"], 
