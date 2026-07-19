@@ -4604,8 +4604,34 @@ def build_dashboard_metrics_view(
                     else:
                         show_snackbar("Este PAS fue creado manualmente sin matrícula vinculada.", is_error=True)
                 return _click
-            chk = ft.Checkbox(value=(v["estado"]=="realizada"), fill_color=COLORS["primary"])
-            chk.on_change = make_toggle_visita()
+            if v["estado"] == "realizada":
+                chk = ft.OutlinedButton(
+                    "Realizada",
+                    icon=ft.Icons.CHECK_CIRCLE_ROUNDED,
+                    icon_color=COLORS["success"],
+                    style=ft.ButtonStyle(
+                        color=COLORS["success"],
+                        side=ft.BorderSide(1, COLORS["success"]),
+                        shape=ft.RoundedRectangleBorder(radius=20),
+                        padding=ft.Padding(12, 0, 12, 0)
+                    ),
+                    on_click=make_toggle_visita(),
+                    height=32,
+                )
+            else:
+                chk = ft.OutlinedButton(
+                    "Pendiente",
+                    icon=ft.Icons.RADIO_BUTTON_UNCHECKED_ROUNDED,
+                    icon_color=COLORS["text_secondary"],
+                    style=ft.ButtonStyle(
+                        color=COLORS["text_secondary"],
+                        side=ft.BorderSide(1, COLORS["border"]),
+                        shape=ft.RoundedRectangleBorder(radius=20),
+                        padding=ft.Padding(12, 0, 12, 0)
+                    ),
+                    on_click=make_toggle_visita(),
+                    height=32,
+                )
             items.append(ft.Container(
                 content=ft.Row([
                     ft.CircleAvatar(
@@ -5162,8 +5188,34 @@ def build_dashboard_metrics_view(
                     refresh_dashboard()
                 return _del
             est_color = COLORS["success"] if c["estado"] == "captado" else COLORS["warning"]
-            chk_cand = ft.Checkbox(value=(c["estado"]=="captado"), fill_color=est_color)
-            chk_cand.on_change = make_toggle_cand()
+            if c["estado"] == "captado":
+                chk_cand = ft.OutlinedButton(
+                    "Captado",
+                    icon=ft.Icons.HOW_TO_REG_ROUNDED,
+                    icon_color=COLORS["success"],
+                    style=ft.ButtonStyle(
+                        color=COLORS["success"],
+                        side=ft.BorderSide(1, COLORS["success"]),
+                        shape=ft.RoundedRectangleBorder(radius=20),
+                        padding=ft.Padding(12, 0, 12, 0)
+                    ),
+                    on_click=make_toggle_cand(),
+                    height=28,
+                )
+            else:
+                chk_cand = ft.OutlinedButton(
+                    "En Gestión",
+                    icon=ft.Icons.PERSON_ADD_ALT_1_ROUNDED,
+                    icon_color=COLORS["warning"],
+                    style=ft.ButtonStyle(
+                        color=COLORS["warning"],
+                        side=ft.BorderSide(1, COLORS["warning"]),
+                        shape=ft.RoundedRectangleBorder(radius=20),
+                        padding=ft.Padding(12, 0, 12, 0)
+                    ),
+                    on_click=make_toggle_cand(),
+                    height=28,
+                )
             items.append(ft.Container(
                 content=ft.Row([
                     ft.Column([
@@ -5275,8 +5327,34 @@ def build_dashboard_metrics_view(
                     _ssn.eliminar_accion(aid)
                     refresh_dashboard()
                 return _del
-            chk_acc = ft.Checkbox(value=(a["estado"]=="realizada"), fill_color=COLORS["success"])
-            chk_acc.on_change = make_toggle_acc()
+            if a["estado"] == "realizada":
+                chk_acc = ft.OutlinedButton(
+                    "Realizada",
+                    icon=ft.Icons.CHECK_CIRCLE_ROUNDED,
+                    icon_color=COLORS["success"],
+                    style=ft.ButtonStyle(
+                        color=COLORS["success"],
+                        side=ft.BorderSide(1, COLORS["success"]),
+                        shape=ft.RoundedRectangleBorder(radius=20),
+                        padding=ft.Padding(12, 0, 12, 0)
+                    ),
+                    on_click=make_toggle_acc(),
+                    height=28,
+                )
+            else:
+                chk_acc = ft.OutlinedButton(
+                    "Pendiente",
+                    icon=ft.Icons.RADIO_BUTTON_UNCHECKED_ROUNDED,
+                    icon_color=COLORS["text_secondary"],
+                    style=ft.ButtonStyle(
+                        color=COLORS["text_secondary"],
+                        side=ft.BorderSide(1, COLORS["border"]),
+                        shape=ft.RoundedRectangleBorder(radius=20),
+                        padding=ft.Padding(12, 0, 12, 0)
+                    ),
+                    on_click=make_toggle_acc(),
+                    height=28,
+                )
             tipo_color = {"visita": COLORS["primary"], "llamado": COLORS["accent"], "reunion": COLORS["warning"]}.get(a.get("tipo","").lower(), "#475569")
             items.append(ft.Container(
                 content=ft.Row([
