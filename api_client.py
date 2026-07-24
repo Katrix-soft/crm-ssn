@@ -299,8 +299,9 @@ class APIClient:
             "password": password
         }
         try:
-            response = requests.post(url, data=payload, timeout=10)
+            response = requests.post(url, json=payload, timeout=10)
             if response.status_code == 200:
+
                 data = response.json()
                 self.token = data.get("access_token")
                 # Obtener detalles del perfil
