@@ -160,16 +160,25 @@ class DataManager:
         self.on_update_available: Optional[Callable[[str], None]] = None
         self.on_update_error: Optional[Callable[[str], None]] = None
 
-    def initialize(self, user_id: int = None, role: str = None, regional_only: bool = False):
+    def initialize(self, user_id: int = None, role: str = None, regional_only: bool = False, api_client: Any = None):
         """
         Punto de entrada principal:
         Carga registros de la base de datos SQLite con soporte para roles.
+        Si la DB local está vacía y se dispone de conexión a la API, sincroniza los registros automáticamente.
         """
         try:
-            from ssn_test import obtener_todos_db
+            from ssn_test import obtener_todos_db, guardar_pas_masivos
             db_records = obtener_todos_db(user_id=user_id, role=role, regional_only=regional_only)
             
+            # Sincronizar desde la API remota si la DB local está vacía
+            if not db_records and api_client:
+                remotos = api_client.obtener_todos_remoto()
+                if remotos:
+                    guardar_pas_masivos(remotos)
+                    db_records = obtener_todos_db(user_id=user_id, role=role, regional_only=regional_only)
+
             self.records = []
+
             for db_rec in db_records:
                 mat = db_rec.get("matricula", "").strip()
                 if mat:

@@ -338,15 +338,21 @@ class APIClient:
     # ─────────────────────────────────────────────────────────────────────────
 
     def obtener_todos_remoto(self) -> List[Dict[str, Any]]:
-        """Descarga todos los productores accesibles según el rol del usuario."""
-        url = f"{self.base_url}/pas/"
+        """Descarga todos los productores accesibles según el rol del usuario desde la API remota."""
+        url = f"{self.base_url}/pas/?page_size=100000"
         try:
-            response = requests.get(url, headers=self._get_headers(), timeout=15)
+            response = requests.get(url, headers=self._get_headers(), timeout=35)
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                if isinstance(data, list):
+                    return data
+                elif isinstance(data, dict):
+                    return data.get("items", [])
             return []
-        except Exception:
+        except Exception as e:
+            print(f"Error al descargar PAS remotos: {e}")
             return []
+
 
     def actualizar_companias_remoto(self, matricula: str, companias: str) -> bool:
         """Actualiza las compañías del PAS en el servidor remoto."""

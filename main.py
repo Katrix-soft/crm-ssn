@@ -2653,7 +2653,7 @@ def main(page: ft.Page):
                 def bg_initialize():
                     import time
                     t_start = time.time()
-                    dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False))
+                    dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False), api_client=client)
                     elapsed = time.time() - t_start
                     remaining = 0.5 - elapsed
                     if remaining > 0:
@@ -2661,6 +2661,7 @@ def main(page: ft.Page):
                     state["loading_login"] = False
                     update_page_layout()
                     render_content()
+
                     
                     try:
                         from notificaciones import obtener_resumen_reuniones, enviar_notificacion_sistema
@@ -3236,7 +3237,8 @@ def main(page: ft.Page):
 
     def after_render():
         time.sleep(0.1)
-        dm.initialize(regional_only=state.get("regional_only", False))
+        dm.initialize(regional_only=state.get("regional_only", False), api_client=client)
+
         
         # Validar la licencia guardada online en background para no bloquear el inicio
         if client.license_key:
