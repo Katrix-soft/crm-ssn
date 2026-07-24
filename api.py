@@ -1376,10 +1376,11 @@ def api_validar_licencia(request: Request, body: LicenciaValidarRequest):
 def api_list_licencias(
     q: Optional[str] = Query(None, description="Búsqueda por cliente, email o clave"),
     limit: int = Query(2000, ge=1, le=10000),
+    solo_activas: bool = Query(True, description="Filtrar solo licencias con dispositivos vinculados"),
     current: TokenData = Depends(require_admin)
 ):
     """Lista licencias del sistema. Solo admin."""
-    lics = db.obtener_licencias(limit=limit, search=q)
+    lics = db.obtener_licencias(limit=limit, search=q, solo_activas_dispositivos=solo_activas if not q else False)
     return [LicenciaResponse(**l) for l in lics]
 
 

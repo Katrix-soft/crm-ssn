@@ -3670,7 +3670,7 @@ def extraer_producto_clave(clave: str) -> str:
         return partes[1]
     return ""
 
-def obtener_licencias(limit: int = 2000, search: Optional[str] = None) -> list:
+def obtener_licencias(limit: int = 2000, search: Optional[str] = None, solo_activas_dispositivos: bool = True) -> list:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -3682,6 +3682,13 @@ def obtener_licencias(limit: int = 2000, search: Optional[str] = None) -> list:
             WHERE LOWER(cliente) LIKE ? OR LOWER(email_cliente) LIKE ? OR LOWER(clave) LIKE ?
             {order_by} LIMIT ?
         """, (s, s, s, limit))
+    elif solo_activas_dispositivos:
+        cursor.execute(f"""
+            SELECT * FROM licencias 
+            WHERE (dispositivo_id IS NOT NULL AND dispositivo_id != '') 
+               OR (dispositivos_info IS NOT NULL AND dispositivos_info != '{{}}' AND dispositivos_info != '')
+            {order_by} LIMIT ?
+        """, (limit,))
     else:
         cursor.execute(f"SELECT * FROM licencias {order_by} LIMIT ?", (limit,))
     rows = cursor.fetchall()

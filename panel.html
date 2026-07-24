@@ -333,6 +333,10 @@
 
     <div class="toolbar">
       <input type="text" id="buscar" placeholder="Buscar por cliente, email o clave..." />
+      <select id="filtroUso">
+        <option value="uso" selected>📱 Solo en uso (Equipos vinculados)</option>
+        <option value="todas">🌐 Todas las licencias (Padrón entero)</option>
+      </select>
       <select id="filtroEstado">
         <option value="todos">Todos los estados</option>
         <option value="activa">Activa</option>
@@ -1378,7 +1382,11 @@ async function cargarLicencias(searchQuery = ""){
   </tr>`).join("");
 
   try{
-    const path = searchQuery ? `/licencias/?q=${encodeURIComponent(searchQuery)}` : "/licencias/";
+    const soloUso = $("filtroUso") ? $("filtroUso").value === "uso" : true;
+    let path = `/licencias/?solo_activas=${soloUso}`;
+    if (searchQuery) {
+      path = `/licencias/?q=${encodeURIComponent(searchQuery)}&solo_activas=${soloUso}`;
+    }
     licencias = await apiFetch(path);
     localStorage.setItem("katrix_cached_licencias", JSON.stringify(licencias));
     render();
@@ -1513,6 +1521,7 @@ $("buscar").addEventListener("input", () => {
     cargarLicencias(q);
   }, 400);
 });
+$("filtroUso").addEventListener("change", () => cargarLicencias($("buscar").value.trim()));
 $("filtroEstado").addEventListener("change", render);
 $("filtroProducto").addEventListener("change", render);
 
