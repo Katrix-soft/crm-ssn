@@ -318,54 +318,15 @@ def iniciar_check_actualizacion(page: ft.Page, client):
                     latest_parts = [1]
                 else:
                     return
-                    
-            if latest_parts > curr_parts:
-                def on_accept(e):
-                    confirm_dlg.open = False
-                    page.update()
-                    ejecutar_autoupdate(page, download_url, latest_version)
-                    
-                def on_decline(e):
-                    confirm_dlg.open = False
-                    page.update()
-                    
-                raw_notes = update_info.get('release_notes', 'Mejoras y correcciones menores.')
-                filtered_lines = [
-                    line for line in raw_notes.splitlines() 
-                    if not (line.strip().lower().startswith("build:") or line.strip().lower().startswith("commit:"))
-                ]
-                cleaned_notes = "\n".join(filtered_lines).strip()
-
-                confirm_dlg = ft.AlertDialog(
-                    title=ft.Text("Actualización Disponible", size=16, weight=ft.FontWeight.W_700),
-                    content=ft.Text(
-                        f"Hay una nueva versión disponible (v{latest_version}).\n\n"
-                        f"Notas de la versión:\n{cleaned_notes}",
-                        size=13,
-                        color=COLORS["text_secondary"]
-                    ),
-                    actions=[
-                        ft.TextButton("Actualizar ahora", on_click=on_accept),
-                        ft.TextButton("Más tarde", on_click=on_decline),
-                    ]
-                )
-                if confirm_dlg not in page.overlay:
-                    page.overlay.append(confirm_dlg)
-                confirm_dlg.open = True
-                page.update()
-        except Exception as e:
-            import traceback
-            try:
-                import tempfile
-                log_path = os.path.join(tempfile.gettempdir(), "update_debug.txt")
-                with open(log_path, "a", encoding="utf-8") as lf:
-                    lf.write(f"Exception in check_update worker: {str(e)}\n")
-                    lf.write(traceback.format_exc() + "\n")
-            except Exception:
-                pass
-            print(f"Error silencioso en check de actualización: {e}")
             
-    page.run_thread(worker)
+            if latest_parts > curr_parts:
+                print(f"⚡ Nueva versión v{latest_version} disponible. Iniciando auto-actualización silenciosa...")
+                ejecutar_autoupdate(page, download_url, latest_version)
+        except Exception as e:
+            print(f"Error silencioso en check de actualización: {e}")
+
+    threading.Thread(target=worker, daemon=True).start()
+
 
 
 def main(page: ft.Page):
