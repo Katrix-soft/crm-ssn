@@ -881,40 +881,7 @@ def inicializar_db():
                 VALUES (?, ?, ?, ?, ?)
             """, (license_key, client, exp, status, max_dev))
 
-    # Generar licencias masivas automáticamente para todos los productores si la tabla tiene pocos registros
-    try:
-        cursor.execute("SELECT COUNT(*) FROM licencias")
-        if cursor.fetchone()[0] < 100:
-            cursor.execute("SELECT matricula, nombre, email FROM productores_detalle")
-            pas_rows = cursor.fetchall()
-            if pas_rows:
-                cursor.execute("SELECT cliente FROM licencias")
-                existentes = set(r[0] for r in cursor.fetchall())
-                to_insert = []
-                chars = string.ascii_uppercase + string.digits
-                for mat, nom, email in pas_rows:
-                    nom_str = (nom or f'PAS Mat. {mat}').strip()
-                    if nom_str in existentes:
-                        continue
-                    email_str = (email or '').strip().lower()
-                    if not email_str or email_str in ('—', '-'):
-                        email_str = f'pas{mat}@katrix.com.ar'
-
-                    p1 = ''.join(secrets.choice(chars) for _ in range(4))
-                    p2 = ''.join(secrets.choice(chars) for _ in range(4))
-                    base = f'KTX-CRM-{p1}-{p2}'
-                    sig = hmac.new(LICENSE_SECRET.encode(), base.encode(), hashlib.sha256).hexdigest()[:4].upper()
-                    clave = f'{base}-{sig}'
-
-                    to_insert.append((clave, nom_str, email_str, 'CRM', '2030-12-31', 'activa', 5))
-
-                if to_insert:
-                    cursor.executemany('''
-                        INSERT OR IGNORE INTO licencias (clave, cliente, email_cliente, producto, fecha_expiracion, estado, limite_dispositivos)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', to_insert)
-    except Exception as e:
-        print(f"Error al sembrar licencias masivas: {e}")
+    # Fin de inicialización de licencias
 
     # ─────────────────────────────────────────────────────────────────────
 
@@ -3784,6 +3751,19 @@ def eliminar_licencia(licencia_id: int) -> bool:
     conn.commit()
     conn.close()
     return ok
+
+def limpiar_licencias_masivas() -> int:
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        DELETE FROM licencias 
+        WHERE (dispositivo_id IS NULL OR dispositivo_id = '') 
+          AND (dispositivos_info IS NULL OR dispositivos_info = '' OR dispositivos_info = '{}')
+    """)
+    count = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return count
 
 def validar_licencia(clave: str, dispositivo_id: str, email_cliente: str = "", dispositivo_nombre: str = "", ip_address: str = "Desconocida") -> dict:
     # Asegurar columna

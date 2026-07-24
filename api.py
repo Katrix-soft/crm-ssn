@@ -1475,6 +1475,14 @@ def api_delete_licencia(lic_id: int, current: TokenData = Depends(require_admin)
     return MessageResponse(ok=True, message="Licencia eliminada")
 
 
+@app.delete("/licencias/limpiar-masivas", response_model=MessageResponse, tags=["Licencias de Software"])
+def api_limpiar_licencias_masivas(current: TokenData = Depends(require_admin)):
+    """Elimina las licencias masivas autogeneradas que no tienen dispositivos ni inicios de sesión registrados."""
+    count = db.limpiar_licencias_masivas()
+    db.registrar_log(current.username, "API_CLEANUP_LICENCIAS", f"Se eliminaron {count} licencias masivas sin uso")
+    return MessageResponse(ok=True, message=f"Se eliminaron {count} licencias sin dispositivos vinculados")
+
+
 # ─── SOPORTE TÉCNICO ─────────────────────────────────────────────────────────
 
 @app.post("/soporte/ticket", response_model=MessageResponse, tags=["Soporte"])
