@@ -1,0 +1,2540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Panel de Licencias — Katrix</title>
+<link rel="manifest" href="/panel/manifest.json" />
+<meta name="theme-color" content="#0f172a" />
+<link rel="apple-touch-icon" href="/panel/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root{
+    --bg:#0f1115; --panel:rgba(22, 25, 34, 0.6); --panel2:rgba(29, 33, 44, 0.5); --border:rgba(255, 255, 255, 0.1);
+    --text:#e7e9ee; --muted:#9aa3b2; --accent:#4f46e5; --accent-d:#4338ca;
+    --green:#10b981; --green-bg:rgba(16, 185, 129, 0.15); --amber:#f59e0b; --amber-bg:rgba(245, 158, 11, 0.15);
+    --red:#ef4444; --red-bg:rgba(239, 68, 68, 0.15); --gray:#6b7280; --gray-bg:rgba(107, 114, 128, 0.15);
+    --radius:12px;
+    --glass-blur: blur(16px);
+  }
+  :root[data-theme="light"] {
+    --bg:#f8fafc; --panel:rgba(255, 255, 255, 0.7); --panel2:rgba(241, 245, 249, 0.6); --border:rgba(0, 0, 0, 0.08);
+    --text:#0f172a; --muted:#64748b; 
+    --green-bg:#dcfce7; --amber-bg:#fef3c7; --red-bg:#fee2e2; --gray-bg:#e2e8f0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background-color: var(--bg);
+    background-image: url('/panel/chill_bg.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color:var(--text); min-height:100vh;
+  }
+  input,select,button{
+    font-family:inherit; font-size:14px; border-radius:var(--radius);
+    border:1px solid var(--border); background:var(--panel2); color:var(--text);
+    padding:12px 16px; outline:none; transition: all 0.2s ease;
+  }
+  input:focus,select:focus{ border-color:var(--accent); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2); }
+  input[type="checkbox"] {
+    width: 16px; height: 16px; min-height: 16px; padding: 0; margin: 0;
+    cursor: pointer; border-radius: 4px; display: inline-block; vertical-align: middle;
+  }
+  button{ cursor:pointer; transition:all .2s ease; font-weight: 500; }
+  button:active{ transform:scale(0.97); }
+  .btn-primary{ background: linear-gradient(135deg, var(--accent), var(--accent-d)); border:none; color:#fff; font-weight:600; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3); }
+  .btn-primary:hover{ transform: translateY(-1px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4); }
+  .btn-ghost{ background: transparent; border-color: var(--border); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
+  .btn-ghost:hover{ background:var(--panel2); }
+  .btn-danger{ color:var(--red); border-color:var(--red); background: transparent; }
+  .btn-danger:hover{ background:var(--red-bg); }
+  .btn-warn{ color:var(--amber); border-color:var(--amber); background: transparent; }
+  .btn-warn:hover{ background:var(--amber-bg); }
+  .btn-ok{ color:var(--green); border-color:var(--green); background: transparent; }
+  .btn-ok:hover{ background:var(--green-bg); }
+
+  /* ---- Login ---- */
+  #loginScreen{
+    display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px;
+  }
+  .login-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:20px;
+    padding:40px; width:100%; max-width:400px;
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+  .login-card h1{ font-size:24px; margin:0 0 8px; font-weight: 700; letter-spacing: -0.5px; }
+  .login-card p.sub{ color:var(--muted); font-size:14px; margin:0 0 28px; }
+  .login-card label{ font-size:13px; font-weight: 500; color:var(--text); display:block; margin-bottom:8px; }
+  .login-card .field{ margin-bottom:20px; }
+  .login-card input{ width:100%; }
+  .login-card button{ width:100%; padding:12px; margin-top:6px; }
+  #loginError{
+    color:var(--red); font-size:13px; margin-top:12px; display:none;
+    background:var(--red-bg); padding:8px 10px; border-radius:8px;
+  }
+  .api-config{ margin-bottom:18px; }
+  .api-config input{ width:100%; font-size:12px; color:var(--muted); }
+
+  /* ---- Dashboard ---- */
+  #dashboard{ display:none; max-width:1100px; margin:0 auto; padding:30px 20px; }
+  header.top{
+    display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center;
+    margin-bottom:30px;
+    background: var(--panel); border: 1px solid var(--border); padding: 20px; border-radius: var(--radius);
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  }
+  header.top h1{ font-size:24px; margin:0; font-weight: 700; letter-spacing: -0.5px; }
+  header.top p{ margin:4px 0 0; color:var(--muted); font-size:14px; }
+  .stats{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr));
+    gap:16px; margin-bottom:30px;
+  }
+  .stat{ 
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:20px; 
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: transform 0.2s ease;
+  }
+  .stat:hover { transform: translateY(-2px); }
+  .stat .label{ font-size:13px; color:var(--muted); margin-bottom:8px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat .value{ font-size:32px; font-weight:700; background: linear-gradient(135deg, #fff, var(--muted)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  :root[data-theme="light"] .stat .value { background: none; -webkit-text-fill-color: var(--text); }
+
+  .toolbar{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+  .toolbar input[type=text]{ flex:1; min-width:220px; }
+
+  table{ width:100%; border-collapse:collapse; font-size:14px; }
+  th{ text-align:left; padding:16px 12px; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border); text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
+  td{ padding:16px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  .table-wrap{ 
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); overflow-x:auto; padding:8px; 
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+  .badge{ padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600; display:inline-block; }
+  .badge-activa{ color:var(--green); background:var(--green-bg); border: 1px solid rgba(16, 185, 129, 0.2); }
+  .badge-suspendida{ color:var(--red); background:var(--red-bg); border: 1px solid rgba(239, 68, 68, 0.2); }
+  .badge-expirada{ color:var(--gray); background:var(--gray-bg); border: 1px solid rgba(107, 114, 128, 0.2); }
+  .row-actions{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .row-actions button{ padding:8px 12px; font-size:12px; }
+  .clave{ font-family: 'Inter', monospace; font-size:13px; background: var(--panel2); padding: 4px 8px; border-radius: 6px; letter-spacing: 1px; }
+  .empty{ text-align:center; color:var(--muted); padding:40px 0; font-size: 15px; }
+
+  /* ---- Skeletons ---- */
+  @keyframes shimmer { 0% { background-position: -468px 0; } 100% { background-position: 468px 0; } }
+  .skeleton {
+    background: var(--panel2);
+    background-image: linear-gradient(to right, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.1) 20%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.05) 100%);
+    background-repeat: no-repeat; background-size: 800px 100%; 
+    animation: shimmer 1.5s infinite linear forwards;
+    border-radius: 4px; height: 16px; margin-bottom: 6px;
+  }
+  :root[data-theme="light"] .skeleton {
+    background-image: linear-gradient(to right, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.1) 20%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.05) 100%);
+  }
+  .charts-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-box { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; backdrop-filter: var(--glass-blur); }
+  #bulkActions { display: none; align-items: center; gap: 12px; background: var(--panel2); padding: 12px 16px; border-radius: var(--radius); border: 1px dashed var(--accent); margin-bottom: 16px; }
+
+  /* ---- Modal ---- */
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .modal{
+    background:var(--panel); border:1px solid var(--border); border-radius:20px;
+    padding:32px; width:100%; max-width:480px;
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+  .modal h2{ margin:0 0 24px; font-size:22px; font-weight: 700; letter-spacing: -0.5px; }
+  .modal .field{ margin-bottom:16px; }
+  .modal label{ font-size:13px; font-weight: 500; color:var(--text); display:block; margin-bottom:8px; }
+  .modal input,.modal select{ width:100%; }
+  .modal-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+  #toast{
+    position:fixed; bottom:20px; right:20px; background:var(--panel2);
+    border:1px solid var(--border); border-radius:10px; padding:12px 16px;
+    font-size:13px; display:none; z-index:60; max-width:320px;
+  }
+
+  /* ---- GitBook Style ---- */
+  .gitbook-container {
+    display: flex; gap: 24px; align-items: flex-start;
+  }
+  .gb-sidebar {
+    width: 240px; flex-shrink: 0; background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; position: sticky; top: 20px;
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  }
+  .gb-sidebar h3 { font-size: 14px; margin-top: 0; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .gb-sidebar ul { list-style: none; padding: 0; margin: 0; }
+  .gb-sidebar li { margin-bottom: 6px; }
+  .gb-sidebar a { color: var(--text); text-decoration: none; font-size: 14px; display: block; padding: 8px 10px; border-radius: 6px; transition: all 0.2s; }
+  .gb-sidebar a:hover { background: var(--panel2); color: var(--accent); }
+  
+  .gb-content {
+    flex: 1; background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 40px;
+    backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  }
+  .gb-content h2 { font-size: 22px; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-top: 0; margin-bottom: 24px; letter-spacing: -0.5px; }
+  .gb-content h2:not(:first-child) { margin-top: 48px; }
+  .gb-content p { font-size: 15px; line-height: 1.7; color: var(--text); margin-bottom: 20px; }
+  .gb-content ul, .gb-content ol { font-size: 15px; color: var(--text); line-height: 1.7; padding-left: 24px; margin-bottom: 24px; }
+  .gb-content li { margin-bottom: 10px; }
+  .gb-content strong { color: var(--accent); font-weight: 600; }
+  
+  .install-card {
+    background: rgba(0,0,0,0.15); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px;
+  }
+  :root[data-theme="light"] .install-card { background: rgba(0,0,0,0.03); }
+  .install-card h3 { margin-top: 0; font-size: 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .install-card ol { margin-bottom: 0; }
+
+  /* ---- Tabs Navigation ---- */
+  .tabs-nav {
+    display: flex; gap: 12px; margin-bottom: 24px;
+    border-bottom: 2px solid var(--border); padding-bottom: 0px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .tabs-nav::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    background: transparent; border: none; padding: 14px 20px;
+    color: var(--muted); font-weight: 500; cursor: pointer;
+    border-bottom: 3px solid transparent; border-radius: 0;
+    transition: all .2s ease; white-space: nowrap;
+    outline: none; font-size: 14px; margin-bottom: -2px;
+  }
+  .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); border-top-left-radius: 8px; border-top-right-radius: 8px; }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  @media (max-width:768px){
+    header.top { flex-direction: column; align-items: stretch; gap: 16px; padding: 16px; }
+    header.top > div { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+    header.top button { flex: 1; min-width: 120px; font-size: 13px; }
+    .toolbar { flex-direction: column; width: 100%; }
+    .toolbar input[type=text], .toolbar select, .toolbar button { width: 100%; }
+    .row-actions { justify-content: flex-start; }
+    .tabs-nav { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+    .tab-btn { padding: 10px 12px; font-size: 13px; }
+    .stats { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .charts-wrap { grid-template-columns: 1fr; }
+    .stat { padding: 16px; }
+    .stat .value { font-size: 24px; }
+    .login-card { padding: 24px; }
+    .login-card h1 { font-size: 20px; }
+    .modal { padding: 24px; }
+    #dashboard { padding: 16px 10px; }
+    
+    .gitbook-container { flex-direction: column; }
+    .gb-sidebar { width: 100%; position: static; margin-bottom: 16px; }
+    .gb-content { padding: 24px; }
+  }
+  @media (max-width:480px){
+    .stats { grid-template-columns: 1fr; }
+    header.top button { min-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div id="offlineBanner" style="display:none; background:var(--red-bg); color:var(--red); text-align:center; padding:10px; font-size:13px; font-weight:600; border-bottom:1px solid var(--border);">
+  ⚠️ Sin conexión a internet. Mostrando datos locales (offline).
+</div>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>Panel de Licencias</h1>
+    <p class="sub">Katrix ERP / CRM — acceso restringido a administradores</p>
+
+    <div class="api-config">
+      <label style="margin-bottom:6px;display:block;font-size:12px;color:var(--muted);">URL de la API</label>
+      <input id="apiBase" type="text" placeholder="https://api.katrix.com.ar" />
+    </div>
+
+    <div class="field">
+      <label>Usuario o email</label>
+      <input id="loginUser" type="text" placeholder="admin" autocomplete="username" />
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password" />
+      <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px; cursor:pointer; color:var(--muted);">
+        <input type="checkbox" id="chkShowLoginPass" /> Mostrar contraseña
+      </label>
+    </div>
+    <button class="btn-primary" id="btnLogin">Ingresar</button>
+    <button class="btn-ghost" id="btnBioLogin" style="margin-top:10px; width:100%; display:none; align-items:center; justify-content:center; gap:8px;">
+      <span style="font-size:16px;">👤</span> Ingresar con Biometría
+    </button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="dashboard">
+  <header class="top">
+    <div>
+      <h1>Licencias de software</h1>
+      <p id="userInfo"></p>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn-ghost" id="btnManageUsers" style="display:none;">👥 Usuarios</button>
+      <button class="btn-ghost" id="btnPushAlerts">🔔 Activar Alertas</button>
+      <button class="btn-ghost" id="btnChangePass" style="display:none;">🔐 Cambiar Clave Panel</button>
+      <button class="btn-ghost" id="btnRegBio" style="display:none;">👤 Registrar Huella</button>
+      <button class="btn-primary" id="btnInstallApp" style="display:none;">📱 Instalar App</button>
+      <button class="btn-ghost" id="btnThemeToggle">🌓 Tema</button>
+      <button class="btn-ghost" id="btnNueva"><span style="margin-right:6px;">+</span>Nueva licencia</button>
+      <button class="btn-ghost" id="btnLogout">Salir</button>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="tabs-nav" style="margin-bottom:20px;">
+    <button class="tab-btn active" data-tab="tab-licencias">🔑 Licencias</button>
+    <button class="tab-btn" id="navTabUsers" data-tab="tab-usuarios" style="display:none;">👥 Usuarios Panel</button>
+    <button class="tab-btn" id="navTabCrmUsers" data-tab="tab-crm-usuarios" style="display:none;">📱 Usuarios App</button>
+    <button class="tab-btn" id="navTabSesiones" data-tab="tab-sesiones" style="display:none;">🌐 Sesiones Activas</button>
+    <button class="tab-btn" id="navTabLogs" data-tab="tab-logs" style="display:none;">📋 Logs de Auditoría</button>
+    <button class="tab-btn" id="navTabConfigCRM" data-tab="tab-config-crm" style="display:none;">⚙️ Config. CRM</button>
+    <button class="tab-btn" id="navTabGuia" data-tab="tab-guia">📚 Guía de Uso</button>
+  </div>
+
+  <!-- Tab 1: Licencias -->
+  <div id="tab-licencias" class="tab-content active">
+    <div class="stats">
+      <div class="stat"><div class="label">Activas</div><div class="value" id="statActivas">0</div></div>
+      <div class="stat"><div class="label">Por vencer (15 días)</div><div class="value" id="statPorVencer">0</div></div>
+      <div class="stat"><div class="label">Suspendidas</div><div class="value" id="statSuspendidas">0</div></div>
+      <div class="stat"><div class="label">Total</div><div class="value" id="statTotal">0</div></div>
+    </div>
+
+    <div class="charts-wrap">
+      <div class="chart-box"><canvas id="chartExp"></canvas></div>
+      <div class="chart-box"><canvas id="chartProd"></canvas></div>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="buscar" placeholder="Buscar por cliente, email o clave..." />
+      <select id="filtroEstado">
+        <option value="todos">Todos los estados</option>
+        <option value="activa">Activa</option>
+        <option value="suspendida">Suspendida</option>
+        <option value="expirada">Expirada</option>
+      </select>
+      <select id="filtroProducto">
+        <option value="todos">Todos los productos</option>
+        <option value="CRM">CRM</option>
+        <option value="ERP">ERP</option>
+        <option value="POS">POS</option>
+      </select>
+      <button class="btn-ghost" id="btnRefrescar">Actualizar</button>
+      <button class="btn-ok" id="btnExportCSV">📥 Exportar CSV</button>
+    </div>
+
+    <div class="table-wrap">
+      <div id="bulkActions">
+        <span style="font-size:13px; font-weight:500;" id="bulkCount">0 seleccionadas</span>
+        <button class="btn-warn" id="btnBulkSuspender">Suspender</button>
+        <button class="btn-ok" id="btnBulkActivar">Reactivar</button>
+        <button class="btn-primary" id="btnBulkExtender">+30 Días</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30px;"><input type="checkbox" id="chkSelectAll" /></th>
+            <th>Cliente</th>
+            <th>Clave</th>
+            <th>Producto</th>
+            <th>Vence</th>
+            <th>Dispositivos</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tablaBody"></tbody>
+      </table>
+      <p class="empty" id="emptyMsg" style="display:none;">No se encontraron licencias.</p>
+    </div>
+  </div>
+
+  <!-- Tab 2: Usuarios Panel -->
+  <div id="tab-usuarios" class="tab-content">
+    <div class="toolbar" style="justify-content: space-between; align-items: center; margin-bottom: 16px; display:flex;">
+      <div style="font-size: 14px; font-weight: 600; color: var(--accent);">Gestión de Usuarios del Panel</div>
+      <button class="btn-primary" id="btnTabNewUser" style="padding: 8px 14px; font-size: 13px;">+ Nuevo Usuario</button>
+    </div>
+    
+    <div class="table-wrap" style="margin-bottom: 24px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Rol</th>
+            <th>Permisos</th>
+            <th style="text-align: center;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tabUsersTableBody">
+          <!-- Dinámico -->
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Formulario de Usuario Integrado -->
+    <div id="tabUserFormCard" style="display:none; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-top: 20px; max-width: 600px;">
+      <h3 id="tabUserFormTitle" style="margin-top:0; margin-bottom:15px; font-size:16px;">Crear / Editar Usuario</h3>
+      <input type="hidden" id="tabUserEditMode" value="create" />
+      <div class="field">
+        <label>Nombre de Usuario</label>
+        <input id="tabUserUsername" type="text" placeholder="Ej. ricardodev" />
+      </div>
+      <div class="field">
+        <label>Contraseña <span id="tabPwdLabelHelp" style="color:var(--muted); font-size:11px;">(mínimo 4 caracteres)</span></label>
+        <input id="tabUserPassword" type="password" placeholder="••••••••" />
+      </div>
+      <div class="field">
+        <label>Rol</label>
+        <select id="tabUserRole">
+          <option value="admin">Admin</option>
+          <option value="superadmin">Superadmin</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Permisos Granulares</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+            <input type="checkbox" id="tab_perm_ver_licencias" checked /> Ver Licencias
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+            <input type="checkbox" id="tab_perm_crear_licencia" checked /> Crear Licencia
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+            <input type="checkbox" id="tab_perm_editar_licencia" checked /> Editar Licencia
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+            <input type="checkbox" id="tab_perm_suspender_licencia" checked /> Suspender Licencia
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+            <input type="checkbox" id="tab_perm_desvincular_dispositivo" checked /> Desvincular Dispositivo
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+            <input type="checkbox" id="tab_perm_eliminar_licencia" checked /> Eliminar Licencia
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+            <input type="checkbox" id="tab_perm_ver_sesiones" checked /> Ver Sesiones Activas
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+            <input type="checkbox" id="tab_perm_desvincular_sesion" checked /> Desconectar Usuarios
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+            <input type="checkbox" id="tab_perm_ver_logs" checked /> Ver Logs Auditoría
+          </label>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+        <button class="btn-ghost" id="btnCancelTabUserForm">Cancelar</button>
+        <button class="btn-primary" id="btnSaveTabUser">Guardar Usuario</button>
+      </div>
+      <div id="tabUserError" style="color:var(--red); font-size:13px; margin-top:10px; display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Tab 2.5: Usuarios App (CRM) -->
+  <div id="tab-crm-usuarios" class="tab-content">
+    <div class="toolbar" style="justify-content: space-between; align-items: center; margin-bottom: 16px; display:flex;">
+      <div style="font-size: 14px; font-weight: 600; color: var(--accent);">Gestión de Usuarios de la App Flutter</div>
+      <button class="btn-primary" id="btnTabNewCrmUser" style="padding: 8px 14px; font-size: 13px;">+ Nuevo Usuario App</button>
+    </div>
+    
+    <div class="table-wrap" style="margin-bottom: 24px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th style="text-align: center;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tabCrmUsersTableBody">
+          <!-- Dinámico -->
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Formulario de Usuario CRM -->
+    <div id="tabCrmUserFormCard" style="display:none; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-top: 20px; max-width: 600px;">
+      <h3 id="tabCrmUserFormTitle" style="margin-top:0; margin-bottom:15px; font-size:16px;">Crear Usuario App</h3>
+      <div class="field">
+        <label>Nombre de Usuario</label>
+        <input id="tabCrmUserUsername" type="text" placeholder="Ej. juanperez" />
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input id="tabCrmUserEmail" type="email" placeholder="juan@ejemplo.com" />
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input id="tabCrmUserPassword" type="password" placeholder="••••••••" />
+      </div>
+      <div class="field">
+        <label>Rol</label>
+        <select id="tabCrmUserRole">
+          <option value="agente">Agente / Vendedor</option>
+          <option value="admin">Administrador App</option>
+        </select>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+        <button class="btn-ghost" id="btnCancelTabCrmUserForm">Cancelar</button>
+        <button class="btn-primary" id="btnSaveTabCrmUser">Guardar Usuario</button>
+      </div>
+      <div id="tabCrmUserError" style="color:var(--red); font-size:13px; margin-top:10px; display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Tab 3: Sesiones Activas -->
+  <div id="tab-sesiones" class="tab-content">
+    <div class="toolbar" style="justify-content: space-between; align-items: center; margin-bottom: 16px; display:flex;">
+      <div style="font-size: 14px; font-weight: 600; color: var(--accent);">Monitoreo de Usuarios en Línea (Sesiones Activas)</div>
+      <button class="btn-ghost" id="btnRefrescarSesiones">Refrescar Sesiones</button>
+    </div>
+    
+    <!-- Sección 1: Administradores del Panel -->
+    <div class="card" style="margin-bottom: 24px; background: rgba(255,255,255,0.01); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+      <div style="font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+        <span>💻</span> Administradores del Panel
+      </div>
+      <div class="table-wrap">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>IP Origen</th>
+              <th>Navegador / Sistema</th>
+              <th>Última Actividad</th>
+              <th style="text-align: center;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="sesionesTableBody">
+            <!-- Dinámico -->
+          </tbody>
+        </table>
+        <p class="empty" id="emptySesionesMsg" style="display:none;">No hay administradores en línea.</p>
+      </div>
+    </div>
+
+    <!-- Sección 2: Usuarios de la App (deploys-app-pas.juidi9.easypanel.host) -->
+    <div class="card" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+      <div style="font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+        <span>📱</span> Usuarios de la App (Flutter)
+      </div>
+      <div style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">https://deploys-app-pas.juidi9.easypanel.host/</div>
+      <div class="table-wrap">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>IP Origen</th>
+              <th>Navegador / Sistema</th>
+              <th>Última Actividad</th>
+              <th style="text-align: center;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="sesionesAppTableBody">
+            <!-- Dinámico -->
+          </tbody>
+        </table>
+        <p class="empty" id="emptySesionesAppMsg" style="display:none;">No hay usuarios conectados a la App actualmente.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 4: Logs de Auditoría -->
+  <div id="tab-logs" class="tab-content">
+    <div class="toolbar" style="display:flex; gap:8px;">
+      <input type="text" id="buscarLogs" placeholder="Buscar en logs por usuario, acción o detalles..." style="flex:1;" />
+      <select id="filtroLimiteLogs">
+        <option value="50">Mostrar 50 registros</option>
+        <option value="100" selected>Mostrar 100 registros</option>
+        <option value="250">Mostrar 250 registros</option>
+        <option value="500">Mostrar 500 registros</option>
+      </select>
+      <button class="btn-ghost" id="btnRefrescarLogs">Actualizar Logs</button>
+    </div>
+    
+    <div class="table-wrap">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th>Fecha / Hora</th>
+            <th>Usuario</th>
+            <th>Acción</th>
+            <th>Detalles</th>
+          </tr>
+        </thead>
+        <tbody id="logsTableBody">
+          <!-- Dinámico -->
+        </tbody>
+      </table>
+      <p class="empty" id="emptyLogsMsg" style="display:none;">No se encontraron logs.</p>
+    </div>
+  </div>
+
+  <!-- Tab: Configuración CRM -->
+  <div id="tab-config-crm" class="tab-content">
+    <h2 style="margin-bottom:6px;">Configuración del CRM</h2>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:20px;">Habilitá o deshabilitá funcionalidades del sistema para todos los usuarios del CRM (Katrix ERP). Los cambios aplican en tiempo real.</p>
+    <div id="configCrmList" style="display:flex; flex-direction:column; gap:10px; max-width:680px;">
+      <div style="text-align:center; padding:30px; color:var(--muted);">Cargando configuración...</div>
+    </div>
+  </div>
+
+  <!-- Tab 5: Guía de Uso -->
+  <div id="tab-guia" class="tab-content">
+    <div class="gitbook-container">
+      <div class="gb-sidebar">
+        <h3>Índice</h3>
+        <ul id="gb-nav">
+          <li><a href="#gb-intro" onclick="event.preventDefault(); document.getElementById('gb-intro').scrollIntoView({behavior: 'smooth'})">Introducción al Panel</a></li>
+          <li><a href="#gb-licencias" onclick="event.preventDefault(); document.getElementById('gb-licencias').scrollIntoView({behavior: 'smooth'})">Gestión de Licencias</a></li>
+          <li><a href="#gb-usuarios" onclick="event.preventDefault(); document.getElementById('gb-usuarios').scrollIntoView({behavior: 'smooth'})">Usuarios y Permisos</a></li>
+          <li><a href="#gb-install" onclick="event.preventDefault(); document.getElementById('gb-install').scrollIntoView({behavior: 'smooth'})">📱 Instalar en Dispositivos</a></li>
+        </ul>
+      </div>
+      <div class="gb-content">
+        <h2 id="gb-intro">Introducción al Panel</h2>
+        <p>Bienvenido al Panel de Administración de Katrix ERP/CRM. Desde aquí puedes controlar el acceso, gestionar licencias de clientes, visualizar sesiones activas y auditar la actividad del sistema.</p>
+        
+        <h2 id="gb-licencias">Gestión de Licencias</h2>
+        <p>En la pestaña <strong>Licencias</strong> puedes visualizar y controlar las instalaciones activas del software:</p>
+        <ul>
+          <li><strong>Crear nuevas licencias:</strong> Define el nombre del cliente, producto (CRM, ERP, POS), fecha de vencimiento y el límite de dispositivos simultáneos permitidos.</li>
+          <li><strong>Suspender/Activar:</strong> Pausa el acceso de un cliente sin eliminar su registro de la base de datos.</li>
+          <li><strong>Desvincular Dispositivos:</strong> Si un cliente excede su límite o cambia de PC, puedes desvincular sus equipos anteriores para liberar el cupo, forzando un cierre de sesión en ese equipo.</li>
+        </ul>
+
+        <h2 id="gb-usuarios">Usuarios y Permisos (Solo Superadmin)</h2>
+        <p>Los superadministradores pueden crear nuevos usuarios para el panel (como vendedores o soporte). Cada usuario puede tener permisos granulares (por ejemplo, permitirles solo ver licencias, pero bloquear la capacidad de suspender o eliminar).</p>
+
+        <h2 id="gb-install">📱 Instalación de la App (PWA)</h2>
+        <p>Este Panel funciona como una PWA (Progressive Web App). Puedes instalarla como una aplicación nativa en tu celular, tablet o PC de escritorio para tener un ícono dedicado, mayor pantalla, e iniciar sesión de forma ultra-rápida utilizando el sensor de huella dactilar (biometría).</p>
+        
+        <div class="install-card">
+          <h3>🤖 En Android</h3>
+          <ol>
+            <li>Abre el panel en el navegador <strong>Google Chrome</strong>.</li>
+            <li>Inicia sesión con tu usuario y contraseña (recomendamos tildar "Recordar").</li>
+            <li>Toca el botón superior que dice <strong>"📱 Instalar App"</strong> o abre el menú de Chrome (los tres puntos arriba a la derecha).</li>
+            <li>Selecciona <strong>"Instalar aplicación"</strong> o "Agregar a la pantalla principal".</li>
+            <li>Sigue las instrucciones en pantalla. ¡Listo! La app estará en tu cajón de aplicaciones.</li>
+          </ol>
+        </div>
+
+        <div class="install-card">
+          <h3>🍏 En iOS (iPhone / iPad)</h3>
+          <ol>
+            <li>Abre el panel en el navegador <strong>Safari</strong> (esto no funciona en Chrome para iOS).</li>
+            <li>Inicia sesión normalmente.</li>
+            <li>Toca el ícono de <strong>Compartir</strong> (el cuadrado con la flecha hacia arriba) en la barra de herramientas inferior de Safari.</li>
+            <li>Desliza hacia abajo las opciones grises y toca <strong>"Agregar a Inicio"</strong> (Add to Home Screen).</li>
+            <li>Confirma tocando "Agregar". El panel ahora aparecerá como una app más en tu pantalla de inicio del iPhone.</li>
+          </ol>
+        </div>
+        
+        <div class="install-card">
+          <h3>💻 En PC (Windows / Mac)</h3>
+          <ol>
+            <li>Abre el panel en <strong>Google Chrome</strong> o <strong>Microsoft Edge</strong>.</li>
+            <li>Al final de la barra de direcciones (donde escribes la URL), verás un pequeño ícono de un <strong>monitor con una flecha hacia abajo</strong>.</li>
+            <li>Haz clic ahí y selecciona "Instalar".</li>
+            <li>La app se abrirá en su propia ventana y se añadirá a tu barra de tareas o dock.</li>
+          </ol>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: nueva / editar licencia ============ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitulo">Nueva licencia</h2>
+    <input type="hidden" id="fId" />
+    <div class="field">
+      <label>Cliente</label>
+      <input id="fCliente" type="text" placeholder="Nombre del cliente o empresa" />
+    </div>
+    <div class="field">
+      <label>Email del cliente</label>
+      <input id="fEmail" type="text" placeholder="cliente@empresa.com" />
+    </div>
+    <div class="field">
+      <label>Producto</label>
+      <select id="fProducto">
+        <option value="CRM">CRM</option>
+        <option value="ERP">ERP</option>
+        <option value="POS">POS</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Fecha de expiración</label>
+      <input id="fFecha" type="date" />
+    </div>
+    <div class="field">
+      <label>Límite de dispositivos</label>
+      <input id="fLimite" type="number" min="1" value="1" />
+    </div>
+    <div class="field">
+      <label>Integraciones / Configuración API (JSON)</label>
+      <textarea id="fIntegraciones" placeholder='{"Sancor": {"api_key": "123..."}, "Allianz": {"api_key": "456..."}}' rows="4" style="width:100%; border:1px solid var(--border); border-radius:6px; padding:8px; font-family:monospace; font-size:12px; background:var(--bg-1); color:var(--text);"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="btnCancelarModal">Cancelar</button>
+      <button class="btn-primary" id="btnGuardarModal">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: Cambiar contraseña del panel ============ -->
+<div class="modal-overlay" id="modalChangePassOverlay" style="display:none;">
+  <div class="modal">
+    <h2>Cambiar Credenciales del Panel</h2>
+    <div class="field">
+      <label>Nuevo nombre de usuario (opcional)</label>
+      <input id="fNewUsername" type="text" placeholder="Dejar en blanco para no cambiar" />
+    </div>
+    <div class="field">
+      <label>Contraseña actual del panel</label>
+      <input id="fCurrentPass" type="password" placeholder="••••••••" />
+    </div>
+    <div class="field">
+      <label>Nueva contraseña del panel</label>
+      <input id="fNewPass" type="password" placeholder="••••••••" />
+    </div>
+    <div class="field">
+      <label>Confirmar nueva contraseña</label>
+      <input id="fConfirmPass" type="password" placeholder="••••••••" />
+      <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-top:6px; cursor:pointer; color:var(--muted);">
+        <input type="checkbox" id="chkShowModalPass" /> Mostrar contraseñas
+      </label>
+    </div>
+    <div id="changePassError" style="color:var(--red); font-size:13px; margin-top:8px; display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="btnCancelChangePass">Cancelar</button>
+      <button class="btn-primary" id="btnConfirmChangePass">Actualizar Credenciales</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: Registrar biometría ============ -->
+<div class="modal-overlay" id="modalBiometricsOverlay" style="display:none;">
+  <div class="modal">
+    <h2>Registrar Huella / Biometría</h2>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:14px;">Esto te permitirá iniciar sesión directamente con el sensor de huellas o reconocimiento facial de este dispositivo.</p>
+    <div class="field">
+      <label>Nombre descriptivo de este dispositivo</label>
+      <input id="fBioDeviceName" type="text" placeholder="Ej. Mi Laptop, Celular Personal" />
+    </div>
+    <div id="bioError" style="color:var(--red); font-size:13px; margin-top:8px; display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="btnCancelBio">Cancelar</button>
+      <button class="btn-primary" id="btnConfirmBio">Iniciar Registro</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============ MODAL: Dispositivos Vinculados ============ -->
+<div class="modal-overlay" id="modalDispositivosOverlay" style="display:none;">
+  <div class="modal" style="max-width: 700px;">
+    <h2>Dispositivos Vinculados</h2>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:14px;">Detalles de los equipos que tienen asociada esta licencia para evitar duplicidad y uso compartido.</p>
+    
+    <div id="dispositivosContainer" style="max-height: 380px; overflow-y: auto; margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; padding: 4px;">
+      <!-- Se llena dinámicamente con tarjetas de dispositivo -->
+    </div>
+    
+    <div class="modal-actions">
+      <button class="btn-danger" id="btnDesvincularTodos" style="margin-right: auto;">Desvincular Todos</button>
+      <button class="btn-ghost" id="btnCerrarDispositivos">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: Confirmación Personalizada (Premium) ============ -->
+<div class="modal-overlay" id="confirmModalOverlay" style="display:none;">
+  <div class="modal" style="max-width: 420px; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+    <h2 id="confirmModalTitle">Confirmar Acción</h2>
+    <p id="confirmModalMessage" style="font-size:14px; color:var(--muted); line-height: 1.5; margin-bottom: 16px;"></p>
+    <div id="confirmPromptField" class="field" style="display:none; margin-bottom: 16px;">
+      <label id="confirmPromptLabel" style="font-size:12px; color:var(--muted); display:block; margin-bottom:6px;"></label>
+      <input id="confirmPromptInput" type="text" style="width:100%;" />
+    </div>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn-ghost" id="btnCancelConfirm">Cancelar</button>
+      <button class="btn-primary" id="btnAcceptConfirm">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/panel/katrix-biometrics.js"></script>
+
+<script>
+let API_BASE = "";
+let TOKEN = "";
+let USER = null;
+let sesionInterval = null;
+let licencias = [];
+let chartExpInstance = null;
+let chartProdInstance = null;
+let offlineQueue = JSON.parse(localStorage.getItem('katrix_offline_queue') || '[]');
+
+const $ = (id) => document.getElementById(id);
+
+function hasPerm(permission) {
+  if (!USER) return false;
+  if (USER.role === "panel_superadmin") return true;
+  if (USER.role === "admin") return true; // general CRM admin
+  if (!USER.permissions) return true;
+  return USER.permissions[permission] !== false;
+}
+
+function copiarClave(texto) {
+  navigator.clipboard.writeText(texto).then(() => {
+    showToast('Clave copiada', false);
+  }).catch(() => {
+    showToast('No se pudo copiar', true);
+  });
+}
+
+function showToast(msg, isError){
+  const t = $("toast");
+  t.textContent = msg;
+  t.style.borderColor = isError ? "var(--red)" : "var(--border)";
+  t.style.color = isError ? "var(--red)" : "var(--text)";
+  t.style.display = "block";
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=> t.style.display = "none", 3500);
+}
+
+async function apiFetch(path, options = {}){
+  const headers = Object.assign(
+    { "Content-Type": "application/json" },
+    options.headers || {}
+  );
+  if (TOKEN) headers["Authorization"] = "Bearer " + TOKEN;
+
+  const res = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
+  if (res.status === 401){
+    showToast("Tu sesión expiró. Iniciá sesión de nuevo.", true);
+    cerrarSesion();
+    throw new Error("401");
+  }
+  if (!res.ok){
+    let detail = "Error " + res.status;
+    try { const j = await res.json(); detail = j.detail || detail; } catch(e){}
+    throw new Error(detail);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+  // -----------------------------------------------------------
+  // LÓGICA TEMA CLARO / OSCURO
+  // -----------------------------------------------------------
+  let currentTheme = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', currentTheme);
+  
+  window.addEventListener('DOMContentLoaded', () => {
+    const btnTheme = document.getElementById('btnThemeToggle');
+    if (btnTheme) {
+      btnTheme.addEventListener('click', () => {
+          currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', currentTheme);
+          localStorage.setItem('theme', currentTheme);
+          renderCharts(); // Update charts colors
+      });
+    }
+  });
+  
+  // -----------------------------------------------------------
+  // LÓGICA BACKGROUND SYNC (MANUAL POLYFILL / OFFLINE)
+  // -----------------------------------------------------------
+  window.addEventListener('online', async () => {
+    $("offlineBanner").style.display = "none";
+    if (offlineQueue.length > 0) {
+      showToast(`Sincronizando ${offlineQueue.length} acciones pendientes...`);
+      for (const task of offlineQueue) {
+        try {
+          await fetch(API_BASE + task.url, {
+            method: task.method,
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + TOKEN },
+            body: JSON.stringify(task.body)
+          });
+        } catch(e) { console.warn("Failed sync task", e); }
+      }
+      offlineQueue = [];
+      localStorage.setItem('katrix_offline_queue', '[]');
+      cargarLicencias();
+      showToast("¡Sincronización completada!", false);
+    }
+  });
+
+  window.addEventListener('offline', () => {
+    $("offlineBanner").style.display = "block";
+  });
+
+  async function apiFetchWrapper(path, options = {}) {
+    if (!navigator.onLine && (options.method === 'PUT' || options.method === 'POST' || options.method === 'DELETE')) {
+      offlineQueue.push({ url: path, method: options.method, body: JSON.parse(options.body) });
+      localStorage.setItem('katrix_offline_queue', JSON.stringify(offlineQueue));
+      showToast("Sin conexión. Acción guardada para sincronizar luego.", true);
+      return;
+    }
+    return apiFetch(path, options);
+  }
+
+  // -----------------------------------------------------------
+  // LÓGICA DE INSTALACIÓN PWA Y ACTUALIZACIONES
+  // -----------------------------------------------------------
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/panel/sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Se encontró una versión nueva del Service Worker
+            showToast("Nueva versión disponible. Actualizando...", false);
+            setTimeout(() => window.location.reload(), 1500);
+          }
+        });
+      });
+    });
+  }
+
+  let deferredPrompt;
+  const btnInstallApp = document.getElementById('btnInstallApp');
+
+  // Detectar iOS
+  const isIos = () => {
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    return /iphone|ipad|ipod/.test(userAgent);
+  };
+  // Detectar si ya está en modo standalone (instalada)
+  const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+
+  // En Android/Chrome salta este evento si es instalable
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    btnInstallApp.style.display = 'inline-flex';
+    btnInstallApp.innerHTML = '📱 Instalar en Android';
+  });
+
+  // Mostrar botón en iOS si no está instalada
+  if (isIos() && !isInStandaloneMode()) {
+    btnInstallApp.style.display = 'inline-flex';
+    btnInstallApp.innerHTML = '📱 Instalar en iOS';
+  }
+
+  btnInstallApp.addEventListener('click', async () => {
+    if (isIos()) {
+      alert("Para instalar en iPhone/iPad:\n1. Tocá el ícono de 'Compartir' (el cuadradito con flecha hacia arriba) en la barra de Safari.\n2. Seleccioná 'Agregar a Inicio' o 'Add to Home Screen'.");
+    } else if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        btnInstallApp.style.display = 'none';
+      }
+      deferredPrompt = null;
+    } else {
+      alert("Para instalar en Android:\nTocá los 3 puntitos del navegador Chrome y elegí 'Instalar aplicación' o 'Agregar a la pantalla principal'.");
+    }
+  });
+
+  // Escuchar si se instaló exitosamente
+  window.addEventListener('appinstalled', () => {
+    btnInstallApp.style.display = 'none';
+    deferredPrompt = null;
+    console.log('PWA instalada correctamente');
+  });
+
+  // -----------------------------------------------------------
+
+$("btnLogin").addEventListener("click", login);
+$("loginPass").addEventListener("keydown", (e)=>{ if(e.key === "Enter") login(); });
+
+async function login(){
+  const base = $("apiBase").value.trim().replace(/\/$/, "");
+  const username = $("loginUser").value.trim();
+  const password = $("loginPass").value;
+  const errBox = $("loginError");
+  errBox.style.display = "none";
+
+  if (!base || !username || !password){
+    errBox.textContent = "Completá la URL de la API, usuario y contraseña.";
+    errBox.style.display = "block";
+    return;
+  }
+  API_BASE = base;
+
+  try{
+    const res = await fetch(API_BASE + "/panel/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok){
+      const j = await res.json().catch(()=>({}));
+      throw new Error(j.detail || "Usuario o contraseña incorrectos");
+    }
+    const data = await res.json();
+    if (data.role !== "panel_admin" && data.role !== "panel_superadmin"){
+      throw new Error("Acceso denegado: rol de administrador del panel requerido.");
+    }
+    TOKEN = data.access_token;
+    USER = data;
+    sessionStorage.setItem("katrix_token", TOKEN);
+    sessionStorage.setItem("katrix_api_base", API_BASE);
+    sessionStorage.setItem("katrix_user", JSON.stringify(USER));
+    mostrarDashboard();
+  }catch(err){
+    errBox.textContent = err.message;
+    errBox.style.display = "block";
+  }
+}
+
+function cerrarSesion(){
+  TOKEN = ""; USER = null;
+  sessionStorage.removeItem("katrix_token");
+  sessionStorage.removeItem("katrix_user");
+  $("dashboard").style.display = "none";
+  $("loginScreen").style.display = "flex";
+}
+$("btnLogout").addEventListener("click", cerrarSesion);
+
+$("chkShowLoginPass").addEventListener("change", function() {
+  $("loginPass").type = this.checked ? "text" : "password";
+});
+
+$("chkShowModalPass").addEventListener("change", function() {
+  const type = this.checked ? "text" : "password";
+  $("fCurrentPass").type = type;
+  $("fNewPass").type = type;
+  $("fConfirmPass").type = type;
+});
+
+function mostrarDashboard(){
+  $("loginScreen").style.display = "none";
+  $("dashboard").style.display = "block";
+  $("userInfo").textContent = `Conectado como ${USER.username} (${USER.role}) · ${API_BASE}`;
+  
+  if (USER.role === "panel_admin" || USER.role === "panel_superadmin" || USER.role === "superadmin") {
+    $("btnChangePass").style.display = "inline-flex";
+    $("btnRegBio").style.display = "inline-flex";
+  } else {
+    $("btnChangePass").style.display = "none";
+    $("btnRegBio").style.display = "none";
+  }
+  
+  if (USER.role === "panel_superadmin" || USER.role === "superadmin") {
+    $("btnManageUsers").style.display = "inline-flex";
+  } else {
+    $("btnManageUsers").style.display = "none";
+  }
+  
+  if (hasPerm("crear_licencia")) {
+    $("btnNueva").style.display = "inline-flex";
+  } else {
+    $("btnNueva").style.display = "none";
+  }
+
+  // Control Visibility of Tabs
+  if (USER.role === "panel_superadmin" || USER.role === "superadmin") {
+    $("navTabUsers").style.display = "inline-flex";
+    $("navTabCrmUsers").style.display = "inline-flex";
+    $("navTabSesiones").style.display = "inline-flex";
+    $("navTabLogs").style.display = "inline-flex";
+    $("navTabConfigCRM").style.display = "inline-flex";
+  } else {
+    $("navTabUsers").style.display = "none";
+    $("navTabCrmUsers").style.display = "none";
+    $("navTabConfigCRM").style.display = "none";
+    
+    if (hasPerm("ver_sesiones")) {
+      $("navTabSesiones").style.display = "inline-flex";
+    } else {
+      $("navTabSesiones").style.display = "none";
+    }
+    
+    if (hasPerm("ver_logs")) {
+      $("navTabLogs").style.display = "inline-flex";
+    } else {
+      $("navTabLogs").style.display = "none";
+    }
+  }
+
+  switchTab("tab-licencias");
+}
+
+async function checkBiometricsSupport() {
+  try {
+    const supported = await KatrixBiometrics.isSupported();
+    if (!supported) return;
+
+    // Obtener las credenciales registradas del servidor
+    const res = await fetch(API_BASE + "/panel/auth/biometrics/credentials");
+    if (res.ok) {
+      const creds = await res.json();
+      if (creds && creds.length > 0) {
+        $("btnBioLogin").style.display = "flex";
+        window.allowedCredentials = creds;
+      } else {
+        $("btnBioLogin").style.display = "none";
+      }
+    }
+  } catch(e) {
+    console.warn("Biometrics check failed: ", e);
+  }
+}
+
+/* Restaurar sesión si ya había una en esta pestaña */
+(function restaurar(){
+  $("apiBase").value = window.location.origin;
+  API_BASE = window.location.origin;
+
+  const t = sessionStorage.getItem("katrix_token");
+  const u = sessionStorage.getItem("katrix_user");
+  const b = sessionStorage.getItem("katrix_api_base");
+  if (t && u && b){
+    const parsedUser = JSON.parse(u);
+    if (parsedUser.role === "panel_admin" || parsedUser.role === "panel_superadmin") {
+      TOKEN = t; USER = parsedUser; API_BASE = b;
+      $("apiBase").value = API_BASE;
+      mostrarDashboard();
+    } else {
+      cerrarSesion();
+    }
+  }
+  
+  // Verificar soporte biométrico al cargar
+  checkBiometricsSupport();
+})();
+
+
+// Eventos de Autenticación Biométrica y Cambio de Clave
+$("btnBioLogin").addEventListener("click", async () => {
+  const base = $("apiBase").value.trim().replace(/\/$/, "");
+  const errBox = $("loginError");
+  errBox.style.display = "none";
+  API_BASE = base;
+
+  if (!window.allowedCredentials || window.allowedCredentials.length === 0) {
+    errBox.textContent = "No hay biométricos registrados para este servidor.";
+    errBox.style.display = "block";
+    return;
+  }
+
+  try {
+    // 1. Obtener challenge
+    const challengeRes = await fetch(API_BASE + "/panel/auth/biometrics/challenge");
+    if (!challengeRes.ok) throw new Error("No se pudo obtener el reto biométrico.");
+    const challengeData = await challengeRes.json();
+
+    // 2. Solicitar autenticación biométrica local
+    showToast("Colocá tu huella o usá el reconocimiento facial...");
+    const assertion = await KatrixBiometrics.loginCredential(
+      challengeData.challenge,
+      window.allowedCredentials
+    );
+
+    // 3. Enviar firma biométrica al backend
+    const loginRes = await fetch(API_BASE + "/panel/auth/biometrics/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        credential_id: assertion.credentialId,
+        signature: assertion.signature,
+        authenticator_data: assertion.authenticatorData,
+        client_data_json: assertion.clientDataJSON,
+        challenge_token: challengeData.challenge_token
+      })
+    });
+
+    if (!loginRes.ok) {
+      const j = await loginRes.json().catch(() => ({}));
+      throw new Error(j.detail || "Fallo en la autenticación biométrica");
+    }
+
+    const data = await loginRes.json();
+    TOKEN = data.access_token;
+    USER = data;
+    sessionStorage.setItem("katrix_token", TOKEN);
+    sessionStorage.setItem("katrix_api_base", API_BASE);
+    sessionStorage.setItem("katrix_user", JSON.stringify(USER));
+    mostrarDashboard();
+    showToast("¡Inicio de sesión biométrico exitoso!");
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.style.display = "block";
+    showToast(err.message, true);
+  }
+});
+
+// MODAL: Cambiar contraseña
+$("btnChangePass").addEventListener("click", () => {
+  $("fNewUsername").value = "";
+  $("fCurrentPass").value = "";
+  $("fNewPass").value = "";
+  $("fConfirmPass").value = "";
+  $("chkShowModalPass").checked = false;
+  $("fCurrentPass").type = "password";
+  $("fNewPass").type = "password";
+  $("fConfirmPass").type = "password";
+  $("changePassError").style.display = "none";
+  $("modalChangePassOverlay").style.display = "flex";
+});
+
+$("btnCancelChangePass").addEventListener("click", () => {
+  $("modalChangePassOverlay").style.display = "none";
+});
+
+$("btnConfirmChangePass").addEventListener("click", async () => {
+  const new_username = $("fNewUsername").value.trim();
+  const current_password = $("fCurrentPass").value;
+  const new_password = $("fNewPass").value;
+  const confirm_password = $("fConfirmPass").value;
+  const errBox = $("changePassError");
+  errBox.style.display = "none";
+
+  if (!current_password || !new_password || !confirm_password) {
+    errBox.textContent = "Completá todos los campos.";
+    errBox.style.display = "block";
+    return;
+  }
+
+  if (new_password !== confirm_password) {
+    errBox.textContent = "Las contraseñas nuevas no coinciden.";
+    errBox.style.display = "block";
+    return;
+  }
+
+  try {
+    const payload = { current_password, new_password };
+    if (new_username) {
+      payload.new_username = new_username;
+    }
+    await apiFetch("/panel/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    
+    showToast("Credenciales actualizadas. Iniciá sesión con tus nuevos datos.");
+    cerrarSesion();
+    $("modalChangePassOverlay").style.display = "none";
+  } catch(e) {
+    errBox.textContent = e.message;
+    errBox.style.display = "block";
+  }
+});
+
+// MODAL: Registrar huella
+$("btnRegBio").addEventListener("click", () => {
+  $("fBioDeviceName").value = "";
+  $("bioError").style.display = "none";
+  $("modalBiometricsOverlay").style.display = "flex";
+});
+
+$("btnCancelBio").addEventListener("click", () => {
+  $("modalBiometricsOverlay").style.display = "none";
+});
+
+$("btnConfirmBio").addEventListener("click", async () => {
+  const dispositivo_nombre = $("fBioDeviceName").value.trim();
+  const errBox = $("bioError");
+  errBox.style.display = "none";
+
+  if (!dispositivo_nombre) {
+    errBox.textContent = "Completá el nombre del dispositivo.";
+    errBox.style.display = "block";
+    return;
+  }
+
+  try {
+    // 1. Obtener challenge
+    const challengeRes = await apiFetch("/panel/auth/biometrics/challenge");
+    
+    // 2. Registrar en hardware del cliente
+    showToast("Colocá tu huella en el lector...");
+    const cred = await KatrixBiometrics.registerCredential(USER.username, challengeRes.challenge);
+
+    // 3. Enviar registro al servidor
+    await apiFetch("/panel/auth/biometrics/register", {
+      method: "POST",
+      body: JSON.stringify({
+        username: USER.username,
+        credential_id: cred.credentialId,
+        public_key_der: cred.publicKeyDer,
+        dispositivo_nombre: dispositivo_nombre,
+        challenge_token: challengeRes.challenge_token
+      })
+    });
+
+    showToast("¡Dispositivo biométrico registrado exitosamente!");
+    $("modalBiometricsOverlay").style.display = "none";
+    
+    // Recargar credenciales para el botón de login
+    await checkBiometricsSupport();
+  } catch(e) {
+    errBox.textContent = e.message;
+    errBox.style.display = "block";
+    showToast(e.message, true);
+  }
+});
+
+function customConfirm({ title, message, promptLabel, promptValue, onAccept }) {
+  $("confirmModalTitle").textContent = title || "Confirmar Acción";
+  $("confirmModalMessage").textContent = message || "";
+  
+  const promptField = $("confirmPromptField");
+  const promptInput = $("confirmPromptInput");
+  
+  if (promptLabel) {
+    $("confirmPromptLabel").textContent = promptLabel;
+    promptInput.value = promptValue || "";
+    promptField.style.display = "block";
+  } else {
+    promptField.style.display = "none";
+  }
+  
+  $("confirmModalOverlay").style.display = "flex";
+  
+  $("btnAcceptConfirm").onclick = () => {
+    const val = promptLabel ? promptInput.value.trim() : null;
+    $("confirmModalOverlay").style.display = "none";
+    if (onAccept) onAccept(val);
+  };
+  
+  $("btnCancelConfirm").onclick = () => {
+    $("confirmModalOverlay").style.display = "none";
+  };
+}
+
+/* ---------------- DATOS ---------------- */
+
+function diasRestantes(fechaISO){
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const venc = new Date(fechaISO + "T00:00:00");
+  return Math.round((venc - hoy) / 86400000);
+}
+
+async function cargarLicencias(){
+  const body = $("tablaBody");
+  // Skeleton loaders
+  body.innerHTML = Array(5).fill(0).map(() => `<tr>
+    <td><div class="skeleton" style="width:70%"></div><div class="skeleton" style="width:50%; height:10px;"></div></td>
+    <td><div class="skeleton" style="width:80%"></div></td>
+    <td><div class="skeleton" style="width:40%"></div></td>
+    <td><div class="skeleton" style="width:60%"></div></td>
+    <td><div class="skeleton" style="width:40%"></div></td>
+    <td><div class="skeleton" style="width:50%"></div></td>
+    <td><div class="skeleton" style="width:100%"></div></td>
+  </tr>`).join("");
+
+  try{
+    licencias = await apiFetch("/licencias/");
+    localStorage.setItem("katrix_cached_licencias", JSON.stringify(licencias));
+    render();
+  }catch(err){
+    if (err.message !== "401") {
+      const cached = localStorage.getItem("katrix_cached_licencias");
+      if (cached) {
+        licencias = JSON.parse(cached);
+        render();
+        showToast("Visualizando datos guardados localmente (sin conexión).");
+      } else {
+        showToast("No se pudieron obtener los datos. Por favor, contacte al administrador del sistema.", true);
+      }
+    }
+  }
+}
+$("btnRefrescar").addEventListener("click", cargarLicencias);
+$("btnExportCSV").addEventListener("click", () => {
+    let csv = "Cliente,Clave,Dominio,Email,Dispositivo ID,Estado,Hardware\n";
+    licencias.forEach(l => {
+        let hw = "N/A";
+        if (l.dispositivo_nombre) {
+            try { hw = JSON.parse(l.dispositivo_nombre).sistema_operativo; } catch(e) { hw = "Desconocido"; }
+        }
+        csv += `"${l.cliente}","${l.clave}","${l.dominio}","${l.email_cliente || ''}","${l.dispositivo_id || ''}","${l.estado}","${hw}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `licencias_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    showToast("CSV descargado exitosamente", "success");
+});
+
+function render(){
+  const q = $("buscar").value.toLowerCase();
+  const fEstado = $("filtroEstado").value;
+  const fProducto = $("filtroProducto").value;
+
+  const filtradas = licencias.filter(l=>{
+    const matchQ = !q ||
+      (l.cliente||"").toLowerCase().includes(q) ||
+      (l.email_cliente||"").toLowerCase().includes(q) ||
+      (l.clave||"").toLowerCase().includes(q);
+    const matchE = fEstado === "todos" || l.estado === fEstado;
+    const matchP = fProducto === "todos" || l.producto === fProducto;
+    return matchQ && matchE && matchP;
+  });
+
+  renderCharts();
+
+  $("statActivas").textContent = licencias.filter(l=>l.estado==="activa").length;
+  $("statPorVencer").textContent = licencias.filter(l=>l.estado==="activa" && diasRestantes(l.fecha_expiracion) <= 15 && diasRestantes(l.fecha_expiracion) >= 0).length;
+  $("statSuspendidas").textContent = licencias.filter(l=>l.estado==="suspendida").length;
+  $("statTotal").textContent = licencias.length;
+
+  const body = $("tablaBody");
+  body.innerHTML = "";
+  $("emptyMsg").style.display = filtradas.length ? "none" : "block";
+
+  filtradas.forEach(l=>{
+    const tr = document.createElement("tr");
+    const dias = diasRestantes(l.fecha_expiracion);
+    const venceTxt = new Date(l.fecha_expiracion + "T00:00:00").toLocaleDateString("es-AR");
+    const claseBadge = l.estado === "activa" ? "badge-activa" : (l.estado === "suspendida" ? "badge-suspendida" : "badge-expirada");
+    const labelEstado = l.estado === "activa" ? (dias < 0 ? "Vencida" : "Activa") : (l.estado === "suspendida" ? "Suspendida" : "Expirada");
+
+    let dispositivos = [];
+    try {
+      const info = JSON.parse(l.dispositivos_info || '{}');
+      dispositivos = Object.keys(info).map(k => ({
+        id: k,
+        ...info[k]
+      }));
+    } catch(e) {}
+    const cantDisp = dispositivos.length;
+
+    tr.innerHTML = `
+      <td><input type="checkbox" class="chkRow" value="${l.id}" /></td>
+      <td>
+        <div style="font-weight:600;">${l.cliente}</div>
+        <div style="font-size:12px; color:var(--muted);">${l.email_cliente || ""}</div>
+      </td>
+      <td class="clave">
+        <div style="display:flex; align-items:center; gap:6px;">
+          ${l.clave}
+          <button title="Copiar clave" style="background:transparent; border:none; cursor:pointer; font-size:14px; padding:0; filter:grayscale(1); opacity:0.7; transition:0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7" onclick="copiarClave('${l.clave}')">📋</button>
+        </div>
+      </td>
+      <td><span class="badge" style="background:rgba(79, 70, 229, 0.2); color:#818cf8; border:1px solid rgba(79, 70, 229, 0.4);">${l.producto || "CRM"}</span></td>
+      <td>${venceTxt}${dias>=0 && dias<=15 ? ` <span style="color:var(--amber); font-size:11px;">(${dias}d)</span>` : ""}</td>
+      <td>
+        <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border); padding: 4px 8px; cursor: pointer; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;" onclick="mostrarDispositivos(${l.id})">
+          ${cantDisp}/${l.limite_dispositivos} <span style="font-size:10px;">🔍</span>
+        </span>
+      </td>
+      <td><span class="badge ${claseBadge}">${labelEstado}</span></td>
+      <td>
+        <div class="row-actions">
+          ${hasPerm("suspender_licencia")
+            ? (l.estado !== "suspendida"
+              ? `<button class="btn-warn" data-action="suspender" data-id="${l.id}">Suspender</button>`
+              : `<button class="btn-ok" data-action="reactivar" data-id="${l.id}">Reactivar</button>`)
+            : ""}
+          ${l.dispositivo_nombre ? `<button class="btn-ghost" data-action="hw" data-id="${l.id}">💻 Equipo</button>` : ''}
+          ${hasPerm("editar_licencia")
+            ? `<button class="btn-ghost" data-action="editar" data-id="${l.id}">Editar</button>`
+            : ""}
+          ${hasPerm("eliminar_licencia")
+            ? `<button class="btn-danger" data-action="eliminar" data-id="${l.id}">Eliminar</button>`
+            : ""}
+        </div>
+      </td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+$("buscar").addEventListener("input", render);
+$("filtroEstado").addEventListener("change", render);
+$("filtroProducto").addEventListener("change", render);
+
+function renderCharts() {
+  const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+  const textColor = isDark ? "#e7e9ee" : "#0f172a";
+  const gridColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
+
+  // Expiring chart (Bar)
+  const expiringData = { "Vencidas": 0, "0-15 días": 0, "16-30 días": 0, "+30 días": 0 };
+  licencias.filter(l => l.estado === "activa").forEach(l => {
+    const d = diasRestantes(l.fecha_expiracion);
+    if (d < 0) expiringData["Vencidas"]++;
+    else if (d <= 15) expiringData["0-15 días"]++;
+    else if (d <= 30) expiringData["16-30 días"]++;
+    else expiringData["+30 días"]++;
+  });
+
+  if (chartExpInstance) chartExpInstance.destroy();
+  chartExpInstance = new Chart($("chartExp"), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(expiringData),
+      datasets: [{
+        label: 'Licencias Activas por Vencimiento',
+        data: Object.values(expiringData),
+        backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6'],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { grid: { color: gridColor }, ticks: { color: textColor, stepSize: 1 } },
+        x: { grid: { display: false }, ticks: { color: textColor } }
+      },
+      plugins: { legend: { labels: { color: textColor } } }
+    }
+  });
+
+  // Products chart (Doughnut)
+  const prodData = {};
+  licencias.forEach(l => {
+    const p = l.producto || "CRM";
+    prodData[p] = (prodData[p] || 0) + 1;
+  });
+
+  if (chartProdInstance) chartProdInstance.destroy();
+  chartProdInstance = new Chart($("chartProd"), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(prodData),
+      datasets: [{
+        data: Object.values(prodData),
+        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'right', labels: { color: textColor } }
+      }
+    }
+  });
+}
+
+// BULK ACTIONS
+function updateBulkUI() {
+  const checked = document.querySelectorAll(".chkRow:checked");
+  $("bulkActions").style.display = checked.length > 0 ? "flex" : "none";
+  $("bulkCount").textContent = checked.length + " seleccionadas";
+  $("chkSelectAll").checked = checked.length > 0 && checked.length === document.querySelectorAll(".chkRow").length;
+}
+
+$("chkSelectAll").addEventListener("change", (e) => {
+  document.querySelectorAll(".chkRow").forEach(chk => chk.checked = e.target.checked);
+  updateBulkUI();
+});
+
+$("tablaBody").addEventListener("change", (e) => {
+  if (e.target.classList.contains("chkRow")) updateBulkUI();
+});
+
+async function bulkUpdate(action) {
+  const ids = Array.from(document.querySelectorAll(".chkRow:checked")).map(chk => Number(chk.value));
+  if (!ids.length) return;
+  const msg = action === 'suspender' ? 'suspender' : (action === 'activar' ? 'reactivar' : 'extender 30 días a');
+  
+  customConfirm({
+    title: "Acción Masiva",
+    message: `¿Estás seguro de que querés ${msg} las ${ids.length} licencias seleccionadas?`,
+    onAccept: async () => {
+      showToast("Procesando acción masiva...");
+      let errors = 0;
+      for (const id of ids) {
+        const lic = licencias.find(l => l.id === id);
+        if (!lic) continue;
+        let payload = {
+          cliente: lic.cliente,
+          fecha_expiracion: lic.fecha_expiracion,
+          estado: lic.estado,
+          limite_dispositivos: lic.limite_dispositivos,
+          dispositivo_id: lic.dispositivo_id || null,
+          motivo: lic.motivo || null,
+          dispositivos_info: lic.dispositivos_info || null
+        };
+        
+        if (action === 'suspender') { payload.estado = 'suspendida'; payload.motivo = 'Acción masiva'; }
+        if (action === 'activar') { payload.estado = 'activa'; payload.motivo = null; }
+        if (action === 'extender') {
+           const d = new Date(lic.fecha_expiracion + "T00:00:00");
+           d.setDate(d.getDate() + 30);
+           payload.fecha_expiracion = d.toISOString().split("T")[0];
+        }
+        
+        try {
+          // Use apiFetchWrapper for offline support
+          await apiFetchWrapper(`/licencias/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+        } catch(e) { errors++; }
+      }
+      showToast(`Acción finalizada. ${errors > 0 ? errors + ' fallaron.' : 'Todo OK.'}`);
+      cargarLicencias();
+    }
+  });
+}
+
+$("btnBulkSuspender").addEventListener("click", () => bulkUpdate("suspender"));
+$("btnBulkActivar").addEventListener("click", () => bulkUpdate("activar"));
+$("btnBulkExtender").addEventListener("click", () => bulkUpdate("extender"));
+
+/* ---------------- ACCIONES DE FILA ---------------- */
+
+$("tablaBody").addEventListener("click", async (e)=>{
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  const accion = btn.dataset.action;
+  const lic = licencias.find(l=>l.id === id);
+  if (!lic) return;
+
+  if (accion === "editar"){
+    abrirModal(lic);
+    return;
+  }
+  
+  if (accion === "hw") {
+    let msg = "Detalle del hardware:\n" + lic.dispositivo_nombre;
+    try {
+        const parsed = JSON.parse(lic.dispositivo_nombre);
+        msg = `Hardware Registrado:\n\nSistema: ${parsed.sistema_operativo}\nUsuario: ${parsed.usuario}\nHost: ${parsed.hostname}\nProcesador: ${parsed.procesador}\nArquitectura: ${parsed.arquitectura}`;
+    } catch(e) {}
+    alert(msg);
+    return;
+  }
+
+  if (accion === "eliminar"){
+    customConfirm({
+      title: "Eliminar Licencia",
+      message: `¿Eliminar definitivamente la licencia de "${lic.cliente}"? Esta acción no se puede deshacer.`,
+      onAccept: async () => {
+        try{
+          await apiFetch(`/licencias/${id}`, { method: "DELETE" });
+          showToast("Licencia eliminada.");
+          cargarLicencias();
+        }catch(err){ showToast(err.message, true); }
+      }
+    });
+    return;
+  }
+
+  const nuevoEstado = accion === "suspender" ? "suspendida" : "activa";
+  if (accion === "suspender") {
+    customConfirm({
+      title: "Suspender Licencia",
+      message: `¿Estás seguro de que deseas suspender la licencia de "${lic.cliente}"?`,
+      promptLabel: "Motivo de la suspensión (ej: falta de pago):",
+      promptValue: "falta_de_pago",
+      onAccept: async (motivo) => {
+        try{
+          await apiFetch(`/licencias/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({
+              cliente: lic.cliente,
+              fecha_expiracion: lic.fecha_expiracion,
+              estado: nuevoEstado,
+              limite_dispositivos: lic.limite_dispositivos,
+              dispositivo_id: lic.dispositivo_id || null,
+              motivo: motivo || "falta_de_pago"
+            }),
+          });
+          showToast("Licencia suspendida.");
+          cargarLicencias();
+        }catch(err){ showToast(err.message, true); }
+      }
+    });
+  } else {
+    customConfirm({
+      title: "Reactivar Licencia",
+      message: `¿Deseas reactivar la licencia de "${lic.cliente}"?`,
+      onAccept: async () => {
+        try{
+          await apiFetch(`/licencias/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({
+              cliente: lic.cliente,
+              fecha_expiracion: lic.fecha_expiracion,
+              estado: nuevoEstado,
+              limite_dispositivos: lic.limite_dispositivos,
+              dispositivo_id: lic.dispositivo_id || null,
+              motivo: null
+            }),
+          });
+          showToast("Licencia reactivada.");
+          cargarLicencias();
+        }catch(err){ showToast(err.message, true); }
+      }
+    });
+  }
+});
+
+/* ---------------- MODAL NUEVA / EDITAR ---------------- */
+
+$("btnNueva").addEventListener("click", ()=> abrirModal(null));
+$("btnCancelarModal").addEventListener("click", cerrarModal);
+
+function abrirModal(lic){
+  $("fId").value = lic ? lic.id : "";
+  $("fCliente").value = lic ? lic.cliente : "";
+  $("fEmail").value = lic ? (lic.email_cliente || "") : "";
+  $("fProducto").value = lic ? (lic.producto || "CRM") : "CRM";
+  $("fFecha").value = lic ? lic.fecha_expiracion : "";
+  $("fLimite").value = lic ? lic.limite_dispositivos : 1;
+  $("fIntegraciones").value = lic ? (lic.integraciones || "") : "";
+  $("modalTitulo").textContent = lic ? "Editar licencia" : "Nueva licencia";
+  $("modalOverlay").style.display = "flex";
+}
+function cerrarModal(){ $("modalOverlay").style.display = "none"; }
+
+/* ---------------- DISPOSITIVOS VINCULADOS ---------------- */
+let currentLicIdParaDispositivos = null;
+
+function mostrarDispositivos(licId) {
+  const lic = licencias.find(l => l.id === licId);
+  if (!lic) return;
+  currentLicIdParaDispositivos = licId;
+  
+  let dispositivos = [];
+  try {
+    const info = JSON.parse(lic.dispositivos_info || '{}');
+    dispositivos = Object.keys(info).map(k => ({
+      id: k,
+      ...info[k]
+    }));
+  } catch(e) {}
+  
+  const container = $("dispositivosContainer");
+  container.innerHTML = "";
+  
+  const showDesvincular = hasPerm("desvincular_dispositivo");
+  $("btnDesvincularTodos").style.display = (showDesvincular && dispositivos.length > 0) ? "inline-flex" : "none";
+  
+  if (dispositivos.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--muted); border: 1px dashed var(--border); border-radius: 6px;">No hay dispositivos vinculados aún.</div>`;
+  } else {
+    dispositivos.forEach(d => {
+      let sysName = d.sistema_operativo || d.nombre || "Desconocido";
+      let sysUser = d.usuario || "desconocido";
+      let cpu = d.procesador || "N/A";
+      let host = d.hostname || "N/A";
+      let arch = d.arquitectura || "N/A";
+      
+      const card = document.createElement("div");
+      card.style.background = "rgba(255, 255, 255, 0.02)";
+      card.style.border = "1px solid var(--border)";
+      card.style.borderRadius = "8px";
+      card.style.padding = "14px";
+      card.style.display = "flex";
+      card.style.flexDirection = "column";
+      card.style.gap = "10px";
+      card.style.marginBottom = "10px";
+      card.style.textAlign = "left";
+      
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:18px;">📱</span>
+            <div>
+              <div style="font-weight:600; font-size:14px; color:var(--text);">${sysName}</div>
+              <div style="font-size:11px; color:var(--muted);">ID: ${d.id}</div>
+            </div>
+          </div>
+          ${showDesvincular 
+            ? `<button class="btn-danger" style="font-size:11px; padding:5px 10px; border-radius:4px;" onclick="desvincularDispositivo('${d.id}')">Desvincular</button>`
+            : `<span class="badge" style="background:rgba(255,255,255,0.05); color:var(--muted); font-size:10px;">Solo lectura</span>`}
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px 16px; font-size:12px;">
+          <div>
+            <div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px;">Dirección IP</div>
+            <div style="font-weight:500; color:var(--text); margin-top:2px;">${d.ip || "Desconocida"}</div>
+          </div>
+          <div>
+            <div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px;">Usuario SO</div>
+            <div style="font-weight:500; color:var(--text); margin-top:2px;">${sysUser}</div>
+          </div>
+          <div>
+            <div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px;">Hostname</div>
+            <div style="font-weight:500; color:var(--text); margin-top:2px;">${host}</div>
+          </div>
+          <div>
+            <div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px;">Arquitectura</div>
+            <div style="font-weight:500; color:var(--text); margin-top:2px;">${arch}</div>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px;">Procesador</div>
+            <div style="font-weight:500; color:var(--text); margin-top:2px; line-height:1.4;">${cpu}</div>
+          </div>
+          <div>
+            <div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px;">Primer Uso</div>
+            <div style="font-weight:500; color:var(--text); margin-top:2px;">${d.primer_uso || "N/A"}</div>
+          </div>
+          <div>
+            <div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px;">Último Uso</div>
+            <div style="font-weight:500; color:var(--text); margin-top:2px;">${d.ultimo_uso || "N/A"}</div>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+  
+  $("modalDispositivosOverlay").style.display = "flex";
+}
+
+$("btnCerrarDispositivos").addEventListener("click", () => {
+  $("modalDispositivosOverlay").style.display = "none";
+});
+
+$("btnDesvincularTodos").addEventListener("click", async () => {
+  const lic = licencias.find(l => l.id === currentLicIdParaDispositivos);
+  if (!lic) return;
+  
+  customConfirm({
+    title: "Desvincular Todos",
+    message: `¿Desvincular TODOS los dispositivos de la licencia de "${lic.cliente}"?`,
+    onAccept: async () => {
+      try {
+        await apiFetch(`/licencias/${lic.id}/dispositivos`, { method: "DELETE" });
+        showToast("Todos los dispositivos desvinculados.");
+        $("modalDispositivosOverlay").style.display = "none";
+        await cargarLicencias();
+      } catch(err) {
+        showToast(err.message, true);
+      }
+    }
+  });
+});
+
+async function desvincularDispositivo(devId) {
+  const lic = licencias.find(l => l.id === currentLicIdParaDispositivos);
+  if (!lic) return;
+  
+  customConfirm({
+    title: "Desvincular Dispositivo",
+    message: `¿Desvincular este dispositivo de la licencia?`,
+    onAccept: async () => {
+      try {
+        await apiFetch(`/licencias/${lic.id}/dispositivos/${encodeURIComponent(devId)}`, { method: "DELETE" });
+        showToast("Dispositivo desvinculado.");
+        $("modalDispositivosOverlay").style.display = "none";
+        await cargarLicencias();
+      } catch(err) {
+        showToast(err.message, true);
+      }
+    }
+  });
+}
+
+$("btnGuardarModal").addEventListener("click", async ()=>{
+  const id = $("fId").value;
+  const cliente = $("fCliente").value.trim();
+  const email = $("fEmail").value.trim();
+  const producto = $("fProducto").value;
+  const fecha = $("fFecha").value;
+  const limite = Number($("fLimite").value) || 1;
+
+  if (!cliente || !email || !fecha){
+    showToast("Completá cliente, email y fecha de expiración.", true);
+    return;
+  }
+
+  try{
+    if (id){
+      const lic = licencias.find(l=>l.id === Number(id));
+      await apiFetch(`/licencias/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          cliente, fecha_expiracion: fecha,
+          estado: lic ? lic.estado : "activa",
+          limite_dispositivos: limite,
+          dispositivo_id: lic ? lic.dispositivo_id || null : null,
+          motivo: lic ? lic.motivo || null : null,
+          dispositivos_info: lic ? lic.dispositivos_info || null : null
+        }),
+      });
+      showToast("Licencia actualizada.");
+    } else {
+      const data = await apiFetch("/licencias/", {
+        method: "POST",
+        body: JSON.stringify({
+          cliente, email_cliente: email, producto,
+          fecha_expiracion: fecha, estado: "activa",
+          limite_dispositivos: limite,
+        }),
+      });
+      showToast(data.message || "Licencia creada.");
+    }
+    cerrarModal();
+    cargarLicencias();
+  }catch(err){ showToast(err.message, true); }
+});
+
+/* ---------------- TABS NAVIGATION & MULTI-ROLE SECTIONS ---------------- */
+
+// let sesionInterval = null;
+
+// Switch tab function
+function switchTab(tabId) {
+  if (sesionInterval) {
+    clearInterval(sesionInterval);
+    sesionInterval = null;
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    if (btn.getAttribute('data-tab') === tabId) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  
+  document.querySelectorAll('.tab-content').forEach(c => {
+    if (c.id === tabId) {
+      c.classList.add('active');
+    } else {
+      c.classList.remove('active');
+    }
+  });
+  
+  // Close user form if switching away
+  if (tabId !== 'tab-usuarios') {
+    $("tabUserFormCard").style.display = "none";
+  }
+  if (tabId !== 'tab-crm-usuarios') {
+    $("tabCrmUserFormCard").style.display = "none";
+  }
+  
+  // Load data based on active tab
+  if (tabId === 'tab-licencias') {
+    cargarLicencias();
+  } else if (tabId === 'tab-usuarios') {
+    cargarUsuariosPanelTab();
+  } else if (tabId === 'tab-crm-usuarios') {
+    cargarCrmUsuariosTab();
+  } else if (tabId === 'tab-sesiones') {
+    cargarSesionesActivas();
+    sesionInterval = setInterval(cargarSesionesActivas, 5000);
+  } else if (tabId === 'tab-logs') {
+    cargarLogsAuditoria();
+  } else if (tabId === 'tab-config-crm') {
+    cargarConfigCRM();
+  }
+}
+
+// Hook up tab buttons click event
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    switchTab(btn.getAttribute('data-tab'));
+  });
+});
+
+// Redirect header button to tab
+$("btnManageUsers").addEventListener("click", () => {
+  switchTab("tab-usuarios");
+});
+
+
+/* ---------------- TAB: CONFIGURACIÓN CRM ---------------- */
+
+const CONFIG_CRM_LABELS = {
+  permitir_busqueda_ssn: { label: "Buscador SSN en Tiempo Real", desc: "Permite consultas y resolución de captcha al padrón de la SSN." },
+  permitir_importacion_excel: { label: "Importación de Padrones", desc: "Habilita subir archivos Excel/CSV para la actualización masiva." },
+  permitir_vaciar_db: { label: "Vaciado de Base de Datos", desc: "Muestra el botón para vaciar productores en Administración." },
+  permitir_cartera_polizas: { label: "Módulo de Cartera & Pólizas", desc: "Habilita la gestión de Clientes, Pólizas y Siniestros." },
+  permitir_metricas_kpi: { label: "Módulo de Métricas & KPI", desc: "Habilita la pestaña de analítica, distribución de ramos y comisiones." },
+  permitir_plan_comercial: { label: "Módulo de Plan Comercial", desc: "Habilita el seguimiento mensual de visitas y captación." }
+};
+
+async function cargarConfigCRM() {
+  const container = $("configCrmList");
+  container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--muted);">Cargando...</div>`;
+  try {
+    const configs = await apiFetch("/configuracion");
+    container.innerHTML = "";
+    Object.entries(CONFIG_CRM_LABELS).forEach(([clave, meta]) => {
+      const valor = configs[clave];
+      const isOn = valor !== "false";
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:14px 18px;";
+      row.innerHTML = `
+        <div style="flex:1;">
+          <div style="font-weight:600; font-size:14px;">${meta.label}</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:3px;">${meta.desc}</div>
+        </div>
+        <label style="position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0; margin-left:20px;">
+          <input type="checkbox" id="cfg_panel_${clave}" ${isOn ? "checked" : ""} style="opacity:0; width:0; height:0;">
+          <span style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:${isOn ? "#4f46e5" : "rgba(255,255,255,0.1)"}; border-radius:24px; transition:0.3s;">
+            <span style="position:absolute; content:''; height:16px; width:16px; left:${isOn ? "22px" : "4px"}; bottom:4px; background:white; border-radius:50%; transition:0.3s;"></span>
+          </span>
+        </label>
+      `;
+      const toggle = row.querySelector(`#cfg_panel_${clave}`);
+      toggle.addEventListener("change", async (e) => {
+        const nuevoValor = e.target.checked ? "true" : "false";
+        try {
+          await apiFetch("/configuracion", {
+            method: "POST",
+            body: JSON.stringify({ clave, valor: nuevoValor })
+          });
+          showToast(`'${meta.label}' ${e.target.checked ? "habilitado" : "deshabilitado"}.`);
+          // Update slider color
+          const sliderSpan = row.querySelector("span");
+          const knobSpan = row.querySelector("span span");
+          sliderSpan.style.background = e.target.checked ? "#4f46e5" : "rgba(255,255,255,0.1)";
+          knobSpan.style.left = e.target.checked ? "22px" : "4px";
+        } catch(err) {
+          showToast("Error al guardar: " + err.message, true);
+          e.target.checked = !e.target.checked;
+        }
+      });
+      container.appendChild(row);
+    });
+  } catch(err) {
+    container.innerHTML = `<div style="color:#ef4444; padding:20px;">Error al cargar configuración: ${err.message}</div>`;
+  }
+}
+
+/* ---------------- TAB 2.5: GESTIÓN DE USUARIOS APP (CRM) ---------------- */
+let tabCrmUsers = [];
+
+async function cargarCrmUsuariosTab() {
+  try {
+    tabCrmUsers = await apiFetch("/usuarios/");
+    renderTabCrmUsers();
+  } catch(e) {
+    showToast("Error al cargar usuarios de App: " + e.message, true);
+  }
+}
+
+function renderTabCrmUsers() {
+  const tbody = $("tabCrmUsersTableBody");
+  tbody.innerHTML = "";
+  tabCrmUsers.forEach(u => {
+    const tr = document.createElement("tr");
+    tr.style.borderBottom = "1px solid var(--border)";
+    
+    tr.innerHTML = `
+      <td>${u.usuario}</td>
+      <td>${u.email}</td>
+      <td><span class="badge ${u.rol === 'admin' ? 'badge-activa' : 'badge-suspendida'}">${u.rol.toUpperCase()}</span></td>
+      <td style="text-align: center;">
+        <!-- Futuro: Editar o eliminar usuarios CRM -->
+        <span style="font-size:12px; color:var(--muted)">Sin acciones</span>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+$("btnTabNewCrmUser").addEventListener("click", () => {
+  $("tabCrmUserUsername").value = "";
+  $("tabCrmUserEmail").value = "";
+  $("tabCrmUserPassword").value = "";
+  $("tabCrmUserRole").value = "agente";
+  $("tabCrmUserFormCard").style.display = "block";
+  $("tabCrmUserUsername").focus();
+});
+
+$("btnCancelTabCrmUserForm").addEventListener("click", () => {
+  $("tabCrmUserFormCard").style.display = "none";
+});
+
+$("btnSaveTabCrmUser").addEventListener("click", async () => {
+  const err = $("tabCrmUserError");
+  err.style.display = "none";
+  
+  const usuario = $("tabCrmUserUsername").value.trim();
+  const email = $("tabCrmUserEmail").value.trim();
+  const password = $("tabCrmUserPassword").value.trim();
+  const rol = $("tabCrmUserRole").value;
+  
+  if (!usuario || !email || !password) {
+    err.textContent = "Usuario, email y contraseña son obligatorios.";
+    err.style.display = "block";
+    return;
+  }
+  
+  const originalBtnText = $("btnSaveTabCrmUser").textContent;
+  $("btnSaveTabCrmUser").textContent = "Guardando...";
+  $("btnSaveTabCrmUser").disabled = true;
+  
+  try {
+    await apiFetch("/usuarios/", {
+      method: "POST",
+      body: JSON.stringify({
+        usuario,
+        email,
+        password,
+        rol,
+        requiere_cambio: 0
+      })
+    });
+    
+    showToast("Usuario de App creado con éxito.", false);
+    $("tabCrmUserFormCard").style.display = "none";
+    await cargarCrmUsuariosTab();
+  } catch(e) {
+    err.textContent = e.message;
+    err.style.display = "block";
+  } finally {
+    $("btnSaveTabCrmUser").textContent = originalBtnText;
+    $("btnSaveTabCrmUser").disabled = false;
+  }
+});
+
+
+/* ---------------- TAB 2: GESTIÓN DE USUARIOS ---------------- */
+let tabPanelUsers = [];
+
+async function cargarUsuariosPanelTab() {
+  try {
+    tabPanelUsers = await apiFetch("/panel/users");
+    renderTabUsers();
+  } catch(e) {
+    showToast("Error al cargar usuarios de panel: " + e.message, true);
+  }
+}
+
+function renderTabUsers() {
+  const tbody = $("tabUsersTableBody");
+  tbody.innerHTML = "";
+  tabPanelUsers.forEach(u => {
+    const tr = document.createElement("tr");
+    tr.style.borderBottom = "1px solid var(--border)";
+    
+    let permList = [];
+    for (const key in u.permissions) {
+      if (u.permissions[key] === true) {
+        permList.push(key.replace(/_/g, " "));
+      }
+    }
+    const permTxt = u.role === "superadmin" ? "Acceso Total (Superadmin)" : (permList.length > 0 ? permList.join(", ") : "Ninguno");
+    
+    tr.innerHTML = `
+      <td style="padding: 12px; font-weight: 600;">${u.username}</td>
+      <td style="padding: 12px;"><span class="badge ${u.role === 'superadmin' ? 'badge-activa' : 'badge-expirada'}">${u.role}</span></td>
+      <td style="padding: 12px; font-size: 12px; color: var(--muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${permTxt}">${permTxt}</td>
+      <td style="padding: 12px; text-align: center;">
+        <button class="btn-ghost" style="padding: 4px 8px; font-size: 12px; margin-right: 4px;" onclick="editarTabPanelUser('${u.username}')">Editar</button>
+        <button class="btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="eliminarTabPanelUser('${u.username}')">Eliminar</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+$("btnTabNewUser").addEventListener("click", () => {
+  $("tabUserEditMode").value = "create";
+  $("tabUserUsername").value = "";
+  $("tabUserUsername").disabled = false;
+  $("tabUserPassword").value = "";
+  $("tabPwdLabelHelp").textContent = "(mínimo 4 caracteres)";
+  $("tabUserRole").value = "admin";
+  
+  const checkboxes = ["ver_licencias", "crear_licencia", "editar_licencia", "suspender_licencia", "desvincular_dispositivo", "eliminar_licencia", "ver_sesiones", "desvincular_sesion", "ver_logs"];
+  checkboxes.forEach(p => {
+    $("tab_perm_" + p).checked = true;
+    $("tab_perm_" + p).disabled = false;
+  });
+  
+  $("tabUserFormCard").style.display = "block";
+  $("tabUserError").style.display = "none";
+  $("tabUserFormTitle").textContent = "Crear Nuevo Usuario";
+  $("tabUserFormCard").scrollIntoView({ behavior: 'smooth' });
+});
+
+$("btnCancelTabUserForm").addEventListener("click", () => {
+  $("tabUserFormCard").style.display = "none";
+});
+
+window.editarTabPanelUser = function(username) {
+  const u = tabPanelUsers.find(x => x.username === username);
+  if (!u) return;
+  
+  $("tabUserEditMode").value = "update";
+  $("tabUserUsername").value = u.username;
+  $("tabUserUsername").disabled = true;
+  $("tabUserPassword").value = "";
+  $("tabPwdLabelHelp").textContent = "(dejar vacío para mantener actual)";
+  $("tabUserRole").value = u.role;
+  
+  const checkboxes = ["ver_licencias", "crear_licencia", "editar_licencia", "suspender_licencia", "desvincular_dispositivo", "eliminar_licencia", "ver_sesiones", "desvincular_sesion", "ver_logs"];
+  checkboxes.forEach(p => {
+    $("tab_perm_" + p).checked = u.permissions[p] !== false;
+    $("tab_perm_" + p).disabled = u.role === "superadmin";
+  });
+  
+  $("tabUserFormCard").style.display = "block";
+  $("tabUserError").style.display = "none";
+  $("tabUserFormTitle").textContent = `Editar Usuario: ${u.username}`;
+  $("tabUserFormCard").scrollIntoView({ behavior: 'smooth' });
+};
+
+$("tabUserRole").addEventListener("change", function() {
+  const isSuper = this.value === "superadmin";
+  const checkboxes = ["ver_licencias", "crear_licencia", "editar_licencia", "suspender_licencia", "desvincular_dispositivo", "eliminar_licencia", "ver_sesiones", "desvincular_sesion", "ver_logs"];
+  checkboxes.forEach(p => {
+    if (isSuper) {
+      $("tab_perm_" + p).checked = true;
+      $("tab_perm_" + p).disabled = true;
+    } else {
+      $("tab_perm_" + p).disabled = false;
+    }
+  });
+});
+
+window.eliminarTabPanelUser = function(username) {
+  if (username === USER.username) {
+    showToast("No podés eliminar a tu propio usuario", true);
+    return;
+  }
+  
+  customConfirm({
+    title: "Eliminar Usuario de Panel",
+    message: `¿Eliminar al usuario "${username}"? Esto revocará su acceso inmediatamente.`,
+    onAccept: async () => {
+      try {
+        await apiFetch(`/panel/users/${username}`, {
+          method: "DELETE"
+        });
+        showToast("Usuario eliminado exitosamente.");
+        await cargarUsuariosPanelTab();
+      } catch(e) {
+        showToast(e.message, true);
+      }
+    }
+  });
+};
+
+$("btnSaveTabUser").addEventListener("click", async () => {
+  const mode = $("tabUserEditMode").value;
+  const username = $("tabUserUsername").value.trim();
+  const password = $("tabUserPassword").value;
+  const role = $("tabUserRole").value;
+  
+  const errBox = $("tabUserError");
+  errBox.style.display = "none";
+  
+  if (mode === "create" && (!username || !password)) {
+    errBox.textContent = "Completá todos los campos para crear el usuario.";
+    errBox.style.display = "block";
+    return;
+  }
+  
+  const permissions = {};
+  const checkboxes = ["ver_licencias", "crear_licencia", "editar_licencia", "suspender_licencia", "desvincular_dispositivo", "eliminar_licencia", "ver_sesiones", "desvincular_sesion", "ver_logs"];
+  checkboxes.forEach(p => {
+    permissions[p] = $("tab_perm_" + p).checked;
+  });
+  
+  try {
+    if (mode === "create") {
+      await apiFetch("/panel/users", {
+        method: "POST",
+        body: JSON.stringify({
+          username, password, role, permissions
+        })
+      });
+      showToast("Usuario creado correctamente.");
+    } else {
+      const payload = { role, permissions };
+      if (password.trim().length > 0) {
+        payload.password = password;
+      }
+      await apiFetch(`/panel/users/${username}`, {
+        method: "PUT",
+        body: JSON.stringify(payload)
+      });
+      showToast("Usuario actualizado correctamente.");
+    }
+    $("tabUserFormCard").style.display = "none";
+    await cargarUsuariosPanelTab();
+  } catch(e) {
+    errBox.textContent = e.message;
+    errBox.style.display = "block";
+  }
+});
+
+
+/* ---------------- TAB 3: SESIONES ACTIVAS ---------------- */
+
+async function cargarSesionesActivas() {
+  // 1. Cargar sesiones del Panel Admin
+  try {
+    const sessions = await apiFetch("/panel/sessions");
+    const tbody = $("sesionesTableBody");
+    tbody.innerHTML = "";
+    
+    if (!sessions || sessions.length === 0) {
+      $("emptySesionesMsg").style.display = "block";
+    } else {
+      $("emptySesionesMsg").style.display = "none";
+      sessions.forEach(s => {
+        const tr = document.createElement("tr");
+        tr.style.borderBottom = "1px solid var(--border)";
+        
+        const esPropio = s.username === USER.username;
+        const displayUser = esPropio ? `${s.username} <span style="color:var(--accent); font-weight:600; font-size:11px; margin-left:4px;">(Vos)</span>` : s.username;
+        
+        let uaFriendly = formatUA(s.user_agent);
+        let lastActStr = formatLastActive(s.last_active);
+        
+        tr.innerHTML = `
+          <td style="padding: 12px; font-weight: 600;">${displayUser}</td>
+          <td style="padding: 12px;"><span class="badge ${s.role.includes('superadmin') ? 'badge-activa' : 'badge-expirada'}">${s.role}</span></td>
+          <td style="padding: 12px; font-family: monospace; font-size:12px;">${s.ip}</td>
+          <td style="padding: 12px; font-size: 12px; color: var(--muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${s.user_agent}">${uaFriendly}</td>
+          <td style="padding: 12px; font-size: 12px;">${lastActStr}</td>
+          <td style="padding: 12px; text-align: center;">
+            ${esPropio ? '' : `<button class="btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="revocarSesion('${s.username}')">Desconectar</button>`}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  } catch(e) {
+    showToast("Error al cargar sesiones del panel: " + e.message, true);
+  }
+
+  // 2. Cargar sesiones de la App (deploys-app-pas.juidi9.easypanel.host)
+  try {
+    const appSessions = await apiFetch("/panel/app-sessions");
+    const tbodyApp = $("sesionesAppTableBody");
+    tbodyApp.innerHTML = "";
+    
+    if (!appSessions || appSessions.length === 0) {
+      $("emptySesionesAppMsg").style.display = "block";
+    } else {
+      $("emptySesionesAppMsg").style.display = "none";
+      appSessions.forEach(s => {
+        const tr = document.createElement("tr");
+        tr.style.borderBottom = "1px solid var(--border)";
+        
+        let uaFriendly = formatUA(s.user_agent);
+        let lastActStr = formatLastActive(s.last_active);
+        
+        tr.innerHTML = `
+          <td style="padding: 12px; font-weight: 600;">${s.username}</td>
+          <td style="padding: 12px;"><span class="badge" style="background:${s.role === 'admin' ? 'rgba(0,180,120,0.15)' : 'rgba(100,100,250,0.15)'}; color:${s.role === 'admin' ? '#00e080' : '#80a0ff'}; padding: 4px 8px; border-radius: 4px; font-size: 11px;">${s.role}</span></td>
+          <td style="padding: 12px; font-family: monospace; font-size:12px;">${s.ip}</td>
+          <td style="padding: 12px; font-size: 12px; color: var(--muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${s.user_agent}">${uaFriendly}</td>
+          <td style="padding: 12px; font-size: 12px;">${lastActStr}</td>
+          <td style="padding: 12px; text-align: center;">
+            <button class="btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="revocarSesionApp('${s.username}')">Desconectar</button>
+          </td>
+        `;
+        tbodyApp.appendChild(tr);
+      });
+    }
+  } catch(e) {
+    showToast("Error al cargar sesiones de la App: " + e.message, true);
+  }
+}
+
+// Helpers para formatear User-Agent y tiempo de actividad
+function formatUA(ua) {
+  if (!ua) return "Desconocido";
+  let uaFriendly = ua;
+  if (ua.includes("Chrome/")) {
+    uaFriendly = "Chrome";
+    if (ua.includes("Windows")) uaFriendly += " (Windows)";
+    else if (ua.includes("Macintosh")) uaFriendly += " (macOS)";
+    else if (ua.includes("Linux")) uaFriendly += " (Linux)";
+    else if (ua.includes("Android")) uaFriendly += " (Android)";
+  } else if (ua.includes("Firefox/")) {
+    uaFriendly = "Firefox";
+    if (ua.includes("Windows")) uaFriendly += " (Windows)";
+    else if (ua.includes("Linux")) uaFriendly += " (Linux)";
+    else if (ua.includes("Android")) uaFriendly += " (Android)";
+  } else if (ua.includes("Safari/") && !ua.includes("Chrome/")) {
+    uaFriendly = "Safari";
+    if (ua.includes("iPhone")) uaFriendly += " (iPhone)";
+    else if (ua.includes("iPad")) uaFriendly += " (iPad)";
+  } else if (ua.includes("Dart/")) {
+    uaFriendly = "Flutter App (Mobile)";
+  }
+  return uaFriendly;
+}
+
+function formatLastActive(lastActive) {
+  let lastActStr = "Recién";
+  try {
+    const diff = Math.floor((new Date() - new Date(lastActive)) / 1000);
+    if (diff > 60) {
+      const mins = Math.floor(diff / 60);
+      if (mins > 60) {
+        lastActStr = `Hace ${Math.floor(mins / 60)}h`;
+      } else {
+        lastActStr = `Hace ${mins} min`;
+      }
+    } else if (diff > 5) {
+      lastActStr = `Hace ${diff}s`;
+    }
+  } catch(e) {}
+  return lastActStr;
+}
+
+window.revocarSesion = function(username) {
+  customConfirm({
+    title: "Revocar Sesión",
+    message: `¿Estás seguro de desconectar forzadamente al usuario "${username}"? Se le cerrará la sesión de forma inmediata.`,
+    onAccept: async () => {
+      try {
+        await apiFetch(`/panel/sessions/${username}/revoke`, { method: "POST" });
+        showToast(`Sesión de "${username}" revocada correctamente.`);
+        await cargarSesionesActivas();
+      } catch(e) {
+        showToast(e.message, true);
+      }
+    }
+  });
+};
+
+window.revocarSesionApp = function(username) {
+  customConfirm({
+    title: "Revocar Sesión de la App",
+    message: `¿Estás seguro de desconectar de la App al usuario "${username}"? Se le cerrará la sesión de forma inmediata.`,
+    onAccept: async () => {
+      try {
+        await apiFetch(`/panel/app-sessions/${username}/revoke`, { method: "POST" });
+        showToast(`Sesión de App de "${username}" revocada correctamente.`);
+        await cargarSesionesActivas();
+      } catch(e) {
+        showToast(e.message, true);
+      }
+    }
+  });
+};
+
+$("btnRefrescarSesiones").addEventListener("click", cargarSesionesActivas);
+
+
+/* ---------------- TAB 4: LOGS DE AUDITORÍA ---------------- */
+let allLogs = [];
+
+async function cargarLogsAuditoria() {
+  try {
+    const limit = $("filtroLimiteLogs").value;
+    allLogs = await apiFetch(`/panel/logs?limite=${limit}`);
+    renderLogs();
+  } catch(e) {
+    showToast("Error al cargar logs de auditoría: " + e.message, true);
+  }
+}
+
+function renderLogs() {
+  const tbody = $("logsTableBody");
+  tbody.innerHTML = "";
+  
+  const searchVal = $("buscarLogs").value.toLowerCase().trim();
+  const filtered = allLogs.filter(log => {
+    if (!searchVal) return true;
+    return (
+      (log.usuario && log.usuario.toLowerCase().includes(searchVal)) ||
+      (log.accion && log.accion.toLowerCase().includes(searchVal)) ||
+      (log.detalles && log.detalles.toLowerCase().includes(searchVal))
+    );
+  });
+  
+  if (filtered.length === 0) {
+    $("emptyLogsMsg").style.display = "block";
+    return;
+  }
+  $("emptyLogsMsg").style.display = "none";
+  
+  filtered.forEach(log => {
+    const tr = document.createElement("tr");
+    tr.style.borderBottom = "1px solid var(--border)";
+    
+    let fechaStr = log.fecha || "";
+    try {
+      const d = new Date(log.fecha);
+      fechaStr = d.toLocaleString();
+    } catch(e) {}
+    
+    tr.innerHTML = `
+      <td style="padding: 10px; font-size: 12px; color: var(--muted); font-family: monospace; white-space: nowrap;">${fechaStr}</td>
+      <td style="padding: 10px; font-weight: 600;">${log.usuario || "sistema"}</td>
+      <td style="padding: 10px;"><span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border); font-size:11px;">${log.accion || ""}</span></td>
+      <td style="padding: 10px; font-size: 12px; color: var(--muted);">${log.detalles || ""}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+$("btnRefrescarLogs").addEventListener("click", cargarLogsAuditoria);
+$("buscarLogs").addEventListener("input", renderLogs);
+$("filtroLimiteLogs").addEventListener("change", cargarLogsAuditoria);
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/panel/sw.js')
+      .then((reg) => console.log('Service Worker registrado con éxito:', reg.scope))
+      .catch((err) => console.error('Error al registrar el Service Worker:', err));
+  });
+}
+
+// Connection Status Monitor
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+function updateOnlineStatus() {
+  const isOnline = navigator.onLine;
+  const banner = $("offlineBanner");
+  if (banner) {
+    banner.style.display = isOnline ? "none" : "block";
+  }
+}
+// Initial check
+updateOnlineStatus();
+$("btnPushAlerts").addEventListener("click", async () => {
+  if (!('Notification' in window)) {
+    alert("Este navegador no soporta notificaciones.");
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    showToast("Notificaciones activadas.", false);
+  } else {
+    showToast("Permiso de notificaciones denegado.", true);
+  }
+});
+</script>
+</body>
+</html>
