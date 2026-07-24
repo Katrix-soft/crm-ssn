@@ -3674,15 +3674,16 @@ def obtener_licencias(limit: int = 2000, search: Optional[str] = None) -> list:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+    order_by = "ORDER BY (CASE WHEN (dispositivo_id IS NOT NULL AND dispositivo_id != '') OR (dispositivos_info IS NOT NULL AND dispositivos_info != '{}' AND dispositivos_info != '') THEN 0 ELSE 1 END), id DESC"
     if search and search.strip():
         s = f"%{search.strip().lower()}%"
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT * FROM licencias 
             WHERE LOWER(cliente) LIKE ? OR LOWER(email_cliente) LIKE ? OR LOWER(clave) LIKE ?
-            ORDER BY id DESC LIMIT ?
+            {order_by} LIMIT ?
         """, (s, s, s, limit))
     else:
-        cursor.execute("SELECT * FROM licencias ORDER BY id DESC LIMIT ?", (limit,))
+        cursor.execute(f"SELECT * FROM licencias {order_by} LIMIT ?", (limit,))
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]

@@ -262,6 +262,10 @@
     <div class="api-config">
       <label style="margin-bottom:6px;display:block;font-size:12px;color:var(--muted);">URL de la API</label>
       <input id="apiBase" type="text" placeholder="https://api.katrix.com.ar" />
+      <div style="display:flex; gap:6px; margin-top:6px;">
+        <button type="button" class="btn-ghost" style="padding:4px 8px; font-size:11px;" onclick="setApiUrl('https://api.katrix.com.ar')">🌐 VPS Producción</button>
+        <button type="button" class="btn-ghost" style="padding:4px 8px; font-size:11px;" onclick="setApiUrl('http://localhost:8000')">💻 Backend Local</button>
+      </div>
     </div>
 
     <div class="field">
@@ -1119,10 +1123,21 @@ async function checkBiometricsSupport() {
   }
 }
 
+function setApiUrl(url) {
+  $("apiBase").value = url;
+  API_BASE = url;
+  sessionStorage.setItem("katrix_api_base", API_BASE);
+  showToast("URL de API establecida en: " + url);
+}
+
 /* Restaurar sesión si ya había una en esta pestaña */
 (function restaurar(){
-  $("apiBase").value = window.location.origin;
-  API_BASE = window.location.origin;
+  let defaultBase = window.location.origin;
+  if (!defaultBase || defaultBase === "null" || defaultBase.startsWith("file://") || defaultBase.includes("localhost") || defaultBase.includes("127.0.0.1")) {
+    defaultBase = "https://api.katrix.com.ar";
+  }
+  $("apiBase").value = defaultBase;
+  API_BASE = defaultBase;
 
   const t = sessionStorage.getItem("katrix_token");
   const u = sessionStorage.getItem("katrix_user");
@@ -1349,7 +1364,7 @@ function diasRestantes(fechaISO){
   return Math.round((venc - hoy) / 86400000);
 }
 
-async function cargarLicencias(){
+async function cargarLicencias(searchQuery = ""){
   const body = $("tablaBody");
   // Skeleton loaders
   body.innerHTML = Array(5).fill(0).map(() => `<tr>
@@ -1363,7 +1378,8 @@ async function cargarLicencias(){
   </tr>`).join("");
 
   try{
-    licencias = await apiFetch("/licencias/");
+    const path = searchQuery ? `/licencias/?q=${encodeURIComponent(searchQuery)}` : "/licencias/";
+    licencias = await apiFetch(path);
     localStorage.setItem("katrix_cached_licencias", JSON.stringify(licencias));
     render();
   }catch(err){
@@ -1379,7 +1395,7 @@ async function cargarLicencias(){
     }
   }
 }
-$("btnRefrescar").addEventListener("click", cargarLicencias);
+$("btnRefrescar").addEventListener("click", () => cargarLicencias($("buscar").value.trim()));
 $("btnExportCSV").addEventListener("click", () => {
     let csv = "Cliente,Clave,Dominio,Email,Dispositivo ID,Estado,Hardware\n";
     licencias.forEach(l => {
@@ -1439,6 +1455,12 @@ function render(){
         ...info[k]
       }));
     } catch(e) {}
+    const regDevs = (l.dispositivo_id || "").split(",").map(s => s.trim()).filter(Boolean);
+    regDevs.forEach(devId => {
+      if (!dispositivos.some(d => d.id === devId)) {
+        dispositivos.push({ id: devId });
+      }
+    });
     const cantDisp = dispositivos.length;
 
     tr.innerHTML = `
@@ -1482,7 +1504,15 @@ function render(){
   });
 }
 
-$("buscar").addEventListener("input", render);
+let searchDebounceTimer = null;
+$("buscar").addEventListener("input", () => {
+  render(); // filtro local inmediato
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    const q = $("buscar").value.trim();
+    cargarLicencias(q);
+  }, 400);
+});
 $("filtroEstado").addEventListener("change", render);
 $("filtroProducto").addEventListener("change", render);
 
@@ -1738,6 +1768,19 @@ function mostrarDispositivos(licId) {
       ...info[k]
     }));
   } catch(e) {}
+  
+  const regDevs = (lic.dispositivo_id || "").split(",").map(s => s.trim()).filter(Boolean);
+  regDevs.forEach(devId => {
+    if (!dispositivos.some(d => d.id === devId)) {
+      dispositivos.push({
+        id: devId,
+        nombre: "Dispositivo Registrado",
+        sistema_operativo: "Desconocido",
+        usuario: "desconocido",
+        ip: "Desconocida"
+      });
+    }
+  });
   
   const container = $("dispositivosContainer");
   container.innerHTML = "";
