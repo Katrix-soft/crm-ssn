@@ -1440,6 +1440,25 @@ def api_delete_licencia(lic_id: int, current: TokenData = Depends(require_admin)
     return MessageResponse(ok=True, message="Licencia eliminada")
 
 
+# ─── SOPORTE TÉCNICO ─────────────────────────────────────────────────────────
+
+@app.post("/soporte/ticket", response_model=MessageResponse, tags=["Soporte"])
+@limiter.limit("5/minute")
+def api_soporte_ticket(request: Request, body: SoporteTicketRequest):
+    """Procesa y envía un ticket de soporte técnico a supit@katrix.com.ar por email."""
+    import threading
+    def send_soporte_mail():
+        db.enviar_mail_ticket_soporte(
+            nombre=body.nombre,
+            email=body.email,
+            telefono=body.telefono or "",
+            mensaje=body.mensaje,
+            fingerprint=body.fingerprint
+        )
+    threading.Thread(target=send_soporte_mail, daemon=True).start()
+    return MessageResponse(ok=True, message="Ticket de soporte enviado con éxito")
+
+
 # ─── Health Check ─────────────────────────────────────────────────────────────
 
 @app.get("/health", tags=["Sistema"])
@@ -1464,6 +1483,41 @@ def health():
             "usuarios": ["/usuarios/"],
             "logs": ["/logs/"],
             "licencias": ["/licencias/validar", "/licencias/"],
+            "mercantil": ["/mercantil/test-auth"],
         }
     }
 
+
+# ─── MERCANTIL ANDINA (INTEGRACION DE PRUEBAS) ────────────────────────────────
+
+try:
+    from mercantil_andina import MercantilAndinaClient, MercantilAndinaError
+    mercantil_client = MercantilAndinaClient()
+except ImportError:
+    mercantil_client = None
+
+@app.get("/mercantil/test-auth", tags=["Mercantil Andina"])
+async def test_mercantil_auth(current: TokenData = Depends(get_current_user)):
+    """Prueba la conexión y generación de token de la API de Mercantil Andina."""
+    if not mercantil_client:
+        raise HTTPException(status_code=500, detail="El cliente de Mercantil Andina no está disponible")
+        
+    try:
+        token = await mercantil_client.get_token()
+        return {"status": "success", "message": "Autenticación exitosa", "token_preview": token[:10] + "..." + token[-10:] if token else None}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/mercantil/marcas", tags=["Mercantil Andina"])
+async def get_mercantil_marcas(current: TokenData = Depends(get_current_user)):
+    """Obtiene el catálogo de marcas de Mercantil Andina."""
+    if not mercantil_client:
+        raise HTTPException(status_code=500, detail="El cliente de Mercantil Andina no está disponible")
+        
+    try:
+        marcas = await mercantil_client.obtener_marcas()
+        return {"status": "success", "data": marcas}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

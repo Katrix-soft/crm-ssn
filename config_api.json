@@ -1,3 +1,4 @@
 {
-  "api_url": "https://api.katrix.com.ar"
+  "api_url": "https://api.katrix.com.ar",
+  "fallback_url": "http://localhost:8000"
 }

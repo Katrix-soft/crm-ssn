@@ -1055,6 +1055,7 @@ def obtener_todos_db(user_id: int = None, role: str = None, regional_only: bool 
                    OR p.usuario_id IN (SELECT usuario_propietario_id FROM permisos_visibilidad WHERE usuario_lector_id = ?)
                    OR p.usuario_id IS NULL)
                   {regional_clause}
+                ORDER BY CAST(p.matricula AS INTEGER) DESC
             """, (user_id, user_id))
         else:
             cursor.execute(f"""
@@ -1064,6 +1065,7 @@ def obtener_todos_db(user_id: int = None, role: str = None, regional_only: bool 
                        '' as sociedades
                 FROM productores_detalle p
                 WHERE 1=1 {regional_clause}
+                ORDER BY CAST(p.matricula AS INTEGER) DESC
             """)
         rows = cursor.fetchall()
         conn.close()
@@ -1096,7 +1098,9 @@ def obtener_cartera_db(user_id: int = None, role: str = None, regional_only: boo
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
-                       '' as sociedades
+                       '' as sociedades,
+                       (SELECT COUNT(*) FROM polizas pol WHERE pol.pas_matricula = p.matricula AND pol.estado = 'Vigente') as cant_polizas,
+                       (SELECT COUNT(DISTINCT cliente_id) FROM polizas pol WHERE pol.pas_matricula = p.matricula AND pol.estado = 'Vigente') as cant_clientes
                 FROM productores_detalle p
                 WHERE (
                     p.usuario_id = ? 
@@ -1104,15 +1108,19 @@ def obtener_cartera_db(user_id: int = None, role: str = None, regional_only: boo
                     OR p.usuario_id IS NULL
                 )
                 AND ({cartera_filter})
+                ORDER BY CAST(p.matricula AS INTEGER) DESC
             """, (user_id, user_id))
         else:
             cursor.execute(f"""
                 SELECT p.matricula, p.nombre, p.documento, p.cuit, p.ramo, p.provincia, p.telefono, p.email, 
                        p.resolucion, p.fecha_resolucion, p.scraped_at, p.domicilio, p.localidad, p.cod_postal, 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
-                       '' as sociedades
+                       '' as sociedades,
+                       (SELECT COUNT(*) FROM polizas pol WHERE pol.pas_matricula = p.matricula AND pol.estado = 'Vigente') as cant_polizas,
+                       (SELECT COUNT(DISTINCT cliente_id) FROM polizas pol WHERE pol.pas_matricula = p.matricula AND pol.estado = 'Vigente') as cant_clientes
                 FROM productores_detalle p
                 WHERE {cartera_filter}
+                ORDER BY CAST(p.matricula AS INTEGER) DESC
             """)
         rows = cursor.fetchall()
         conn.close()
@@ -1241,7 +1249,7 @@ def generar_password_provisorio(usuario: str) -> tuple[str, str] | None:
 def enviar_mail_recuperacion(destinatario: str, password_provisorio: str) -> bool:
     smtp_address = "mail.arkhon.com.ar"
     smtp_port = 587
-    sender_email = "no-reply@katrix.com.ar"
+    sender_email = "supit@katrix.com.ar"
     sender_name = "No responder - Katrix"
     smtp_username = "supit@katrix.com.ar"
     smtp_password = "Nachax5$"
@@ -1290,7 +1298,7 @@ def enviar_mail_recuperacion(destinatario: str, password_provisorio: str) -> boo
 def enviar_mail_recuperacion_link(destinatario: str, url_recuperacion: str) -> bool:
     smtp_address = "mail.arkhon.com.ar"
     smtp_port = 587
-    sender_email = "no-reply@katrix.com.ar"
+    sender_email = "supit@katrix.com.ar"
     sender_name = "No responder - Katrix"
     smtp_username = "supit@katrix.com.ar"
     smtp_password = "Nachax5$"
@@ -1363,7 +1371,7 @@ def enviar_mail_recuperacion_link(destinatario: str, url_recuperacion: str) -> b
 def enviar_mail_alerta_licencia(destinatario: str, cliente: str, email_cliente: str, clave: str, accion: str, motivo: str = None, dispositivo_id: str = None, dispositivos_info: str = None) -> bool:
     smtp_address = "mail.arkhon.com.ar"
     smtp_port = 587
-    sender_email = "no-reply@katrix.com.ar"
+    sender_email = "supit@katrix.com.ar"
     sender_name = "Alerta de Seguridad - Katrix"
     smtp_username = "supit@katrix.com.ar"
     smtp_password = "Nachax5$"
@@ -1414,6 +1422,59 @@ def enviar_mail_alerta_licencia(destinatario: str, cliente: str, email_cliente: 
     except Exception as e:
         print(f"Error al enviar correo de alerta por SMTP: {e}")
         return False
+
+
+def enviar_mail_ticket_soporte(nombre: str, email: str, telefono: str, mensaje: str, fingerprint: str = None) -> bool:
+    smtp_address = "mail.arkhon.com.ar"
+    smtp_port = 587
+    sender_email = "supit@katrix.com.ar"
+    sender_name = "Soporte Katrix CRM"
+    smtp_username = "supit@katrix.com.ar"
+    smtp_password = "Nachax5$"
+    destinatario = "supit@katrix.com.ar"
+
+    msg = MIMEMultipart()
+    msg['From'] = f'"{sender_name}" <{sender_email}>'
+    msg['To'] = destinatario
+    msg['Reply-To'] = email
+    msg['Subject'] = f"[Ticket Soporte Katrix] Consulta de {nombre}"
+
+    body = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333333;">
+        <h2 style="color: #1F3C88; border-bottom: 2px solid #1F3C88; padding-bottom: 8px;">Nuevo Ticket de Soporte Técnico</h2>
+        <p><strong>De:</strong> {nombre} (&lt;{email}&gt;)</p>
+        <p><strong>Teléfono / WhatsApp:</strong> {telefono or 'No especificado'}</p>
+        <p><strong>ID de Dispositivo (Hardware):</strong> {fingerprint or 'No disponible'}</p>
+        <hr style="border: none; border-top: 1px solid #EEEEEE; margin: 15px 0;" />
+        <p><strong>Mensaje / Consulta:</strong></p>
+        <div style="background-color: #F7FAFC; padding: 15px; border-left: 4px solid #1F3C88; border-radius: 4px; white-space: pre-wrap;">
+{mensaje}
+        </div>
+        <hr style="border: none; border-top: 1px solid #EEEEEE; margin: 20px 0;" />
+        <p style="font-size: 11px; color: #777777;">Enviado automáticamente desde el CRM de Productores Katrix.</p>
+      </body>
+    </html>
+    """
+    msg.attach(MIMEText(body, 'html', 'utf-8'))
+
+    try:
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+
+        server = smtplib.SMTP(smtp_address, smtp_port, timeout=5)
+        server.ehlo()
+        server.starttls(context=context)
+        server.ehlo()
+        server.login(smtp_username, smtp_password)
+        server.sendmail(sender_email, [destinatario], msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Error al enviar ticket de soporte por SMTP: {e}")
+        return False
+
 
 
 def actualizar_estado_contacto(matricula: str, estado: str, usuario: str = "broker") -> bool:
@@ -1748,6 +1809,22 @@ def buscar_en_ssn(documento: str, tipo_doc: str = "DNI", token: str = "") -> str
             
             "g-recaptcha-response": token,
         }
+    elif tipo_doc.upper() == "NOMBRE":
+        data = {
+            "socpro": "PAS",
+            "tipoPas": "docNro",
+            "docNro": "",
+            "matricula": "",
+            "apellidorazonsocial": documento,
+            "Submit": "Buscar",
+            
+            "tipoBusqueda": "P",
+            "tipoDoc": "",
+            "nroDoc": "",
+            "btnBuscar": "BUSCAR",
+            
+            "g-recaptcha-response": token,
+        }
     else:
         data = {
             "socpro": "PAS",
@@ -1780,6 +1857,13 @@ def parsear_resultado(html: str) -> dict | None:
     if "no se encontraron" in html_lower or "sin resultado" in html_lower or "ingrese matrícula o apellido" in html_lower:
         print("  Búsqueda finalizada sin resultados o con error en el formulario.")
         return None
+
+    # El servidor de la SSN a veces devuelve el formulario HTML concatenado con el resultado HTML.
+    # Para evitar que el extractor posicional encuentre los labels en el formulario (ej. <option value="matricula">Matrícula</option>),
+    # nos quedamos solo con la última etiqueta <body>, que contiene los resultados reales.
+    if html_lower.count("<body") > 1:
+        last_body_idx = html_lower.rfind("<body")
+        html = html[last_body_idx:]
 
     import html as html_mod
     clean_text = html_mod.unescape(html)

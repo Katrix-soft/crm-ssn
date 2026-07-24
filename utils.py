@@ -108,7 +108,8 @@ def fuzzy_filter(
                 if not (mat == norm_query or mat.startswith(norm_query)):
                     continue
             else:
-                if norm_query not in haystack:
+                tokens = norm_query.split()
+                if not all(t in haystack for t in tokens):
                     continue
                     
         results.append(rec)
@@ -136,7 +137,8 @@ def count_matches(
                 if not (mat == norm_query or mat.startswith(norm_query)):
                     continue
             else:
-                if norm_query not in haystack:
+                tokens = norm_query.split()
+                if not all(t in haystack for t in tokens):
                     continue
         count += 1
     return count

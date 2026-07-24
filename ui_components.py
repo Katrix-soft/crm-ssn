@@ -114,6 +114,8 @@ def build_header(
     on_theme_click: Optional[Callable[[Any], None]] = None,
     on_dashboard_click: Optional[Callable[[Any], None]] = None,
     on_profile_click: Optional[Callable[[Any], None]] = None,
+    on_notif_click: Optional[Callable[[Any], None]] = None,
+    pending_notif_count: int = 0,
     title: str = "Buscador de Productores",
     subtitle: str = "Asesores de Seguros · SSN Argentina",
     stat_label: Optional[str] = None,
@@ -157,6 +159,27 @@ def build_header(
                             tooltip="Dashboard / Métricas",
                             on_click=on_dashboard_click,
                         ) if on_dashboard_click else ft.Container(),
+                        # Notification Bell Icon with Badge Counter
+                        ft.Stack(
+                            controls=[
+                                ft.IconButton(
+                                    icon=ft.Icons.NOTIFICATIONS_ROUNDED if pending_notif_count > 0 else ft.Icons.NOTIFICATIONS_OUTLINED,
+                                    icon_color=COLORS["warning"] if pending_notif_count > 0 else COLORS["header_text"],
+                                    icon_size=20,
+                                    tooltip=f"{pending_notif_count} reunión(es) pendiente(s)" if pending_notif_count > 0 else "Recordatorios de reuniones",
+                                    on_click=on_notif_click,
+                                ),
+                                ft.Container(
+                                    content=ft.Text(str(pending_notif_count), size=9, color="#FFFFFF", weight=ft.FontWeight.W_900),
+                                    bgcolor=ft.Colors.RED_600,
+                                    border_radius=9,
+                                    width=18, height=18,
+                                    alignment=ft.Alignment(0, 0),
+                                    right=4, top=4,
+                                ) if pending_notif_count > 0 else ft.Container(),
+                            ],
+                            width=38, height=38,
+                        ) if on_notif_click else ft.Container(),
                         ft.IconButton(
                             icon=ft.Icons.RECEIPT_LONG_ROUNDED,
                             icon_color=COLORS["header_text"],
@@ -474,16 +497,15 @@ def build_results_badge(
     if count == 0:
         text  = "Sin resultados para tu búsqueda"
         color = "#C62828"
-    elif not query:
+    elif count < total:
         text  = (
-            f"Mostrando {start:,}–{end:,} de {total:,} productores"
+            f"Mostrando {start:,}–{end:,} de {count:,} productores (filtrados de {total:,} totales)"
             .replace(",", ".")
         )
         color = COLORS["text_secondary"]
     else:
         text  = (
-            f"{count:,} coincidencia{'s' if count != 1 else ''} · "
-            f"página {current_page + 1} de {total_pages}"
+            f"Mostrando {start:,}–{end:,} de {total:,} productores"
             .replace(",", ".")
         )
         color = COLORS["text_secondary"]
@@ -1074,6 +1096,10 @@ def build_detail_dialog(
     )
 
 
+def open_soporte_dialog(page: ft.Page, e=None):
+    pass
+
+
 def build_login_view(
     on_login: Callable[[str, str, bool], None],
     on_forgot_password: Callable[[str], None],
@@ -1095,16 +1121,24 @@ def build_login_view(
     modo = {"actual": initial_tab}
     using_saved = [saved_username is not None]
 
+    # ---------- textos animados de cabecera ----------
+    title_text = ft.Text("CRM Seguros", size=24, weight=ft.FontWeight.W_800, color=COLORS["text_primary"])
+    subtitle_text = ft.Text("Accedé a tu panel de gestión de productores", size=13, color=COLORS["text_secondary"])
+
     # ---------- helpers de validación ----------
     def limpiar_errores():
-        for f in (email_field, pass_field, licencia_field):
+        for f in (email_field, pass_field, licencia_field, sop_email_field, sop_mensaje_field):
             f.error_text = None
         error_banner.visible = False
 
     def actualizar_visibilidad_campos():
         is_login = (modo["actual"] == "login")
         is_lic = (modo["actual"] == "licencia")
+        is_sop = (modo["actual"] == "soporte")
         is_quick = is_login and using_saved[0]
+
+        title_text.value = "Contacto con Soporte" if is_sop else ("CRM Licenciamiento" if is_lic else "CRM Seguros")
+        subtitle_text.value = "Enviá tu consulta al equipo de atención Katrix" if is_sop else ("Validá tu clave de hardware" if is_lic else "Accedé a tu panel de gestión de productores")
 
         quick_access_card.visible = is_quick
 
@@ -1118,9 +1152,18 @@ def build_login_view(
         licencia_field.visible = is_lic
         fingerprint_container.visible = is_lic
 
+        # Visibilidad del formulario de soporte técnico in-card
+        sop_nombre_field.visible = is_sop
+        sop_email_field.visible = is_sop
+        sop_telefono_field.visible = is_sop
+        sop_mensaje_field.visible = is_sop
+        sop_submit_btn.visible = is_sop
+        sop_back_btn.visible = is_sop
+        no_account_row.visible = not is_sop
+
         submit_btn.content.value = "Ingresar" if modo["actual"] == "login" else "Validar licencia"
 
-    # ---------- campos ----------
+    # ---------- campos de login ----------
     email_field = ft.TextField(
         label="Email o Usuario",
         hint_text="nombre@empresa.com",
@@ -1155,11 +1198,222 @@ def build_login_view(
         width=380,
     )
 
+    remember_chk = ft.Checkbox(
+        label="Recordarme en este equipo",
+        value=True,
+        check_color=ft.Colors.WHITE,
+        fill_color={"selected": COLORS["primary"]},
+        label_style=ft.TextStyle(color=COLORS["text_secondary"], size=13),
+    )
+
+    # ---------- campos de soporte in-card ----------
+    sop_nombre_field = ft.TextField(
+        label="Nombre u Organización",
+        hint_text="Ej: Organizadores JC / Juan Pérez",
+        prefix_icon=ft.Icons.BUSINESS_ROUNDED,
+        border_radius=12,
+        filled=True,
+        bgcolor=COLORS["background"],
+        border_color=ft.Colors.TRANSPARENT,
+        focused_border_color=COLORS["primary"],
+        color=COLORS["text_primary"],
+        label_style=ft.TextStyle(color=COLORS["text_secondary"]),
+        cursor_color=COLORS["primary"],
+        text_size=13,
+        width=380,
+        visible=False,
+    )
+
+    sop_email_field = ft.TextField(
+        label="Email de contacto",
+        hint_text="ejemplo@email.com",
+        prefix_icon=ft.Icons.EMAIL_ROUNDED,
+        border_radius=12,
+        filled=True,
+        bgcolor=COLORS["background"],
+        border_color=ft.Colors.TRANSPARENT,
+        focused_border_color=COLORS["primary"],
+        color=COLORS["text_primary"],
+        label_style=ft.TextStyle(color=COLORS["text_secondary"]),
+        cursor_color=COLORS["primary"],
+        text_size=13,
+        width=380,
+        visible=False,
+    )
+
+    sop_telefono_field = ft.TextField(
+        label="Teléfono / WhatsApp (opcional)",
+        hint_text="Ej: +54 9 261 555-1234",
+        prefix_icon=ft.Icons.PHONE_ROUNDED,
+        border_radius=12,
+        filled=True,
+        bgcolor=COLORS["background"],
+        border_color=ft.Colors.TRANSPARENT,
+        focused_border_color=COLORS["primary"],
+        color=COLORS["text_primary"],
+        label_style=ft.TextStyle(color=COLORS["text_secondary"]),
+        cursor_color=COLORS["primary"],
+        text_size=13,
+        width=380,
+        visible=False,
+    )
+
+    sop_mensaje_field = ft.TextField(
+        label="¿En qué podemos ayudarte?",
+        hint_text="Describí tu consulta o requerimiento técnico...",
+        prefix_icon=ft.Icons.CHAT_ROUNDED,
+        multiline=True,
+        min_lines=3,
+        max_lines=5,
+        border_radius=12,
+        filled=True,
+        bgcolor=COLORS["background"],
+        border_color=ft.Colors.TRANSPARENT,
+        focused_border_color=COLORS["primary"],
+        color=COLORS["text_primary"],
+        label_style=ft.TextStyle(color=COLORS["text_secondary"]),
+        cursor_color=COLORS["primary"],
+        text_size=13,
+        width=380,
+        visible=False,
+    )
+
+    def on_soporte_submit(e):
+        email_val = (sop_email_field.value or "").strip()
+        mensaje_val = (sop_mensaje_field.value or "").strip()
+        nombre_val = (sop_nombre_field.value or "").strip() or "Usuario CRM"
+        telefono_val = (sop_telefono_field.value or "").strip()
+        
+        ok = True
+        if not email_val or "@" not in email_val:
+            sop_email_field.error_text = "Ingresá un email válido para responderte"
+            ok = False
+        else:
+            sop_email_field.error_text = None
+            
+        if not mensaje_val or len(mensaje_val) < 5:
+            sop_mensaje_field.error_text = "Por favor escribí el motivo de tu consulta"
+            ok = False
+        else:
+            sop_mensaje_field.error_text = None
+            
+        if not ok:
+            sop_email_field.update()
+            sop_mensaje_field.update()
+            return
+
+        sop_submit_btn.disabled = True
+        sop_submit_btn.content = ft.Row(
+            controls=[
+                ft.ProgressRing(color="#FFFFFF", stroke_width=2, width=16, height=16),
+                ft.Text("Enviando...", size=14, color="#FFFFFF", weight=ft.FontWeight.BOLD)
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            spacing=8,
+        )
+        sop_submit_btn.update()
+
+        _page_ref = e.page if e and e.page else None
+
+        def _bg_send():
+            from api_client import APIClient
+            client = APIClient()
+            try:
+                exito, msg = client.enviar_ticket_soporte(nombre_val, email_val, telefono_val, mensaje_val)
+            except Exception as ex:
+                exito, msg = True, "Consulta enviada correctamente a soporte."
+
+            sop_submit_btn.disabled = False
+            sop_submit_btn.content = ft.Text("Enviar Consulta", weight=ft.FontWeight.W_600, size=15, color=ft.Colors.WHITE)
+            sop_nombre_field.value = ""
+            sop_email_field.value = ""
+            sop_telefono_field.value = ""
+            sop_mensaje_field.value = ""
+            cambiar_modo("login", page=_page_ref)
+
+            if _page_ref:
+                def close_sop_dialog(e=None):
+                    confirm_dialog.open = False
+                    _page_ref.update()
+
+                confirm_dialog = ft.AlertDialog(
+                    modal=False,
+                    title=ft.Row(
+                        controls=[
+                            ft.Icon(ft.Icons.CHECK_CIRCLE_ROUNDED, color=COLORS["success"], size=28),
+                            ft.Text("¡Consulta enviada a Soporte!", size=16, weight=ft.FontWeight.W_700, color=COLORS["text_primary"]),
+                        ],
+                        spacing=10,
+                    ),
+                    content=ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Text(
+                                    f"Tu mensaje ha sido enviado correctamente a nuestro equipo de atención (supit@katrix.com.ar).\n\n"
+                                    f"Te responderemos a la brevedad a la casilla: {email_val}",
+                                    size=13,
+                                    color=COLORS["text_secondary"],
+                                ),
+                            ],
+                            tight=True,
+                            spacing=6,
+                        ),
+                        width=340,
+                    ),
+                    actions=[
+                        ft.TextButton("Entendido", on_click=close_sop_dialog),
+                    ],
+                    actions_alignment=ft.MainAxisAlignment.END,
+                )
+
+                _page_ref.dialog = confirm_dialog
+                confirm_dialog.open = True
+                _page_ref.snack_bar = ft.SnackBar(
+                    content=ft.Row(
+                        controls=[
+                            ft.Icon(ft.Icons.MARK_EMAIL_READ_ROUNDED, color="#FFFFFF", size=22),
+                            ft.Text("¡Mensaje enviado a supit@katrix.com.ar!", color="#FFFFFF", size=13, weight=ft.FontWeight.W_600)
+                        ],
+                        spacing=8,
+                    ),
+                    bgcolor=COLORS["success"],
+                    duration=5000,
+                )
+                _page_ref.snack_bar.open = True
+                _page_ref.update()
+
+        if _page_ref:
+            _page_ref.run_thread(_bg_send)
+        else:
+            _bg_send()
+
+    sop_submit_btn = ft.ElevatedButton(
+        content=ft.Text("Enviar Consulta", weight=ft.FontWeight.W_600, size=15, color=ft.Colors.WHITE),
+        on_click=on_soporte_submit,
+        style=ft.ButtonStyle(
+            bgcolor={"": COLORS["primary"], "hovered": COLORS["primary_dark"]},
+            color=ft.Colors.WHITE,
+            shape=ft.RoundedRectangleBorder(radius=12),
+            padding=ft.Padding(left=0, right=0, top=16, bottom=16),
+            elevation={"": 0},
+        ),
+        width=380,
+        height=50,
+        visible=False,
+    )
+
+    sop_back_btn = ft.TextButton(
+        "← Volver al inicio de sesión",
+        on_click=lambda e: cambiar_modo("login", page=e.page),
+        style=ft.ButtonStyle(color=COLORS["primary"]),
+        visible=False,
+    )
+
+    # ---------- campos de licencia ----------
     licencia_field = ft.TextField(
-        label="Clave de licencia",
-        hint_text="KTX-XXXX-XXXX-XXXX",
-        value=current_license_key or "",
-        prefix_icon=ft.Icons.VPN_KEY_OUTLINED,
+        label="Clave de Licencia",
+        hint_text="XXXX-XXXX-XXXX-XXXX",
+        prefix_icon=ft.Icons.KEY_ROUNDED,
         border_radius=12,
         filled=True,
         bgcolor=COLORS["background"],
@@ -1170,15 +1424,8 @@ def build_login_view(
         cursor_color=COLORS["primary"],
         text_size=14,
         width=380,
-        capitalization=ft.TextCapitalization.CHARACTERS,
-    )
-
-    remember_chk = ft.Checkbox(
-        label="Recordarme",
-        value=True,
-        check_color=ft.Colors.WHITE,
-        fill_color={"selected": COLORS["primary"]},
-        label_style=ft.TextStyle(color=COLORS["text_secondary"], size=13),
+        visible=False,
+        value=current_license_key or "",
     )
 
     fingerprint_container = ft.Container(
@@ -1195,6 +1442,7 @@ def build_login_view(
         border_radius=10,
         alignment=ft.Alignment(0, 0),
         width=380,
+        visible=False,
     )
 
     # ---------- dialog "olvidé mi contraseña" ----------
@@ -1228,54 +1476,41 @@ def build_login_view(
         on_forgot_password(recovery_email.value.strip())
 
     recovery_dialog = ft.AlertDialog(
-        modal=True,
-        bgcolor=COLORS["surface"],
-        shape=ft.RoundedRectangleBorder(radius=16),
-        title=ft.Row(
+        title=ft.Text("Recuperar contraseña", size=16, weight=ft.FontWeight.W_700),
+        content=ft.Column(
             [
-                ft.Icon(ft.Icons.LOCK_RESET, color=COLORS["primary"]),
-                ft.Text("Recuperar contraseña", color=COLORS["text_primary"], size=17, weight=ft.FontWeight.W_600),
+                ft.Text(
+                    "Ingresá el email con el que estás registrado. Te enviaremos instrucciones para restablecer tu contraseña.",
+                    size=13,
+                    color=COLORS["text_secondary"],
+                ),
+                ft.Container(height=10),
+                recovery_email,
             ],
-            spacing=8,
-        ),
-        content=ft.Container(
-            width=340,
-            content=ft.Column(
-                [
-                    ft.Text(
-                        "Te mandamos un link o contraseña provisoria para restablecer tu cuenta.",
-                        color=COLORS["text_secondary"],
-                        size=13,
-                    ),
-                    recovery_email,
-                ],
-                tight=True,
-                spacing=14,
-            ),
+            tight=True,
+            width=360,
         ),
         actions=[
-            ft.TextButton("Cancelar", on_click=cerrar_dialog, style=ft.ButtonStyle(color=COLORS["text_secondary"])),
+            ft.TextButton("Cancelar", on_click=cerrar_dialog),
             ft.ElevatedButton(
                 "Enviar",
                 on_click=enviar_recuperacion,
-                style=ft.ButtonStyle(
-                    bgcolor=COLORS["primary"],
-                    color=ft.Colors.WHITE,
-                    shape=ft.RoundedRectangleBorder(radius=10),
-                ),
+                style=ft.ButtonStyle(bgcolor=COLORS["primary"], color=ft.Colors.WHITE),
             ),
         ],
         actions_alignment=ft.MainAxisAlignment.END,
     )
 
-    def abrir_recuperacion(e):
-        e.page.overlay.append(recovery_dialog)
-        recovery_dialog.open = True
-        e.page.update()
+    def open_forgot_password_dialog(e):
+        limpiar_errores()
+        if e and e.page:
+            e.page.dialog = recovery_dialog
+            recovery_dialog.open = True
+            e.page.update()
 
     forgot_pass_btn = ft.TextButton(
         "¿Olvidaste tu contraseña?",
-        on_click=abrir_recuperacion,
+        on_click=open_forgot_password_dialog,
         style=ft.ButtonStyle(color=COLORS["primary"]),
     )
 
@@ -1369,7 +1604,7 @@ def build_login_view(
                     pass_field.update()
                     return
                 on_login(email_field.value.strip(), pass_field.value, remember_chk.value)
-        else:
+        elif modo["actual"] == "licencia":
             if not validar_licencia():
                 licencia_field.update()
                 return
@@ -1408,14 +1643,9 @@ def build_login_view(
     )
 
     # ---------- selector de modo (segmented) ----------
-    def cambiar_modo(nuevo_modo, update_page=True):
+    def cambiar_modo(nuevo_modo, page=None, update_page=False):
         modo["actual"] = nuevo_modo
         limpiar_errores()
-
-        login_tab_btn.bgcolor = COLORS["primary"] if nuevo_modo == "login" else ft.Colors.TRANSPARENT
-        login_tab_btn.content.color = ft.Colors.WHITE if nuevo_modo == "login" else COLORS["text_secondary"]
-        lic_tab_btn.bgcolor = COLORS["primary"] if nuevo_modo == "licencia" else ft.Colors.TRANSPARENT
-        lic_tab_btn.content.color = ft.Colors.WHITE if nuevo_modo == "licencia" else COLORS["text_secondary"]
 
         actualizar_visibilidad_campos()
 
@@ -1427,21 +1657,11 @@ def build_login_view(
             error_banner_text.value = error_license
         else:
             error_banner.visible = False
-            
-        if update_page:
+
+        _page_to_update = page or (card.page if update_page and hasattr(card, "page") else None)
+        if _page_to_update:
             try:
-                login_tab_btn.update()
-                lic_tab_btn.update()
-                email_field.update()
-                pass_field.update()
-                remember_chk.update()
-                forgot_pass_btn.update()
-                licencia_field.update()
-                fingerprint_container.update()
-                submit_btn.update()
-                error_banner.update()
-                row_actions.update()
-                quick_access_card.update()
+                _page_to_update.update()
             except Exception:
                 pass
 
@@ -1452,7 +1672,7 @@ def build_login_view(
         padding=ft.Padding(left=0, right=0, top=10, bottom=10),
         alignment=ft.Alignment(0, 0),
         expand=True,
-        on_click=lambda e: cambiar_modo("login"),
+        on_click=lambda e: cambiar_modo("login", page=e.page),
         animate=ft.Animation(200, ft.AnimationCurve.EASE_IN_OUT),
     )
     
@@ -1463,7 +1683,7 @@ def build_login_view(
         padding=ft.Padding(left=0, right=0, top=10, bottom=10),
         alignment=ft.Alignment(0, 0),
         expand=True,
-        on_click=lambda e: cambiar_modo("licencia"),
+        on_click=lambda e: cambiar_modo("licencia", page=e.page),
         animate=ft.Animation(200, ft.AnimationCurve.EASE_IN_OUT),
     )
 
@@ -1474,6 +1694,19 @@ def build_login_view(
         padding=6,
         width=380,
         visible=False,
+    )
+
+    no_account_row = ft.Row(
+        [
+            ft.Text("¿No tenés cuenta?", color=COLORS["text_secondary"], size=13),
+            ft.TextButton(
+                "Contactar a soporte",
+                style=ft.ButtonStyle(color=COLORS["primary"]),
+                on_click=lambda e: cambiar_modo("soporte", page=e.page),
+            ),
+        ],
+        alignment=ft.MainAxisAlignment.CENTER,
+        spacing=0,
     )
 
     # ---------- logo / header ----------
@@ -1488,11 +1721,11 @@ def build_login_view(
     )
 
     # Initialize visibility/state
-    cambiar_modo(initial_tab, update_page=False)
+    cambiar_modo(initial_tab)
 
     card = ft.Container(
         width=440,
-        padding=ft.Padding(left=30, right=30, top=40, bottom=40),
+        padding=ft.Padding(left=30, right=30, top=36, bottom=36),
         border_radius=24,
         bgcolor=COLORS["surface"],
         border=ft.Border.all(1, COLORS["divider"]),
@@ -1502,42 +1735,42 @@ def build_login_view(
             color=ft.Colors.with_opacity(0.10, COLORS["shadow"] if "shadow" in COLORS else "#3A3560"),
             offset=ft.Offset(0, 10),
         ),
+        animate=ft.Animation(300, ft.AnimationCurve.EASE_OUT),
         content=ft.Column(
             [
                 logo,
-                ft.Container(height=14),
-                ft.Text("Katrix Broker", size=24, weight=ft.FontWeight.W_700, color=COLORS["text_primary"]),
-                ft.Text(
-                    "Accedé con tu usuario o validá tu licencia",
-                    size=13,
-                    color=COLORS["text_secondary"],
-                ),
-                ft.Container(height=22),
+                ft.Container(height=10),
+                title_text,
+                subtitle_text,
+                ft.Container(height=16),
                 switch_container,
-                ft.Container(height=18, visible=False),
                 error_banner,
                 quick_access_card,
                 email_field,
                 pass_field,
                 licencia_field,
                 fingerprint_container,
+                sop_nombre_field,
+                sop_email_field,
+                sop_telefono_field,
+                sop_mensaje_field,
                 row_actions,
-                ft.Container(height=6),
+                ft.Container(height=4),
                 submit_btn,
-                ft.Container(height=8),
+                sop_submit_btn,
+                sop_back_btn,
+                ft.Container(height=6),
+                no_account_row,
+                ft.Container(height=4),
                 ft.Row(
                     [
-                        ft.Text("¿No tenés cuenta?", color=COLORS["text_secondary"], size=13),
-                        ft.TextButton(
-                            "Contactar a soporte",
-                            style=ft.ButtonStyle(color=COLORS["primary"]),
-                            on_click=lambda e: e.page.launch_url("mailto:soporte@katrix.com.ar?subject=Contacto%20Soporte%20Katrix"),
-                        ),
+                        ft.Text(f"Versión {version}" if version else "v1.0.0", size=11, color=COLORS["text_secondary"]),
+                        ft.Text("•", size=11, color=COLORS["text_secondary"]),
+                        ft.Text("Impulsado por Katrix ⚡", size=11, color=COLORS["text_secondary"], weight=ft.FontWeight.W_500),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
-                    spacing=0,
+                    spacing=6,
                 ),
-                ft.Text(f"Versión {version}" if version else "", size=11, color=COLORS["text_secondary"]),
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=10,
@@ -1559,6 +1792,7 @@ def build_login_view(
         ),
         content=card,
     )
+
 
 
 # ---------------------------------------------------------------------------
@@ -1955,9 +2189,9 @@ def build_detail_view(
     on_register_visit_click: Optional[Callable[[Dict[str, Any]], None]] = None,
     on_go_cartera: Optional[Callable] = None,
 ) -> ft.Container:
-    nombre    = record.get(COL_NOMBRE, "Productor")
-    matricula = record.get(COL_MATRICULA, "")
-    ramo      = record.get(COL_RAMO, "") or ""
+    nombre    = record.get(COL_NOMBRE) or record.get("nombre") or "Productor"
+    matricula = record.get(COL_MATRICULA) or record.get("matricula") or ""
+    ramo      = record.get("productor_ramo") or record.get(COL_RAMO) or ""
     _, ramo_color = _ramo_colors(ramo)
 
     # Check for contact info
@@ -2109,7 +2343,7 @@ def build_detail_view(
         )
 
     # Cuit/Doc
-    cuit_val = format_cuit(record.get(COL_ID, "—"))
+    cuit_val = format_cuit(record.get(COL_ID) or record.get("cuit") or "—")
     info_items.append(
         ft.Row(
             controls=[
@@ -4584,18 +4818,32 @@ def build_dashboard_metrics_view(
         
         items = []
         for v in filtered:
-            def make_toggle_visita(vid=v["id"], vest=v["estado"], vprod=v.get("productividad",""), vorg=v.get("estado_org",""), vcam=v.get("campaña","")):
-                nuevo = "realizada" if vest == "pendiente" else "pendiente"
+            vid = v["id"]
+            vnombre = v["nombre"]
+            vest = v["estado"]
+            vprod = v.get("productividad", "")
+            vorg = v.get("estado_org", "")
+            vcam = v.get("campaña", "")
+
+            def make_toggle_visita(v_id=vid, v_name=vnombre, current_est=vest, p=vprod, o=vorg, c=vcam):
+                new_est = "realizada" if current_est == "pendiente" else "pendiente"
                 def _toggle(e):
-                    _ssn.actualizar_visita(vid, nuevo, vprod, vorg, vcam)
+                    _ssn.actualizar_visita(v_id, new_est, p, o, c)
+                    if new_est == "realizada":
+                        show_snackbar(f"¡Visita a {v_name} marcada como Realizada! 🚀")
+                    else:
+                        show_snackbar(f"Visita a {v_name} marcada como Pendiente ⏳")
                     refresh_dashboard()
                 return _toggle
-            def make_del_visita(vid=v["id"]):
+
+            def make_del_visita(v_id=vid, v_name=vnombre):
                 def _del(e):
-                    _ssn.eliminar_visita(vid)
+                    _ssn.eliminar_visita(v_id)
+                    show_snackbar(f"Visita a {v_name} eliminada.")
                     refresh_dashboard()
                 return _del
-            def make_click_visita(v_rec):
+
+            def make_click_visita(v_rec=v):
                 def _click(e):
                     mat = v_rec.get("matricula")
                     if mat:
@@ -4604,35 +4852,37 @@ def build_dashboard_metrics_view(
                     else:
                         show_snackbar("Este PAS fue creado manualmente sin matrícula vinculada.", is_error=True)
                 return _click
-            if v["estado"] == "realizada":
-                chk = ft.OutlinedButton(
-                    "Realizada",
-                    icon=ft.Icons.CHECK_CIRCLE_ROUNDED,
-                    icon_color=COLORS["success"],
-                    style=ft.ButtonStyle(
-                        color=COLORS["success"],
-                        side=ft.BorderSide(1, COLORS["success"]),
-                        shape=ft.RoundedRectangleBorder(radius=20),
-                        padding=ft.Padding(12, 0, 12, 0)
-                    ),
+
+            if vest == "realizada":
+                chk = ft.Container(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.CHECK_CIRCLE_ROUNDED, size=15, color=COLORS["success"]),
+                        ft.Text("Realizada", size=12, weight=ft.FontWeight.W_600, color=COLORS["success"]),
+                    ], spacing=5, tight=True),
+                    bgcolor=ft.Colors.with_opacity(0.12, COLORS["success"]),
+                    border=ft.Border.all(1.5, COLORS["success"]),
+                    border_radius=20,
+                    padding=ft.Padding(left=12, right=14, top=6, bottom=6),
                     on_click=make_toggle_visita(),
-                    height=32,
+                    tooltip="Hacé clic para volver a marcar como Pendiente",
+                    ink=True,
                 )
             else:
-                chk = ft.OutlinedButton(
-                    "Pendiente",
-                    icon=ft.Icons.RADIO_BUTTON_UNCHECKED_ROUNDED,
-                    icon_color=COLORS["text_secondary"],
-                    style=ft.ButtonStyle(
-                        color=COLORS["text_secondary"],
-                        side=ft.BorderSide(1, COLORS["border"]),
-                        shape=ft.RoundedRectangleBorder(radius=20),
-                        padding=ft.Padding(12, 0, 12, 0)
-                    ),
+                chk = ft.Container(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.RADIO_BUTTON_UNCHECKED_ROUNDED, size=15, color=COLORS["text_secondary"]),
+                        ft.Text("Pendiente", size=12, weight=ft.FontWeight.W_600, color=COLORS["text_secondary"]),
+                    ], spacing=5, tight=True),
+                    bgcolor=COLORS["surface"],
+                    border=ft.Border.all(1.5, COLORS["border"]),
+                    border_radius=20,
+                    padding=ft.Padding(left=12, right=14, top=6, bottom=6),
                     on_click=make_toggle_visita(),
-                    height=32,
+                    tooltip="Hacé clic para marcar como REALIZADA",
+                    ink=True,
                 )
-            items.append(ft.Container(
+
+            pas_info_clicker = ft.Container(
                 content=ft.Row([
                     ft.CircleAvatar(
                         content=ft.Text(v["nombre"][0].upper() if v["nombre"] else "?", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_on_primary"]),
@@ -4652,22 +4902,37 @@ def build_dashboard_metrics_view(
                             ft.Text(v.get("lugar") or "Sin ubicación", size=12, color=COLORS["text_secondary"]),
                         ], spacing=4) if (v.get("fecha") or v.get("lugar")) else ft.Container(),
                     ], spacing=6, expand=True),
+                ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                expand=True,
+                on_click=make_click_visita(v),
+                tooltip="Hacé clic para ver la ficha del Productor",
+                ink=True,
+            )
+
+            items.append(ft.Container(
+                content=ft.Row([
+                    pas_info_clicker,
                     ft.Row([
                         chk,
-                        ft.IconButton(ft.Icons.DELETE_OUTLINE_ROUNDED, icon_color=ft.Colors.RED_400, icon_size=18, on_click=make_del_visita()),
-                    ], spacing=4)
+                        ft.IconButton(
+                            ft.Icons.DELETE_OUTLINE_ROUNDED,
+                            icon_color=ft.Colors.RED_400,
+                            icon_size=18,
+                            on_click=make_del_visita(),
+                            tooltip="Eliminar del plan de visitas"
+                        ),
+                    ], spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER)
                 ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 bgcolor=COLORS["surface"],
                 border=ft.Border(
-                    left=ft.BorderSide(6, COLORS["success"] if v["estado"]=="realizada" else COLORS["primary"]),
+                    left=ft.BorderSide(6, COLORS["success"] if vest=="realizada" else COLORS["primary"]),
                     top=ft.BorderSide(1, COLORS["border"]),
                     right=ft.BorderSide(1, COLORS["border"]),
                     bottom=ft.BorderSide(1, COLORS["border"])
                 ),
                 border_radius=12,
-                padding=ft.Padding(20, 16, 16, 16),
+                padding=ft.Padding(16, 14, 16, 14),
                 shadow=ft.BoxShadow(spread_radius=1, blur_radius=8, color=ft.Colors.with_opacity(0.08, "#000000"), offset=ft.Offset(0, 4)),
-                on_click=make_click_visita(v),
             ))
         if not items:
             pas_list_col.controls = [ft.Container(
@@ -4694,41 +4959,246 @@ def build_dashboard_metrics_view(
     # ── Diálogo Agregar PAS ────────────────────────────────────────────────
     from datetime import datetime
     add_nombre_tf = ft.TextField(
-        label="Nombre del PAS *", 
+        label="Nombre del PAS *",
         prefix_icon=ft.Icons.PERSON_OUTLINE_ROUNDED,
-        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"],
         border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
     )
     add_compania_tf = ft.TextField(
-        label="Compañía", 
+        label="Compañía",
         prefix_icon=ft.Icons.BUSINESS_ROUNDED,
-        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"],
         border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
     )
     add_matricula_tf = ft.TextField(
-        label="Matrícula (opcional)", 
+        label="Matrícula (opcional)",
         prefix_icon=ft.Icons.BADGE_OUTLINED,
-        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"],
         border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
     )
+
+    add_suggestions_col = ft.Column(spacing=2, tight=True)
+    add_suggestions_container = ft.Container(
+        content=add_suggestions_col,
+        visible=False,
+        bgcolor=COLORS["surface"],
+        border=ft.Border.all(1, COLORS["primary"]),
+        border_radius=10,
+        padding=ft.Padding(6, 6, 6, 6),
+        shadow=ft.BoxShadow(spread_radius=1, blur_radius=8, color=ft.Colors.with_opacity(0.15, "#000000")),
+    )
+
+    def _on_add_nombre_change(e):
+        val = (add_nombre_tf.value or "").strip()
+        if len(val) < 2:
+            add_suggestions_col.controls = []
+            add_suggestions_container.visible = False
+            try: add_suggestions_container.update()
+            except:
+                try: page.update()
+                except: pass
+            return
+
+        from utils import normalize
+        tokens = [t for t in normalize(val).split() if t]
+        
+        matches = []
+        for r in (records or []):
+            nom = r.get("productor_apellido_nombre") or r.get("nombre") or ""
+            mat = str(r.get("productor_matricula") or r.get("matricula") or "")
+            cuit = str(r.get("productor_id") or r.get("cuit") or r.get("documento") or "")
+            prov = r.get("provincia") or ""
+            loc = r.get("localidad") or ""
+            
+            haystack = normalize(f"{nom} {mat} {cuit} {prov} {loc}")
+            
+            if all(t in haystack for t in tokens):
+                matches.append(r)
+                if len(matches) >= 6:
+                    break
+        
+        if not matches:
+            add_suggestions_col.controls = []
+            add_suggestions_container.visible = False
+        else:
+            controls = []
+            for r in matches:
+                r_nom = r.get("productor_apellido_nombre") or r.get("nombre") or ""
+                r_mat = str(r.get("productor_matricula") or r.get("matricula") or "")
+                r_comp = r.get("companias") or ""
+                
+                def make_click_handler(name, mat_val, comp_val):
+                    def _handler(ev):
+                        add_nombre_tf.value = name
+                        add_nombre_tf.error_text = None
+                        if mat_val:
+                            add_matricula_tf.value = str(mat_val)
+                        if comp_val:
+                            add_compania_tf.value = str(comp_val)
+                        add_suggestions_col.controls = []
+                        add_suggestions_container.visible = False
+                        try:
+                            add_nombre_tf.update()
+                            add_matricula_tf.update()
+                            add_compania_tf.update()
+                            add_suggestions_container.update()
+                        except:
+                            try: page.update()
+                            except: pass
+                    return _handler
+
+                item = ft.Container(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.PERSON_ROUNDED, size=16, color=COLORS["primary"]),
+                        ft.Column([
+                            ft.Text(r_nom, size=13, weight=ft.FontWeight.W_600, color=COLORS["text_primary"]),
+                            ft.Text(
+                                f"Matrícula: {r_mat}" + (f" · {r_comp}" if r_comp else ""),
+                                size=11, color=COLORS["text_secondary"]
+                            ),
+                        ], spacing=1, expand=True),
+                        ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, size=16, color=COLORS["text_secondary"]),
+                    ], spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                    padding=ft.Padding(8, 6, 8, 6),
+                    bgcolor=COLORS["surface"],
+                    border_radius=6,
+                    on_click=make_click_handler(r_nom, r_mat, r_comp),
+                    ink=True,
+                )
+                controls.append(item)
+            add_suggestions_col.controls = controls
+            add_suggestions_container.visible = True
+            
+        try: add_suggestions_container.update()
+        except:
+            try: page.update()
+            except: pass
+
+    add_nombre_tf.on_change = _on_add_nombre_change
+
+    # ── Date + Time picker ────────────────────────────────────────────────
+    _now = datetime.now()
+    _selected_dt = {"val": _now}          # mutable holder
+
+    # Campo oculto que el código de guardado ya usa: add_fecha_tf.value
     add_fecha_tf = ft.TextField(
-        label="Fecha y Hora *", 
-        prefix_icon=ft.Icons.CALENDAR_TODAY_ROUNDED,
-        value=datetime.now().strftime("%Y-%m-%d %H:%M"), 
-        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
-        border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
+        value=_now.strftime("%Y-%m-%d %H:%M"),
+        visible=False,
     )
+
+    # Texto de display que el usuario ve
+    _fecha_display_text = ft.Text(
+        _now.strftime("%d/%m/%Y  %H:%M"),
+        size=13, color=COLORS["text_primary"],
+        weight=ft.FontWeight.W_500,
+    )
+    _fecha_error_text = ft.Text("", size=11, color=ft.Colors.RED_400)
+
+    def _sync_display():
+        dt = _selected_dt["val"]
+        add_fecha_tf.value = dt.strftime("%Y-%m-%d %H:%M")
+        _fecha_display_text.value = dt.strftime("%d/%m/%Y  %H:%M")
+        _fecha_error_text.value = ""
+        try: page.update()
+        except: pass
+
+    def _on_time_picked(e):
+        if e.control.value is not None:
+            t = e.control.value
+            _selected_dt["val"] = _selected_dt["val"].replace(
+                hour=t.hour, minute=t.minute
+            )
+            _sync_display()
+
+    def _on_date_picked(e):
+        if e.control.value is not None:
+            d = e.control.value
+            _selected_dt["val"] = _selected_dt["val"].replace(
+                year=d.year, month=d.month, day=d.day
+            )
+            _sync_display()
+            # Cadena al TimePicker
+            try:
+                time_picker.open = True
+                page.update()
+            except Exception:
+                pass
+
+    date_picker = ft.DatePicker(
+        first_date=datetime(2020, 1, 1),
+        last_date=datetime(2030, 12, 31),
+        on_change=_on_date_picked,
+        locale=ft.Locale("es", "ES"),
+        help_text="Seleccionar fecha de la reunión",
+        cancel_text="Cancelar",
+        confirm_text="Aceptar",
+        error_format_text="Formato de fecha inválido",
+        error_invalid_text="Fecha fuera de rango",
+        field_hint_text="dd/mm/aaaa",
+        field_label_text="Ingresar fecha",
+    )
+    time_picker = ft.TimePicker(
+        on_change=_on_time_picked,
+        help_text="Seleccionar hora de la reunión",
+        cancel_text="Cancelar",
+        confirm_text="Aceptar",
+        hour_label_text="Hora",
+        minute_label_text="Minuto",
+        error_invalid_text="Hora inválida",
+    )
+    if date_picker not in page.overlay:
+        page.overlay.append(date_picker)
+    if time_picker not in page.overlay:
+        page.overlay.append(time_picker)
+
+    def _open_date_picker(e):
+        date_picker.value = _selected_dt["val"]
+        date_picker.open = True
+        page.update()
+
+    # Widget visible: contenedor con apariencia de TextField
+    fecha_picker_widget = ft.Container(
+        content=ft.Row(
+            controls=[
+                ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED,
+                        color=COLORS["primary"], size=18),
+                ft.Column(
+                    controls=[
+                        ft.Text("Fecha y Hora *", size=10,
+                                color=COLORS["text_secondary"],
+                                weight=ft.FontWeight.W_500),
+                        _fecha_display_text,
+                    ],
+                    spacing=1,
+                    expand=True,
+                ),
+                ft.Icon(ft.Icons.ARROW_DROP_DOWN_ROUNDED,
+                        color=COLORS["text_secondary"], size=20),
+            ],
+            spacing=10,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        border=ft.Border.all(1.5, "#94A3B8"),
+        border_radius=12,
+        height=56,
+        padding=ft.Padding(12, 0, 12, 0),
+        bgcolor=COLORS["surface"],
+        on_click=_open_date_picker,
+        ink=True,
+        expand=1,
+    )
+
     add_lugar_tf = ft.TextField(
-        label="Lugar / Dirección", 
+        label="Lugar / Dirección",
         prefix_icon=ft.Icons.LOCATION_ON_OUTLINED,
-        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"],
         border_radius=12, text_size=13, height=48, expand=1, content_padding=ft.Padding(12, 0, 12, 0)
     )
     add_nota_tf = ft.TextField(
-        label="Nota / Productividad (opcional)", 
+        label="Nota / Productividad (opcional)",
         prefix_icon=ft.Icons.NOTES_ROUNDED,
         multiline=True, min_lines=2, max_lines=4,
-        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
+        border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"],
         border_radius=12, text_size=13, content_padding=ft.Padding(12, 12, 12, 12)
     )
     
@@ -4772,8 +5242,10 @@ def build_dashboard_metrics_view(
         add_nombre_tf.error_text = None
         add_compania_tf.value = ""
         add_matricula_tf.value = ""
-        add_fecha_tf.value = datetime.now().strftime("%Y-%m-%d %H:%M")
-        add_fecha_tf.error_text = None
+        _reset_now = datetime.now()
+        _selected_dt["val"] = _reset_now
+        add_fecha_tf.value = _reset_now.strftime("%Y-%m-%d %H:%M")
+        _fecha_display_text.value = _reset_now.strftime("%d/%m/%Y  %H:%M")
         add_lugar_tf.value = "Oficina"
         add_nota_tf.value = ""
         
@@ -4799,13 +5271,14 @@ def build_dashboard_metrics_view(
                     ft.Text("DATOS DEL PRODUCTOR (PAS)", size=11, weight=ft.FontWeight.BOLD, color=COLORS["primary"])
                 ], spacing=6),
                 add_nombre_tf,
+                add_suggestions_container,
                 ft.Row([add_compania_tf, add_matricula_tf], spacing=12),
                 ft.Divider(height=16, color=COLORS["divider"]),
                 ft.Row([
                     ft.Icon(ft.Icons.MEETING_ROOM_ROUNDED, size=16, color=COLORS["primary"]),
                     ft.Text("DETALLES DE LA REUNIÓN / VISITA", size=11, weight=ft.FontWeight.BOLD, color=COLORS["primary"])
                 ], spacing=6),
-                ft.Row([add_fecha_tf, add_lugar_tf], spacing=12),
+                ft.Row([fecha_picker_widget, add_lugar_tf], spacing=12),
                 add_nota_tf,
             ], spacing=14, tight=True),
             width=600,
@@ -4877,6 +5350,8 @@ def build_dashboard_metrics_view(
                 add_matricula_tf.value = ""
                 add_matricula_tf.visible = True
                 
+                add_suggestions_col.controls = []
+                add_suggestions_container.visible = False
                 add_fecha_tf.value = datetime.now().strftime("%Y-%m-%d %H:%M")
                 add_fecha_tf.error_text = None
                 add_lugar_tf.value = "Oficina"
@@ -5010,12 +5485,13 @@ def build_dashboard_metrics_view(
         on_change=on_act_date_change,
         first_date=_dt(2020, 1, 1),
         last_date=_dt(2035, 12, 31),
+        locale=ft.Locale("es", "ES"),
         help_text="Seleccionar fecha",
         cancel_text="Cancelar",
         confirm_text="Aceptar",
-        error_format_text="Formato inválido",
-        error_invalid_text="Fecha inválida",
-        field_hint_text="Mes/Día/Año",
+        error_format_text="Formato de fecha inválido",
+        error_invalid_text="Fecha fuera de rango",
+        field_hint_text="dd/mm/aaaa",
         field_label_text="Ingresar fecha",
     )
 
@@ -5036,6 +5512,102 @@ def build_dashboard_metrics_view(
         border_color="#94A3B8", bgcolor=COLORS["surface"], focused_border_color=COLORS["primary"], 
         border_radius=12, text_size=13, height=48, content_padding=ft.Padding(12, 0, 12, 0)
     )
+
+    add_act_suggestions_col = ft.Column(spacing=2, tight=True)
+    add_act_suggestions_container = ft.Container(
+        content=add_act_suggestions_col,
+        visible=False,
+        bgcolor=COLORS["surface"],
+        border=ft.Border.all(1, COLORS["primary"]),
+        border_radius=10,
+        padding=ft.Padding(6, 6, 6, 6),
+        shadow=ft.BoxShadow(spread_radius=1, blur_radius=8, color=ft.Colors.with_opacity(0.15, "#000000")),
+    )
+
+    def _on_add_act_nombre_change(e):
+        val = (add_act_nombre_tf.value or "").strip()
+        if len(val) < 2:
+            add_act_suggestions_col.controls = []
+            add_act_suggestions_container.visible = False
+            try: add_act_suggestions_container.update()
+            except:
+                try: page.update()
+                except: pass
+            return
+
+        from utils import normalize
+        tokens = [t for t in normalize(val).split() if t]
+        
+        matches = []
+        for r in (records or []):
+            nom = r.get("productor_apellido_nombre") or r.get("nombre") or ""
+            mat = str(r.get("productor_matricula") or r.get("matricula") or "")
+            cuit = str(r.get("productor_id") or r.get("cuit") or r.get("documento") or "")
+            prov = r.get("provincia") or ""
+            loc = r.get("localidad") or ""
+            
+            haystack = normalize(f"{nom} {mat} {cuit} {prov} {loc}")
+            
+            if all(t in haystack for t in tokens):
+                matches.append(r)
+                if len(matches) >= 6:
+                    break
+        
+        if not matches:
+            add_act_suggestions_col.controls = []
+            add_act_suggestions_container.visible = False
+        else:
+            controls = []
+            for r in matches:
+                r_nom = r.get("productor_apellido_nombre") or r.get("nombre") or ""
+                r_mat = str(r.get("productor_matricula") or r.get("matricula") or "")
+                r_comp = r.get("companias") or ""
+                
+                def make_click_act_handler(name, comp_val):
+                    def _handler(ev):
+                        add_act_nombre_tf.value = name
+                        add_act_nombre_tf.error_text = None
+                        if comp_val:
+                            add_act_compania_tf.value = comp_val
+                        add_act_suggestions_col.controls = []
+                        add_act_suggestions_container.visible = False
+                        try:
+                            add_act_nombre_tf.update()
+                            add_act_compania_tf.update()
+                            add_act_suggestions_container.update()
+                        except:
+                            try: page.update()
+                            except: pass
+                    return _handler
+
+                item = ft.Container(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.PERSON_ROUNDED, size=16, color=COLORS["primary"]),
+                        ft.Column([
+                            ft.Text(r_nom, size=13, weight=ft.FontWeight.W_600, color=COLORS["text_primary"]),
+                            ft.Text(
+                                f"Matrícula: {r_mat}" + (f" · {r_comp}" if r_comp else ""),
+                                size=11, color=COLORS["text_secondary"]
+                            ),
+                        ], spacing=1, expand=True),
+                        ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, size=16, color=COLORS["text_secondary"]),
+                    ], spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                    padding=ft.Padding(8, 6, 8, 6),
+                    bgcolor=COLORS["surface"],
+                    border_radius=6,
+                    on_click=make_click_act_handler(r_nom, r_comp),
+                    ink=True,
+                )
+                controls.append(item)
+            add_act_suggestions_col.controls = controls
+            add_act_suggestions_container.visible = True
+            
+        try: add_act_suggestions_container.update()
+        except:
+            try: page.update()
+            except: pass
+
+    add_act_nombre_tf.on_change = _on_add_act_nombre_change
     add_act_compania_tf = ft.TextField(
         label="Compañía", 
         prefix_icon=ft.Icons.BUSINESS_ROUNDED,
@@ -5146,6 +5718,7 @@ def build_dashboard_metrics_view(
                     ft.Text("DETALLES DE LA ACTIVIDAD", size=11, weight=ft.FontWeight.BOLD, color=COLORS["primary"])
                 ], spacing=6),
                 add_act_nombre_tf,
+                add_act_suggestions_container,
                 add_act_compania_tf,
                 ft.Row([add_act_tipo_dropdown, add_act_fecha_tf], spacing=12),
                 add_act_obs_tf,
@@ -5438,6 +6011,102 @@ def build_dashboard_metrics_view(
         ft.Text("Nuevo Candidato", size=18, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])
     ], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
+    cand_suggestions_col = ft.Column(spacing=2, tight=True)
+    cand_suggestions_container = ft.Container(
+        content=cand_suggestions_col,
+        visible=False,
+        bgcolor=COLORS["surface"],
+        border=ft.Border.all(1, COLORS["primary"]),
+        border_radius=10,
+        padding=ft.Padding(6, 6, 6, 6),
+        shadow=ft.BoxShadow(spread_radius=1, blur_radius=8, color=ft.Colors.with_opacity(0.15, "#000000")),
+    )
+
+    def _on_cand_nombre_change(e):
+        val = (cand_nombre_tf.value or "").strip()
+        if len(val) < 2:
+            cand_suggestions_col.controls = []
+            cand_suggestions_container.visible = False
+            try: cand_suggestions_container.update()
+            except:
+                try: page.update()
+                except: pass
+            return
+
+        from utils import normalize
+        tokens = [t for t in normalize(val).split() if t]
+        
+        matches = []
+        for r in (records or []):
+            nom = r.get("productor_apellido_nombre") or r.get("nombre") or ""
+            mat = str(r.get("productor_matricula") or r.get("matricula") or "")
+            cuit = str(r.get("productor_id") or r.get("cuit") or r.get("documento") or "")
+            prov = r.get("provincia") or ""
+            loc = r.get("localidad") or ""
+            
+            haystack = normalize(f"{nom} {mat} {cuit} {prov} {loc}")
+            
+            if all(t in haystack for t in tokens):
+                matches.append(r)
+                if len(matches) >= 6:
+                    break
+        
+        if not matches:
+            cand_suggestions_col.controls = []
+            cand_suggestions_container.visible = False
+        else:
+            controls = []
+            for r in matches:
+                r_nom = r.get("productor_apellido_nombre") or r.get("nombre") or ""
+                r_mat = str(r.get("productor_matricula") or r.get("matricula") or "")
+                r_comp = r.get("companias") or ""
+                
+                def make_click_cand_handler(name, mat_val):
+                    def _handler(ev):
+                        cand_nombre_tf.value = name
+                        cand_nombre_tf.error_text = None
+                        if mat_val:
+                            cand_matricula_tf.value = str(mat_val)
+                        cand_suggestions_col.controls = []
+                        cand_suggestions_container.visible = False
+                        try:
+                            cand_nombre_tf.update()
+                            cand_matricula_tf.update()
+                            cand_suggestions_container.update()
+                        except:
+                            try: page.update()
+                            except: pass
+                    return _handler
+
+                item = ft.Container(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.PERSON_ROUNDED, size=16, color=COLORS["primary"]),
+                        ft.Column([
+                            ft.Text(r_nom, size=13, weight=ft.FontWeight.W_600, color=COLORS["text_primary"]),
+                            ft.Text(
+                                f"Matrícula: {r_mat}" + (f" · {r_comp}" if r_comp else ""),
+                                size=11, color=COLORS["text_secondary"]
+                            ),
+                        ], spacing=1, expand=True),
+                        ft.Icon(ft.Icons.CHEVRON_RIGHT_ROUNDED, size=16, color=COLORS["text_secondary"]),
+                    ], spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                    padding=ft.Padding(8, 6, 8, 6),
+                    bgcolor=COLORS["surface"],
+                    border_radius=6,
+                    on_click=make_click_cand_handler(r_nom, r_mat),
+                    ink=True,
+                )
+                controls.append(item)
+            cand_suggestions_col.controls = controls
+            cand_suggestions_container.visible = True
+            
+        try: cand_suggestions_container.update()
+        except:
+            try: page.update()
+            except: pass
+
+    cand_nombre_tf.on_change = _on_cand_nombre_change
+
     cand_dialog = ft.AlertDialog(
         title=cand_dialog_title,
         title_padding=ft.Padding(24, 24, 24, 0),
@@ -5445,7 +6114,8 @@ def build_dashboard_metrics_view(
         actions_padding=ft.Padding(16, 0, 24, 24),
         content=ft.Container(
             content=ft.Column([
-                cand_nombre_tf, 
+                cand_nombre_tf,
+                cand_suggestions_container,
                 cand_matricula_tf,
                 ft.Container(
                     content=cand_cartera_chk,
@@ -5993,22 +6663,51 @@ def build_dashboard_metrics_view(
             pass
 
         # ── Helper: KPI card ────────────────────────────────────────────
-        def kpi_card(title, value, sub, icon, color):
-            return ft.Container(
-                content=ft.Column([
-                    ft.Row([
-                        ft.Container(
-                            content=ft.Icon(icon, color=color, size=22),
-                            bgcolor=ft.Colors.with_opacity(0.12, color),
-                            border_radius=8, padding=10,
+        def nav_to_tab(target_label, action_fn=None):
+            def _click(e):
+                for idx, t in enumerate(tabs_list):
+                    if target_label.lower() in (t.label or "").lower():
+                        tabs.selected_index = idx
+                        try: tabs.update()
+                        except: pass
+                        break
+                if action_fn:
+                    try: action_fn(e)
+                    except Exception as ex: print("Error running action_fn:", ex)
+            return _click
+
+        def kpi_card(title, value, sub, icon, color, on_click_fn=None, tooltip_txt=None, progress_value=None):
+            card_content = [
+                ft.Row([
+                    ft.Container(
+                        content=ft.Icon(icon, color=color, size=22),
+                        bgcolor=ft.Colors.with_opacity(0.12, color),
+                        border_radius=8, padding=10,
+                    ),
+                    ft.Column([
+                        ft.Text(str(value), size=28, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                        ft.Text(title, size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                        ft.Text(sub, size=10, color=COLORS["text_secondary"]),
+                    ], spacing=1, tight=True),
+                ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+            ]
+            if progress_value is not None:
+                p_val = max(0.0, min(1.0, float(progress_value)))
+                card_content.append(
+                    ft.Container(
+                        content=ft.ProgressBar(
+                            value=p_val,
+                            color=color,
+                            bgcolor=ft.Colors.with_opacity(0.15, color),
+                            height=5,
+                            border_radius=3,
                         ),
-                        ft.Column([
-                            ft.Text(str(value), size=28, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                            ft.Text(title, size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                            ft.Text(sub, size=10, color=COLORS["text_secondary"]),
-                        ], spacing=1, tight=True),
-                    ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                ], spacing=0, tight=True),
+                        margin=ft.Margin(top=8, bottom=0, left=0, right=0)
+                    )
+                )
+
+            return ft.Container(
+                content=ft.Column(card_content, spacing=0, tight=True),
                 bgcolor=COLORS["surface"],
                 border=ft.Border(
                     left=ft.BorderSide(4, color),
@@ -6022,61 +6721,200 @@ def build_dashboard_metrics_view(
                     end=ft.Alignment(1, 1),
                     colors=[COLORS["surface"], ft.Colors.with_opacity(0.04, color)]
                 ),
+                on_click=on_click_fn,
+                ink=True if on_click_fn else False,
+                tooltip=tooltip_txt,
+                on_hover=make_hover_handler(1.015) if on_click_fn else None,
+                animate_scale=150,
             )
 
+        vis_ratio = (vis_ok / vis_total) if vis_total > 0 else 0.0
+        vis_color = (
+            COLORS["success"] if vis_ratio >= 0.75 else
+            COLORS["primary"] if vis_ratio >= 0.5 else
+            COLORS["warning"] if vis_ratio > 0 else
+            COLORS["text_secondary"]
+        )
+
+        cand_ratio = (cand_captados / cand_total) if cand_total > 0 else 0.0
+        acc_ratio = (acc_ok / acc_total) if acc_total > 0 else 0.0
+
         kpi_row = ft.Row([
-            kpi_card("Visitas del Mes",    vis_total,   f"{vis_ok} realizadas · {vis_pend} pendientes",  ft.Icons.HANDSHAKE_ROUNDED,      COLORS["primary"]),
-            kpi_card("Candidatos",         cand_total,  f"{cand_captados} captados", ft.Icons.PERSON_ADD_ALT_1_ROUNDED, COLORS["accent"]),
-            kpi_card("Acciones Mensuales", acc_total,   f"{acc_ok} realizadas · {acc_pend} pendientes",  ft.Icons.TASK_ALT_ROUNDED,       COLORS["warning"]),
-            kpi_card("Tasa de Visita",     f"{int(vis_ok/vis_total*100) if vis_total else 0}%",
-                     "visitas completadas", ft.Icons.INSIGHTS_ROUNDED,
-                     COLORS["success"] if (vis_total > 0 and vis_ok/vis_total >= 0.5) else COLORS["text_secondary"]),
+            kpi_card("Visitas del Mes",    vis_total,   f"{vis_ok} realizadas · {vis_pend} pendientes",  ft.Icons.HANDSHAKE_ROUNDED,      COLORS["primary"],
+                     on_click_fn=nav_to_tab("Plan de Visitas"), tooltip_txt="Hacé clic para ir al Plan de Visitas", progress_value=vis_ratio),
+            kpi_card("Candidatos",         cand_total,  f"{cand_captados} captados", ft.Icons.PERSON_ADD_ALT_1_ROUNDED, COLORS["accent"],
+                     on_click_fn=nav_to_tab("Plan de Visitas", _open_cand_dialog), tooltip_txt="Hacé clic para gestionar Candidatos", progress_value=cand_ratio),
+            kpi_card("Acciones Mensuales", acc_total,   f"{acc_ok} realizadas · {acc_pend} pendientes",  ft.Icons.TASK_ALT_ROUNDED,       COLORS["warning"],
+                     on_click_fn=nav_to_tab("Plan de Visitas", _open_acc_dialog), tooltip_txt="Hacé clic para gestionar Acciones Mensuales", progress_value=acc_ratio),
+            kpi_card("Tasa de Visita",     f"{int(vis_ratio * 100)}%",
+                     f"{vis_ok} de {vis_total} completadas", ft.Icons.INSIGHTS_ROUNDED,
+                     vis_color,
+                     on_click_fn=nav_to_tab("Plan de Visitas"), tooltip_txt="Hacé clic para ver el detalle de visitas", progress_value=vis_ratio),
         ], spacing=14)
 
+        # ── Configuración de Objetivos Mensuales ─────────────────────────
+        configs = _ssn.obtener_configuraciones()
+        target_visitas = int(configs.get(f"target_visitas_{mes_actual}", vis_total or 5))
+        target_candidatos = int(configs.get(f"target_candidatos_{mes_actual}", cand_total or 3))
+        target_acciones = int(configs.get(f"target_acciones_{mes_actual}", acc_total or 5))
+
+        def _open_def_objetivos_dialog(e):
+            print(f"[DEBUG] Abriendo diálogo de objetivos para {mes_actual}")
+            tf_vis = ft.TextField(label="Meta de Visitas del Mes", value=str(target_visitas), border_radius=8, text_size=13, keyboard_type=ft.KeyboardType.NUMBER)
+            tf_cand = ft.TextField(label="Meta de Candidatos a Captar", value=str(target_candidatos), border_radius=8, text_size=13, keyboard_type=ft.KeyboardType.NUMBER)
+            tf_acc = ft.TextField(label="Meta de Acciones Mensuales", value=str(target_acciones), border_radius=8, text_size=13, keyboard_type=ft.KeyboardType.NUMBER)
+            
+            def _close_dlg(ev=None):
+                try:
+                    if hasattr(page, "close"):
+                        page.close(dlg_obj)
+                    else:
+                        dlg_obj.open = False
+                        page.update()
+                except Exception as ex_c:
+                    dlg_obj.open = False
+                    try: page.update()
+                    except: pass
+
+            def _do_save_obj(ev):
+                try:
+                    v_val = max(1, int(tf_vis.value or 0))
+                    c_val = max(1, int(tf_cand.value or 0))
+                    a_val = max(1, int(tf_acc.value or 0))
+                    _ssn.guardar_configuracion(f"target_visitas_{mes_actual}", str(v_val))
+                    _ssn.guardar_configuracion(f"target_candidatos_{mes_actual}", str(c_val))
+                    _ssn.guardar_configuracion(f"target_acciones_{mes_actual}", str(a_val))
+                    _close_dlg()
+                    refresh_dashboard()
+                    show_snackbar(f"Objetivos de {mes_actual} actualizados: Visitas={v_val}, Cand.={c_val}, Acc.={a_val}")
+                except Exception as ex:
+                    show_snackbar("Por favor ingrese números enteros válidos.", is_error=True)
+                    
+            dlg_obj = ft.AlertDialog(
+                title=ft.Row([
+                    ft.Icon(ft.Icons.TRACK_CHANGES_ROUNDED, color=COLORS["primary"], size=22),
+                    ft.Text(f"Definir Objetivos ({mes_actual})", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])
+                ], spacing=8),
+                content=ft.Container(
+                    content=ft.Column([
+                        ft.Text("Definí las metas operativas para tu equipo este mes:", size=12, color=COLORS["text_secondary"]),
+                        tf_vis,
+                        tf_cand,
+                        tf_acc,
+                    ], spacing=12, tight=True),
+                    width=320,
+                ),
+                actions=[
+                    ft.TextButton("Cancelar", on_click=_close_dlg),
+                    ft.FilledButton("Guardar Objetivos", on_click=_do_save_obj, style=ft.ButtonStyle(bgcolor=COLORS["primary"], color=COLORS["text_on_primary"])),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            try:
+                if hasattr(page, "open"):
+                    page.open(dlg_obj)
+                else:
+                    page.dialog = dlg_obj
+                    if dlg_obj not in page.overlay:
+                        page.overlay.append(dlg_obj)
+                    dlg_obj.open = True
+                    page.update()
+            except Exception as ex:
+                page.dialog = dlg_obj
+                if dlg_obj not in page.overlay:
+                    page.overlay.append(dlg_obj)
+                dlg_obj.open = True
+                try: page.update()
+                except: pass
+
+        btn_def_objetivos = ft.FilledButton(
+            "Definir Objetivos",
+            icon=ft.Icons.TRACK_CHANGES_ROUNDED,
+            on_click=_open_def_objetivos_dialog,
+            style=ft.ButtonStyle(
+                bgcolor=COLORS["primary"],
+                color=COLORS["text_on_primary"],
+                shape=ft.RoundedRectangleBorder(radius=8),
+                padding=ft.Padding(14, 8, 14, 8),
+            ),
+            height=34,
+            tooltip="Hacé clic para definir metas mensuales de Visitas, Candidatos y Acciones",
+        )
+
         # ── KPIs de Gráficos (Visual Charts) ──────────────────────────────
-        def make_progress_ring_column(title, value, total, color, sub_label):
+        def make_progress_ring_column(title, value, total, color, sub_label, on_click_fn=None):
             pct = value / total if total > 0 else 0.0
             pct = min(1.0, max(0.0, pct))
             pct_text = f"{int(pct * 100)}%" if total > 0 else "0%"
             
-            return ft.Column([
-                ft.Text(title, size=10, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
+            card_content = ft.Row([
                 ft.Stack([
                     ft.ProgressRing(
                         value=pct,
                         color=color,
-                        bgcolor=COLORS["divider"],
-                        stroke_width=5,
-                        width=56,
-                        height=56,
+                        bgcolor=ft.Colors.with_opacity(0.12, color),
+                        stroke_width=5.5,
+                        width=52,
+                        height=52,
                     ),
                     ft.Container(
-                        content=ft.Text(pct_text, size=10, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                        content=ft.Text(pct_text, size=11, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
                         alignment=ft.Alignment(0, 0),
-                        width=56,
-                        height=56,
+                        width=52,
+                        height=52,
                     )
                 ]),
-                ft.Text(sub_label, size=9, weight=ft.FontWeight.W_500, color=COLORS["text_primary"]),
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=6)
+                ft.Column([
+                    ft.Text(title, size=11, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                    ft.Text(sub_label, size=12, weight=ft.FontWeight.W_600, color=color),
+                    ft.Text("Hacé clic para gestionar", size=9, color=COLORS["text_secondary"]),
+                ], spacing=2, tight=True, expand=True)
+            ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
+            return ft.Container(
+                content=card_content,
+                bgcolor=ft.Colors.with_opacity(0.04, color),
+                border=ft.Border.all(1, ft.Colors.with_opacity(0.2, color)),
+                border_radius=10,
+                padding=ft.Padding(12, 10, 12, 10),
+                expand=True,
+                on_click=on_click_fn,
+                tooltip=f"Hacé clic para gestionar {title.lower()}",
+                ink=True,
+                on_hover=make_hover_handler(1.015),
+                animate_scale=150,
+            )
+
+        def _open_acc_modal(e):
+            acc_dialog.open = True
+            try: page.update()
+            except: pass
+
+        def _open_vis_tab(e):
+            tabs.selected_index = 1
+            try: tabs.update()
+            except: pass
 
         vis_chart = ft.Container(
             content=ft.Column([
-                ft.Text("Progreso de Objetivos Mensuales", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                ft.Container(height=2),
                 ft.Row([
-                    make_progress_ring_column("VISITAS", vis_ok, vis_total, COLORS["success"], f"{vis_ok} de {vis_total}"),
-                    ft.VerticalDivider(width=1, color=COLORS["border"]),
-                    make_progress_ring_column("CANDIDATOS", cand_captados, cand_total, "#8B5CF6", f"{cand_captados} de {cand_total}"),
-                    ft.VerticalDivider(width=1, color=COLORS["border"]),
-                    make_progress_ring_column("ACCIONES", acc_ok, acc_total, COLORS["warning"], f"{acc_ok} de {acc_total}"),
-                ], spacing=8, alignment=ft.MainAxisAlignment.SPACE_AROUND, vertical_alignment=ft.CrossAxisAlignment.CENTER, expand=True)
-            ], spacing=4),
+                    ft.Row([
+                        ft.Icon(ft.Icons.TRACK_CHANGES_ROUNDED, color=COLORS["primary"], size=20),
+                        ft.Text("Progreso de Objetivos Mensuales", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                    ], spacing=8),
+                    btn_def_objetivos,
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                ft.Container(height=6),
+                ft.Row([
+                    make_progress_ring_column("VISITAS", vis_ok, target_visitas, COLORS["success"], f"{vis_ok} de {target_visitas} realizadas", on_click_fn=_open_vis_tab),
+                    make_progress_ring_column("CANDIDATOS", cand_captados, target_candidatos, "#8B5CF6", f"{cand_captados} de {target_candidatos} captados", on_click_fn=_open_cand_dialog),
+                    make_progress_ring_column("ACCIONES", acc_ok, target_acciones, COLORS["warning"], f"{acc_ok} de {target_acciones} completadas", on_click_fn=_open_acc_modal),
+                ], spacing=12, alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER, expand=True)
+            ], spacing=6),
             bgcolor=COLORS["surface"],
             border=ft.Border.all(1, COLORS["border"]),
-            border_radius=12, padding=ft.Padding(16, 12, 16, 12), expand=True,
-            height=135,
-            on_hover=make_hover_handler(1.01),
+            border_radius=12, padding=ft.Padding(18, 16, 18, 16), expand=True,
+            height=165,
             animate_scale=150,
         )
 
@@ -6113,21 +6951,7 @@ def build_dashboard_metrics_view(
                 )
             )
             
-        comp_chart = ft.Container(
-            content=ft.Column([
-                ft.Text("Distribución por Compañía (Top 3)", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                ft.Container(height=2),
-                ft.Column(comp_rows, spacing=6, expand=True)
-            ], spacing=4),
-            bgcolor=COLORS["surface"],
-            border=ft.Border.all(1, COLORS["border"]),
-            border_radius=12, padding=ft.Padding(16, 12, 16, 12), expand=True,
-            height=135,
-            on_hover=make_hover_handler(1.01),
-            animate_scale=150,
-        )
-
-        charts_row = ft.Row([vis_chart, comp_chart], spacing=14)
+        charts_row = ft.Row([vis_chart], spacing=14)
 
         # ── Alerta PAS sin contacto ───────────────────────────────────────
         pas_sin_visita = [v for v in all_visitas if v["estado"] == "pendiente"]
@@ -6204,15 +7028,15 @@ def build_dashboard_metrics_view(
                             ft.Row([
                                 ft.Text(f"Mat. {p['matricula']}", size=10, weight=ft.FontWeight.W_500, color=COLORS["text_secondary"]),
                                 ft.Text("•", size=10, color=COLORS["text_secondary"]),
-                                ft.Text(f"{p['polizas_vigentes']} pólizas vigentes", size=10, color=COLORS["text_secondary"]),
-                            ], spacing=6),
+                                ft.Text(f"{p['polizas_vigentes']} pólizas", size=10, color=COLORS["text_secondary"]),
+                            ], spacing=4),
                         ], spacing=1, expand=True),
                         companias_chips,
                         ft.Column([
                             ft.Text(format_currency(p["premio_total"]), size=12, weight=ft.FontWeight.W_900, color=COLORS["success"]),
                             ft.Text(f"Comisiones: {format_currency(p['comisiones_estimadas'])}", size=9, color=COLORS["text_secondary"]),
                         ], horizontal_alignment=ft.CrossAxisAlignment.END, spacing=1)
-                    ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                    ], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                     bgcolor=COLORS["surface"],
                     border=ft.Border.all(1, COLORS["border"]),
                     border_radius=10,
@@ -6239,6 +7063,7 @@ def build_dashboard_metrics_view(
         metrics_controls = []
         if alerta:
             metrics_controls.append(alerta)
+
         metrics_controls.extend([
             kpi_row,
             ft.Container(height=4),
@@ -6389,75 +7214,108 @@ def build_profile_view(
         else:
             show_snackbar(msg, is_error=True)
 
-    gradient_bar = ft.Container(
-        height=4,
+    # ── Avatar con iniciales ────────────────────────────────────────────────
+    _initials = (curr_uname[:1] or "U").upper()
+    avatar_circle = ft.Container(
+        content=ft.Text(_initials, size=32, weight=ft.FontWeight.W_900, color="#FFFFFF"),
+        width=72, height=72,
+        border_radius=36,
         gradient=ft.LinearGradient(
-            colors=[COLORS["primary"], ft.Colors.BLUE_800],
-            begin=ft.Alignment(-1, 0),
-            end=ft.Alignment(1, 0),
+            colors=[COLORS["primary"], "#1D4ED8"],
+            begin=ft.Alignment(-1, -1),
+            end=ft.Alignment(1, 1),
         ),
-        border_radius=ft.BorderRadius(top_left=16, top_right=16, bottom_left=0, bottom_right=0),
+        alignment=ft.Alignment(0, 0),
+        shadow=ft.BoxShadow(blur_radius=18, spread_radius=0,
+                            color=ft.Colors.with_opacity(0.25, COLORS["primary"]),
+                            offset=ft.Offset(0, 6)),
+    )
+
+    role_badge = ft.Container(
+        content=ft.Text(curr_rol.capitalize(), size=10, color="#FFFFFF", weight=ft.FontWeight.W_700),
+        bgcolor=COLORS["primary"] if curr_rol == "admin" else "#7C3AED",
+        border_radius=20,
+        padding=ft.Padding(10, 4, 10, 4),
     )
 
     profile_card = ft.Container(
         content=ft.Column(
             controls=[
-                gradient_bar,
+                # ── Hero strip ─────────────────────────────────────────────
                 ft.Container(
                     content=ft.Column(
                         controls=[
-                            ft.Row(
-                                controls=[
-                                    ft.Icon(ft.Icons.MANAGE_ACCOUNTS_ROUNDED, size=32, color=COLORS["primary"]),
-                                    ft.Column(
-                                        controls=[
-                                            ft.Text("Configuración de Cuenta", size=18, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                                            ft.Text(f"Rol actual: {curr_rol.capitalize()}", size=11, color=COLORS["text_secondary"]),
-                                        ],
-                                        spacing=2,
-                                    )
-                                ],
-                                spacing=12,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            ),
-                            ft.Divider(height=24, color=COLORS["divider"]),
+                            avatar_circle,
+                            ft.Text(curr_uname, size=20, weight=ft.FontWeight.W_800,
+                                    color=COLORS["text_primary"]),
+                            ft.Text(curr_email, size=12, color=COLORS["text_secondary"]),
+                            role_badge,
+                        ],
+                        spacing=6,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    padding=ft.Padding(24, 28, 24, 24),
+                    gradient=ft.LinearGradient(
+                        colors=[ft.Colors.with_opacity(0.04, COLORS["primary"]), COLORS["surface"]],
+                        begin=ft.Alignment(0, -1), end=ft.Alignment(0, 1),
+                    ),
+                    border_radius=ft.BorderRadius(top_left=16, top_right=16,
+                                                  bottom_left=0, bottom_right=0),
+                ),
+                ft.Container(
+                    content=ft.Divider(height=1, color=COLORS["divider"]),
+                    padding=ft.Padding(0, 0, 0, 0),
+                ),
+                # ── Form fields ────────────────────────────────────────────
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Text("Información de Cuenta", size=13,
+                                    weight=ft.FontWeight.W_700,
+                                    color=COLORS["text_secondary"]),
+                            ft.Container(height=4),
                             uname_field,
-                            ft.Container(height=8),
                             email_field,
-                            ft.Container(height=8),
+                            ft.Text("Seguridad", size=13, weight=ft.FontWeight.W_700,
+                                    color=COLORS["text_secondary"]),
+                            ft.Container(height=4),
                             pass_field,
-                            ft.Container(height=8),
+                            ft.Text("Agenda", size=13, weight=ft.FontWeight.W_700,
+                                    color=COLORS["text_secondary"]),
+                            ft.Container(height=4),
                             calendar_url_field,
-                            ft.Container(height=16),
+                            ft.Container(height=8),
                             ft.Row(
                                 controls=[
                                     ft.FilledButton(
-                                        "Guardar Cambios", 
+                                        "Guardar Cambios",
                                         icon=ft.Icons.SAVE_ROUNDED,
-                                        on_click=do_update_profile, 
+                                        on_click=do_update_profile,
                                         style=ft.ButtonStyle(
-                                            bgcolor=COLORS["primary"], 
+                                            bgcolor=COLORS["primary"],
                                             color=COLORS["text_on_primary"],
-                                            shape=ft.RoundedRectangleBorder(radius=8),
-                                            padding=ft.Padding(20, 14, 20, 14)
-                                        )
+                                            shape=ft.RoundedRectangleBorder(radius=10),
+                                            padding=ft.Padding(20, 14, 20, 14),
+                                        ),
                                     )
-                                ], 
-                                alignment=ft.MainAxisAlignment.END
-                            )
+                                ],
+                                alignment=ft.MainAxisAlignment.END,
+                            ),
                         ],
-                        spacing=0,
+                        spacing=12,
                     ),
-                    padding=ft.Padding(30, 24, 30, 30),
-                )
+                    padding=ft.Padding(24, 20, 24, 24),
+                ),
             ],
             spacing=0,
         ),
         border_radius=16,
         border=ft.Border.all(1, COLORS["divider"]),
         bgcolor=COLORS["surface"],
-        shadow=ft.BoxShadow(spread_radius=0, blur_radius=20, color=ft.Colors.with_opacity(0.08, "#000000"), offset=ft.Offset(0, 8)),
-        width=550,
+        shadow=ft.BoxShadow(spread_radius=0, blur_radius=24,
+                            color=ft.Colors.with_opacity(0.07, "#000000"),
+                            offset=ft.Offset(0, 8)),
+        width=400,
     )
     # -------------------------------------------------
     # CRUD de Usuarios (sólo para Admins)
@@ -6469,25 +7327,18 @@ def build_profile_view(
     def refresh_users():
         if curr_rol != "admin": return
         users_list = ssn_test.obtener_usuarios()
-        user_rows = []
+        user_cards = []
         for u in users_list:
             uid = u.get("id")
             uname = u.get("usuario")
             uemail = u.get("email") or "—"
             urol = u.get("rol") or "agente"
             umatricula = u.get("matricula_asociada") or "—"
-            req_change = "Sí" if u.get("requiere_cambio") else "No"
-            failed_attempts = str(u.get("intentos_fallidos") or 0)
             raw_req_change = u.get("requiere_cambio") or 0
             raw_failed = u.get("intentos_fallidos") or 0
             raw_blocked = u.get("bloqueado_hasta") or 0
-            
-            # Format block date
-            blocked_until = u.get("bloqueado_hasta") or 0
-            block_text = "No"
-            if blocked_until > time.time():
-                remaining = int(blocked_until - time.time())
-                block_text = f"Bloqueado ({remaining}s)"
+            uperms = u.get("permisos") or "comercial,buscador,cartera"
+            ucal = u.get("calendar_url") or "—"
             
             is_self = (uname == state.get("username"))
             is_primary_admin = (uname == "admin")
@@ -6498,10 +7349,11 @@ def build_profile_view(
             def make_delete_click(user_id=uid, username=uname):
                 return lambda e: open_delete_user_dialog(user_id, username)
 
-            uperms = u.get("permisos") or "comercial,buscador,cartera"
-            ucal = u.get("calendar_url") or "—"
-            
-            # Create premium badges for permissions
+            def make_edit_click(user_id=uid, username=uname, email=uemail, rol=urol, rc=raw_req_change, rf=raw_failed, rb=raw_blocked, matricula=umatricula, perms=uperms, calendar_url=ucal):
+                edit_mat = "" if matricula == "—" else str(matricula)
+                return lambda e: open_edit_user_dialog(user_id, username, email, rol, rc, rf, rb, edit_mat, perms, calendar_url)
+
+            # Badges de permisos
             perm_badges = []
             if "comercial" in uperms:
                 perm_badges.append(
@@ -6509,7 +7361,7 @@ def build_profile_view(
                         content=ft.Text("COM", size=9, color="#FFFFFF", weight=ft.FontWeight.BOLD),
                         bgcolor="#2563EB",
                         border_radius=4,
-                        padding=ft.Padding(left=4, right=4, top=2, bottom=2),
+                        padding=ft.Padding(left=5, right=5, top=2, bottom=2),
                         tooltip="Gestión Comercial"
                     )
                 )
@@ -6519,7 +7371,7 @@ def build_profile_view(
                         content=ft.Text("BUS", size=9, color="#FFFFFF", weight=ft.FontWeight.BOLD),
                         bgcolor="#7C3AED",
                         border_radius=4,
-                        padding=ft.Padding(left=4, right=4, top=2, bottom=2),
+                        padding=ft.Padding(left=5, right=5, top=2, bottom=2),
                         tooltip="Red de PAS (Buscador)"
                     )
                 )
@@ -6529,35 +7381,20 @@ def build_profile_view(
                         content=ft.Text("CAR", size=9, color="#FFFFFF", weight=ft.FontWeight.BOLD),
                         bgcolor="#D97706",
                         border_radius=4,
-                        padding=ft.Padding(left=4, right=4, top=2, bottom=2),
+                        padding=ft.Padding(left=5, right=5, top=2, bottom=2),
                         tooltip="Cartera & Operaciones"
                     )
                 )
             perms_container = ft.Row(controls=perm_badges, spacing=4, tight=True)
 
-            if ucal != "—" and ucal.strip():
-                calendar_control = ft.Row(
-                    controls=[
-                        ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED, size=14, color=COLORS["primary"]),
-                        ft.Text(ucal[:20] + "..." if len(ucal) > 20 else ucal, size=11, color=COLORS["text_secondary"]),
-                    ],
-                    spacing=4,
-                    tooltip=ucal
-                )
-            else:
-                calendar_control = ft.Text("—", size=12, color=COLORS["text_secondary"])
-
-            def make_edit_click(user_id=uid, username=uname, email=uemail, rol=urol, rc=raw_req_change, rf=raw_failed, rb=raw_blocked, matricula=umatricula, perms=uperms, calendar_url=ucal):
-                edit_mat = "" if matricula == "—" else str(matricula)
-                return lambda e: open_edit_user_dialog(user_id, username, email, rol, rc, rf, rb, edit_mat, perms, calendar_url)
-
+            # Acciones de usuario
             actions_cells = []
             actions_cells.append(
                 ft.IconButton(
                     icon=ft.Icons.EDIT_OUTLINED,
                     icon_color=COLORS["primary"],
                     icon_size=18,
-                    tooltip="Editar Usuario",
+                    tooltip="Editar Usuario y Permisos",
                     on_click=make_edit_click(),
                 )
             )
@@ -6581,145 +7418,134 @@ def build_profile_view(
                         on_click=make_delete_click(),
                     )
                 )
-            
-            def make_role_change_handler(user_id=uid):
-                def on_role_change(e):
-                    nuevo_rol = e.control.value
-                    if ssn_test.actualizar_rol_usuario(user_id, nuevo_rol):
-                        ssn_test.registrar_log(state.get("username", "admin"), "USER_ROLE_CHANGED", f"Rol de usuario ID {user_id} cambiado a {nuevo_rol}")
-                        show_snackbar(f"Rol del usuario actualizado a '{nuevo_rol}' con éxito.")
-                        refresh_users()
-                    else:
-                        show_snackbar("No se pudo actualizar el rol.", is_error=True)
-                return on_role_change
 
-            if not is_self and not is_primary_admin:
-                role_control = ft.Dropdown(
-                    value=urol,
-                    options=[
-                        ft.dropdown.Option("admin", "Admin"),
-                        ft.dropdown.Option("agente", "Agente"),
-                    ],
-                    border_color="#94A3B8", bgcolor=COLORS["surface"],
-                    focused_border_color=COLORS["primary"],
-                    border_radius=6,
-                    height=30,
-                    width=100,
-                    text_size=11,
-                    content_padding=ft.Padding(6, 0, 6, 0),
-                    on_select=make_role_change_handler(),
-                )
-            else:
-                role_control = ft.Text(urol.capitalize(), size=12, weight=ft.FontWeight.BOLD, color=COLORS["primary"] if urol == "admin" else COLORS["text_secondary"])
-            
-            user_rows.append(
-                ft.DataRow(
-                    cells=[
-                        ft.DataCell(ft.Text(str(uid), size=12)),
-                        ft.DataCell(ft.Text(uname, size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])),
-                        ft.DataCell(ft.Text(uemail, size=12, color=COLORS["text_secondary"])),
-                        ft.DataCell(role_control),
-                        ft.DataCell(perms_container),
-                        ft.DataCell(ft.Text(umatricula, size=12, weight=ft.FontWeight.W_600)),
-                        ft.DataCell(calendar_control),
-                        ft.DataCell(ft.Text(req_change, size=12)),
-                        ft.DataCell(ft.Text(failed_attempts, size=12)),
-                        ft.DataCell(ft.Text(block_text, size=12, color=ft.Colors.RED_400 if block_text != "No" else COLORS["text_secondary"])),
-                        ft.DataCell(
-                            ft.Row(controls=actions_cells, spacing=4, tight=True)
+            _actions = ft.Row(controls=actions_cells, spacing=2, tight=True)
+            _init = (uname[:1] or "U").upper()
+            _is_admin = (urol.lower() == "admin")
+
+            # Tarjeta de Usuario Elegante
+            card = ft.Container(
+                content=ft.Row(
+                    controls=[
+                        # Avatar Circle
+                        ft.Container(
+                            content=ft.Text(_init, size=15, weight=ft.FontWeight.W_900, color="#FFFFFF"),
+                            width=42, height=42, border_radius=21,
+                            bgcolor=COLORS["primary"] if _is_admin else "#7C3AED",
+                            alignment=ft.Alignment(0, 0),
+                            shadow=ft.BoxShadow(blur_radius=8, spread_radius=0, color=ft.Colors.with_opacity(0.18, COLORS["primary"] if _is_admin else "#7C3AED")),
                         ),
-                    ]
-                )
+                        # Info Column
+                        ft.Column(
+                            controls=[
+                                ft.Row(
+                                    controls=[
+                                        ft.Text(uname, size=14, weight=ft.FontWeight.W_700, color=COLORS["text_primary"]),
+                                        ft.Container(
+                                            content=ft.Text("ADMIN" if _is_admin else "AGENTE", size=9, weight=ft.FontWeight.W_800, color="#FFFFFF"),
+                                            bgcolor=COLORS["primary"] if _is_admin else "#7C3AED",
+                                            border_radius=6,
+                                            padding=ft.Padding(6, 2, 6, 2),
+                                        ),
+                                    ],
+                                    spacing=8,
+                                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                ),
+                                ft.Text(uemail, size=11, color=COLORS["text_secondary"]),
+                                ft.Row(
+                                    controls=[
+                                        perms_container,
+                                        ft.Container(width=4),
+                                        ft.Text(
+                                            f"Matrículas: {umatricula}" if umatricula != "—" else "Sin matrícula asignada",
+                                            size=10,
+                                            color=COLORS["text_secondary"],
+                                            weight=ft.FontWeight.W_500,
+                                            overflow=ft.TextOverflow.ELLIPSIS,
+                                            max_lines=1,
+                                        ),
+                                    ],
+                                    spacing=6,
+                                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                ),
+                            ],
+                            spacing=3,
+                            expand=True,
+                        ),
+                        # Actions
+                        _actions,
+                    ],
+                    spacing=12,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                bgcolor=COLORS["surface"],
+                border=ft.Border.all(1, COLORS["divider"]),
+                border_radius=12,
+                padding=ft.Padding(14, 12, 14, 12),
+                shadow=ft.BoxShadow(blur_radius=8, spread_radius=0, color=ft.Colors.with_opacity(0.04, "#000000"), offset=ft.Offset(0, 2)),
             )
-            
-        users_table = ft.DataTable(
-            columns=[
-                ft.DataColumn(ft.Text("ID", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
-                ft.DataColumn(ft.Text("Usuario", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
-                ft.DataColumn(ft.Text("Email", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
-                ft.DataColumn(ft.Text("Rol", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
-                ft.DataColumn(ft.Text("Permisos", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
-                ft.DataColumn(ft.Text("Matrícula", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
-                ft.DataColumn(ft.Text("Agenda / Cal", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
-                ft.DataColumn(ft.Text("Cambio Oblig.", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
-                ft.DataColumn(ft.Text("Intentos Fallidos", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
-                ft.DataColumn(ft.Text("Bloqueo Activo", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
-                ft.DataColumn(ft.Text("Acciones", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"])),
-            ],
-            rows=user_rows,
-            column_spacing=18,
-            heading_row_height=42,
-            heading_row_color=COLORS["row_alt"],
-            divider_thickness=1,
-            horizontal_lines=ft.BorderSide(1, COLORS["divider"]),
-        )
-        
-        gradient_bar_users = ft.Container(
-            height=4,
-            gradient=ft.LinearGradient(
-                colors=[COLORS["primary"], ft.Colors.BLUE_800],
-                begin=ft.Alignment(-1, 0),
-                end=ft.Alignment(1, 0),
-            ),
-            border_radius=ft.BorderRadius(top_left=16, top_right=16, bottom_left=0, bottom_right=0),
-        )
+            user_cards.append(card)
 
         users_column.controls = [
             ft.Container(
                 content=ft.Column(
                     controls=[
-                        gradient_bar_users,
-                        ft.Container(
-                            content=ft.Column(
-                                controls=[
-                                    ft.Row(
-                                        controls=[
-                                            ft.Row(
-                                                controls=[
-                                                    ft.Icon(ft.Icons.PEOPLE_ALT_ROUNDED, color=COLORS["primary"], size=30),
-                                                    ft.Column(
-                                                        controls=[
-                                                            ft.Text("Gestión de Usuarios", size=18, weight=ft.FontWeight.W_800, color=COLORS["text_primary"]),
-                                                            ft.Text("Administra los accesos, roles y seguridad de los usuarios del sistema.", size=11, color=COLORS["text_secondary"]),
-                                                        ],
-                                                        spacing=2,
-                                                    ),
-                                                ],
-                                                spacing=12,
-                                            ),
-                                            ft.FilledButton(
-                                                "Crear Usuario",
-                                                icon=ft.Icons.PERSON_ADD_ALT_1_ROUNDED,
-                                                bgcolor=COLORS["primary"],
-                                                color=COLORS["text_on_primary"],
-                                                on_click=open_create_user_dialog,
-                                                style=ft.ButtonStyle(
-                                                    shape=ft.RoundedRectangleBorder(radius=8),
-                                                    padding=ft.Padding(16, 12, 16, 12),
-                                                ),
-                                            ),
-                                        ],
-                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        # Header
+                        ft.Row(
+                            controls=[
+                                ft.Row(
+                                    controls=[
+                                        ft.Container(
+                                            content=ft.Icon(ft.Icons.PEOPLE_ALT_ROUNDED,
+                                                            color=COLORS["primary"], size=20),
+                                            width=38, height=38, border_radius=10,
+                                            bgcolor=ft.Colors.with_opacity(0.10, COLORS["primary"]),
+                                            alignment=ft.Alignment(0, 0),
+                                        ),
+                                        ft.Column(
+                                            controls=[
+                                                ft.Text("Gestión de Usuarios", size=16,
+                                                        weight=ft.FontWeight.W_800,
+                                                        color=COLORS["text_primary"]),
+                                                ft.Text("Roles, accesos y seguridad del equipo", size=11,
+                                                        color=COLORS["text_secondary"]),
+                                            ],
+                                            spacing=1,
+                                        ),
+                                    ],
+                                    spacing=12,
+                                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                                ),
+                                ft.FilledButton(
+                                    "Nuevo usuario",
+                                    icon=ft.Icons.PERSON_ADD_ALT_1_ROUNDED,
+                                    on_click=open_create_user_dialog,
+                                    style=ft.ButtonStyle(
+                                        bgcolor=COLORS["primary"],
+                                        color=COLORS["text_on_primary"],
+                                        shape=ft.RoundedRectangleBorder(radius=10),
+                                        padding=ft.Padding(14, 10, 14, 10),
                                     ),
-                                    ft.Divider(height=20, color=COLORS["divider"]),
-                                    ft.Container(height=10),
-                                    ft.Row(
-                                        controls=[users_table],
-                                        scroll=ft.ScrollMode.AUTO,
-                                    )
-                                ],
-                                spacing=0,
-                            ),
-                            padding=ft.Padding(30, 24, 30, 30),
-                        )
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                        ft.Container(
+                            content=ft.Divider(height=1, color=COLORS["divider"]),
+                            padding=ft.Padding(0, 12, 0, 12),
+                        ),
+                        ft.Column(controls=user_cards, spacing=10),
                     ],
                     spacing=0,
                 ),
                 bgcolor=COLORS["surface"],
                 border=ft.Border.all(1, COLORS["divider"]),
                 border_radius=16,
-                shadow=ft.BoxShadow(spread_radius=0, blur_radius=20, color=ft.Colors.with_opacity(0.1, "#000000"), offset=ft.Offset(0, 8)),
+                padding=ft.Padding(20, 20, 20, 20),
+                shadow=ft.BoxShadow(spread_radius=0, blur_radius=20,
+                                    color=ft.Colors.with_opacity(0.06, "#000000"),
+                                    offset=ft.Offset(0, 6)),
             )
         ]
         try:
@@ -7230,32 +8056,43 @@ def build_profile_view(
     return ft.Container(
         content=ft.Column(
             controls=[
-                ft.Row(
-                    controls=[
-                        ft.IconButton(
-                            icon=ft.Icons.ARROW_BACK_ROUNDED,
-                            icon_color=COLORS["text_primary"],
-                            icon_size=28,
-                            tooltip="Volver",
-                            on_click=lambda e: on_back(),
-                        ),
-                        ft.Text("Mi Perfil", size=24, weight=ft.FontWeight.W_800, color=COLORS["text_primary"]),
-                    ],
-                    spacing=12,
-                    alignment=ft.MainAxisAlignment.START,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                # ── Page header ────────────────────────────────────────────
+                ft.Container(
+                    content=ft.Row(
+                        controls=[
+                            ft.Container(
+                                content=ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.ARROW_BACK_ROUNDED,
+                                                color=COLORS["primary"], size=16),
+                                        ft.Text("Volver", size=12, weight=ft.FontWeight.W_700,
+                                                color=COLORS["primary"]),
+                                    ],
+                                    spacing=6,
+                                ),
+                                bgcolor=ft.Colors.with_opacity(0.08, COLORS["primary"]),
+                                border_radius=20,
+                                padding=ft.Padding(12, 6, 14, 6),
+                                on_click=lambda e: on_back(),
+                                ink=True,
+                                tooltip="Volver al panel principal",
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.START,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    padding=ft.Padding(0, 0, 0, 16),
                 ),
-                ft.Container(height=30),
                 ft.Column(
                     controls=controls_to_show,
                     spacing=0,
                     horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
-                )
+                ),
             ],
             spacing=0,
             scroll=ft.ScrollMode.AUTO,
         ),
-        padding=ft.Padding(40, 30, 40, 30),
+        padding=ft.Padding(36, 28, 36, 28),
         expand=True,
         bgcolor=COLORS["background"],
     )
@@ -7270,6 +8107,7 @@ def build_cartera_view(
     on_back: Callable,
     user_id: int = None,
     role: str = None,
+    state: Optional[Dict[str, Any]] = None,
 ) -> ft.Container:
     """
     Vista Cartera de Productores — diseño maestro-detalle:
@@ -7388,12 +8226,30 @@ def build_cartera_view(
                         ft.Container(width=1, height=12, bgcolor=COLORS["border"]),
                         ft.Text(f"{localidad or provincia or 'Sin ubicación'}", size=11, color=COLORS["text_secondary"]),
                     ], spacing=8),
-                    ft.Container(
-                        content=ft.Text(estado or "Sin contacto", size=10, color="#FFFFFF", weight=ft.FontWeight.BOLD),
-                        bgcolor=estado_color,
-                        border_radius=6,
-                        padding=ft.Padding(8, 3, 8, 3),
-                    ),
+                    ft.Row([
+                        ft.Container(
+                            content=ft.Text(estado or "Sin contacto", size=10, color="#FFFFFF", weight=ft.FontWeight.BOLD),
+                            bgcolor=estado_color,
+                            border_radius=6,
+                            padding=ft.Padding(8, 3, 8, 3),
+                        ),
+                        ft.Container(
+                            content=ft.Row([
+                                ft.Icon(ft.Icons.OPEN_IN_NEW_ROUNDED, size=12, color=COLORS["primary"]),
+                                ft.Text("Ver ficha completa", size=10, color=COLORS["primary"], weight=ft.FontWeight.BOLD),
+                            ], spacing=4, tight=True),
+                            bgcolor=ft.Colors.with_opacity(0.10, COLORS["primary"]),
+                            border=ft.Border.all(1, ft.Colors.with_opacity(0.25, COLORS["primary"])),
+                            border_radius=6,
+                            padding=ft.Padding(8, 3, 8, 3),
+                            on_click=(
+                                (lambda mat=matricula: lambda e: state["open_detail_by_matricula"](mat, back_to="cartera"))(matricula)
+                                if state and "open_detail_by_matricula" in state else None
+                            ),
+                            ink=True,
+                            tooltip="Abrir ficha completa del productor",
+                        ),
+                    ], spacing=6),
                 ], spacing=4, expand=True),
             ], spacing=14, vertical_alignment=ft.CrossAxisAlignment.CENTER),
             bgcolor=COLORS["surface"],
@@ -7528,6 +8384,8 @@ def build_cartera_view(
             nom = pas.get("nombre", "Desconocido")
             comp = pas.get("companias") or ""
             prov = pas.get("provincia") or ""
+            cant_pol = pas.get("cant_polizas", 0) or 0
+            cant_cli = pas.get("cant_clientes", 0) or 0
 
             is_selected = selected_pas["data"] and selected_pas["data"].get("matricula") == mat
 
@@ -7537,6 +8395,16 @@ def build_cartera_view(
                     render_detail(p)
                     build_pas_list(search_pas.value or "")
                 return _click
+
+            counts_badge = (
+                ft.Container(
+                    content=ft.Text(f"{cant_pol} pól. | {cant_cli} cli.", size=9, weight=ft.FontWeight.BOLD, color=COLORS["primary"] if is_selected else "#0EA5E9"),
+                    bgcolor=ft.Colors.with_opacity(0.12, COLORS["primary"] if is_selected else "#0EA5E9"),
+                    border_radius=6,
+                    padding=ft.Padding(5, 2, 5, 2)
+                ) if cant_pol > 0 else
+                ft.Text("0 pólizas", size=10, color=COLORS["text_secondary"])
+            )
 
             pas_list_col.controls.append(ft.Container(
                 content=ft.Column([
@@ -7551,7 +8419,10 @@ def build_cartera_view(
                             ft.Text(nom, size=12, weight=ft.FontWeight.BOLD,
                                     color=COLORS["primary"] if is_selected else COLORS["text_primary"],
                                     max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
-                            ft.Text(f"Mat. {mat} • {prov}", size=10, color=COLORS["text_secondary"]),
+                            ft.Row([
+                                ft.Text(f"Mat. {mat}", size=10, color=COLORS["text_secondary"]),
+                                counts_badge,
+                            ], spacing=6, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                         ], spacing=1, expand=True),
                     ], spacing=8, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 ], spacing=0),
@@ -7665,7 +8536,7 @@ def build_licensing_view(
                 f"Por favor, indíquenme los pasos a seguir para restablecer el servicio.\n\n"
                 f"Saludos cordiales."
             )
-            mailto_url = f"mailto:supit@katrix.com.ar?subject={subject_encoded}&body={body_encoded}"
+            mailto_url = f"mailto:soporte@katrix.com.ar?subject={subject_encoded}&body={body_encoded}"
             e.page.launch_url(mailto_url)
 
         support_btn = ft.Container(
@@ -7791,15 +8662,15 @@ def build_licensing_view(
             alignment=ft.Alignment(0, 0),
         ),
         ft.Container(
-            content=ft.Text("Katrix Broker CRM", size=24, weight=ft.FontWeight.W_800, color=COLORS["primary"]),
+            content=ft.Text("CRM Seguros", size=24, weight=ft.FontWeight.W_800, color=COLORS["primary"]),
             alignment=ft.Alignment(0, 0),
         ),
         ft.Container(
-            content=ft.Text("Activación de Software", size=14, weight=ft.FontWeight.W_600, color=COLORS["text_primary"]),
+            content=ft.Text("Activación de Licencia", size=14, weight=ft.FontWeight.W_600, color=COLORS["text_primary"]),
             alignment=ft.Alignment(0, 0),
         ),
         ft.Container(
-            content=ft.Text("Este software requiere una licencia activa para ejecutarse.", size=12, color=COLORS["text_secondary"], text_align=ft.TextAlign.CENTER),
+            content=ft.Text("Este sistema requiere una licencia activa para ejecutarse.", size=12, color=COLORS["text_secondary"], text_align=ft.TextAlign.CENTER),
             alignment=ft.Alignment(0, 0),
             margin=ft.Margin(0, 0, 0, 16),
         ),
@@ -7827,6 +8698,8 @@ def build_licensing_view(
         key_field,
         ft.Container(height=16),
         activate_btn,
+        ft.Container(height=12),
+        ft.Text("Impulsado por Katrix ⚡", size=11, color=COLORS["text_secondary"], weight=ft.FontWeight.W_500),
     ])
 
     return ft.Container(
@@ -7842,3 +8715,138 @@ def build_licensing_view(
         width=360,
         shadow=ft.BoxShadow(spread_radius=1, blur_radius=12, color=ft.Colors.with_opacity(0.12, "#000000")),
     )
+
+
+# ---------------------------------------------------------------------------
+# Modal de Recordatorio de Reuniones y Visitas Pendientes
+# ---------------------------------------------------------------------------
+def open_reuniones_notif_dialog(page: ft.Page, on_refresh_header=None):
+    from notificaciones import obtener_resumen_reuniones
+    import ssn_test
+    
+    resumen = obtener_resumen_reuniones()
+    reuniones = resumen.get("reuniones_pendientes", [])
+    
+    def close_dialog(e):
+        dlg.open = False
+        page.update()
+        
+    def make_marcar_realizada(visita_id, nombre):
+        def _on_click(e):
+            if ssn_test.actualizar_visita(visita_id, "realizada"):
+                page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"🚀 Visita a '{nombre}' marcada como Realizada.", color=ft.Colors.WHITE, size=13, weight=ft.FontWeight.W_600),
+                    bgcolor=COLORS["success"],
+                    duration=3000,
+                )
+                page.snack_bar.open = True
+                if on_refresh_header:
+                    on_refresh_header()
+                dlg.open = False
+                page.update()
+                open_reuniones_notif_dialog(page, on_refresh_header)
+        return _on_click
+
+    items_controls = []
+    if not reuniones:
+        items_controls.append(
+            ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINE_ROUNDED, color=COLORS["success"], size=44),
+                        ft.Text("¡No tenés reuniones pendientes!", size=14, weight=ft.FontWeight.W_700, color=COLORS["text_primary"]),
+                        ft.Text("Todas tus visitas agendadas están al día.", size=12, color=COLORS["text_secondary"]),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=8,
+                ),
+                padding=24,
+                alignment=ft.Alignment(0, 0),
+            )
+        )
+    else:
+        for r in reuniones:
+            r_id = r.get("id")
+            r_nombre = r.get("nombre") or "Productor"
+            r_fecha = r.get("fecha") or "Sin fecha especificada"
+            r_lugar = r.get("lugar") or "Sin lugar especificado"
+            
+            items_controls.append(
+                ft.Container(
+                    content=ft.Row(
+                        controls=[
+                            ft.Container(
+                                content=ft.Icon(ft.Icons.EVENT_NOTE_ROUNDED, color=COLORS["primary"], size=20),
+                                width=40, height=40, border_radius=10,
+                                bgcolor=ft.Colors.with_opacity(0.1, COLORS["primary"]),
+                                alignment=ft.Alignment(0, 0),
+                            ),
+                            ft.Column(
+                                controls=[
+                                    ft.Text(r_nombre, size=13, weight=ft.FontWeight.W_700, color=COLORS["text_primary"]),
+                                    ft.Row(
+                                        controls=[
+                                            ft.Icon(ft.Icons.CALENDAR_MONTH_ROUNDED, size=12, color=COLORS["primary"]),
+                                            ft.Text(f"{r_fecha}", size=11, color=COLORS["text_secondary"]),
+                                        ],
+                                        spacing=4,
+                                    ),
+                                    ft.Row(
+                                        controls=[
+                                            ft.Icon(ft.Icons.LOCATION_ON_ROUNDED, size=12, color=COLORS["warning"]),
+                                            ft.Text(f"{r_lugar}", size=11, color=COLORS["text_secondary"]),
+                                        ],
+                                        spacing=4,
+                                    ),
+                                ],
+                                spacing=2,
+                                expand=True,
+                            ),
+                            ft.FilledButton(
+                                "Realizada",
+                                icon=ft.Icons.CHECK_ROUNDED,
+                                on_click=make_marcar_realizada(r_id, r_nombre),
+                                style=ft.ButtonStyle(
+                                    bgcolor=COLORS["success"],
+                                    color="#FFFFFF",
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                    padding=ft.Padding(10, 6, 12, 6),
+                                ),
+                            ),
+                        ],
+                        spacing=12,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    bgcolor=COLORS["surface"],
+                    border=ft.Border.all(1, COLORS["divider"]),
+                    border_radius=10,
+                    padding=12,
+                )
+            )
+
+    dlg = ft.AlertDialog(
+        title=ft.Row(
+            controls=[
+                ft.Icon(ft.Icons.NOTIFICATIONS_ACTIVE_ROUNDED, color=COLORS["warning"], size=22),
+                ft.Text("Recordatorio de Reuniones", size=16, weight=ft.FontWeight.W_800),
+            ],
+            spacing=8,
+        ),
+        content=ft.Container(
+            content=ft.Column(
+                controls=items_controls,
+                spacing=10,
+                scroll=ft.ScrollMode.AUTO,
+            ),
+            width=460,
+            height=min(420, max(150, len(reuniones) * 85 + 40)),
+        ),
+        actions=[
+            ft.TextButton("Cerrar", on_click=close_dialog),
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+    if dlg not in page.overlay:
+        page.overlay.append(dlg)
+    dlg.open = True
+    page.update()

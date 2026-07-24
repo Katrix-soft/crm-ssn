@@ -432,3 +432,12 @@ class ConfigUpdateRequest(BaseModel):
     valor: str
 
 
+class SoporteTicketRequest(BaseModel):
+    nombre: str
+    email: str
+    telefono: Optional[str] = ""
+    mensaje: str
+    fingerprint: Optional[str] = None
+    fecha: Optional[str] = None
+
+

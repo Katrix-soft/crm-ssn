@@ -78,7 +78,7 @@ def guardar_en_db(datos: dict, user_id: Any = None) -> Any:
         user_id = current_user_context["user_id"]
     return _orig_guardar_en_db(datos, user_id=user_id)
 
-APP_NAME           = "Katrix ERP"
+APP_NAME           = "CRM Productores de Seguros"
 APP_VERSION        = "1.0.0"
 WIN_DEFAULT_WIDTH  = 1280
 WIN_DEFAULT_HEIGHT = 760
@@ -380,6 +380,10 @@ def main(page: ft.Page):
     page.spacing           = 0
     page.theme             = ft.Theme(color_scheme_seed=COLORS["primary"])
     page.theme_mode        = ft.ThemeMode.LIGHT
+    page.locale_configuration = ft.LocaleConfiguration(
+        supported_locales=[ft.Locale("es", "ES")],
+        current_locale=ft.Locale("es", "ES")
+    )
 
     icon_path = get_asset_path(os.path.join("assets", "icon.png"))
     if os.path.exists(icon_path):
@@ -428,7 +432,7 @@ def main(page: ft.Page):
         "admin_tab_index": 0,
         "mostly_complete": False,
         "sort_column": "matricula",
-        "sort_descending": False,
+        "sort_descending": True,
         "regional_only": False,
     }
 
@@ -704,15 +708,15 @@ def main(page: ft.Page):
             return
 
         def go_to_authorized():
-            if "buscador" in state.get("permisos", set()):
-                sidebar_selected["index"] = 1
-                state["viewing_dashboard"] = False
+            if "comercial" in state.get("permisos", set()):
+                sidebar_selected["index"] = 0
+                state["viewing_dashboard"] = True
                 state["viewing_cartera"] = False
                 state["viewing_admin"] = False
                 state["viewing_profile"] = False
-            elif "comercial" in state.get("permisos", set()):
-                sidebar_selected["index"] = 0
-                state["viewing_dashboard"] = True
+            elif "buscador" in state.get("permisos", set()):
+                sidebar_selected["index"] = 1
+                state["viewing_dashboard"] = False
                 state["viewing_cartera"] = False
                 state["viewing_admin"] = False
                 state["viewing_profile"] = False
@@ -849,18 +853,19 @@ def main(page: ft.Page):
             # Ordenamiento
             sort_col = state.get("sort_column")
             if sort_col:
-                is_desc = state.get("sort_descending", False)
+                is_desc = state.get("sort_descending", True)
                 if sort_col == "matricula":
                     def get_mat_num(r):
                         try:
-                            return int(r.get("productor_matricula") or 0)
-                        except ValueError:
+                            val = r.get("productor_matricula") or r.get("matricula") or 0
+                            return int(val)
+                        except (ValueError, TypeError):
                             return 0
                     all_filtered.sort(key=get_mat_num, reverse=is_desc)
                 elif sort_col == "nombre":
-                    all_filtered.sort(key=lambda r: (r.get("productor_apellido_nombre") or "").strip().lower(), reverse=is_desc)
+                    all_filtered.sort(key=lambda r: (r.get("productor_apellido_nombre") or r.get("nombre") or "").strip().lower(), reverse=is_desc)
                 elif sort_col == "cuit":
-                    all_filtered.sort(key=lambda r: (r.get("productor_id") or "").strip().lower(), reverse=is_desc)
+                    all_filtered.sort(key=lambda r: (r.get("productor_id") or r.get("cuit") or r.get("documento") or "").strip().lower(), reverse=is_desc)
                 elif sort_col == "ramo":
                     all_filtered.sort(key=lambda r: (r.get("ramo") or "").strip().lower(), reverse=is_desc)
                 elif sort_col == "estado":
@@ -868,6 +873,7 @@ def main(page: ft.Page):
 
             total_matches = len(all_filtered)
             state["all_filtered"] = all_filtered
+            update_stats(all_filtered)
 
             total_pages  = max(1, (total_matches + PAGE_SIZE - 1) // PAGE_SIZE)
             if current_page >= total_pages:
@@ -1051,10 +1057,10 @@ def main(page: ft.Page):
 
     def on_sort_change(col_id: str):
         if state.get("sort_column") == col_id:
-            state["sort_descending"] = not state.get("sort_descending", False)
+            state["sort_descending"] = not state.get("sort_descending", True)
         else:
             state["sort_column"] = col_id
-            state["sort_descending"] = False
+            state["sort_descending"] = True if col_id == "matricula" else False
         state["page"] = 0
         recreate_dropdowns_and_search()
         render_content()
@@ -1198,6 +1204,15 @@ def main(page: ft.Page):
                     header_subtitle = "Asesores de Seguros · SSN Argentina"
                     header_stat = None
 
+                from notificaciones import obtener_resumen_reuniones
+                from ui_components import open_reuniones_notif_dialog
+                
+                resumen_notif = obtener_resumen_reuniones()
+                pending_count = resumen_notif.get("total_pendientes", 0)
+
+                def open_notif_dialog_cb(e=None):
+                    open_reuniones_notif_dialog(page, on_refresh_header=update_header)
+
                 new_h = build_header(
                     len(state["records"]),
                     on_logout_click=on_logout,
@@ -1205,6 +1220,8 @@ def main(page: ft.Page):
                     on_theme_click=toggle_theme,
                     on_dashboard_click=open_dashboard_panel,
                     on_profile_click=open_profile_panel,
+                    on_notif_click=open_notif_dialog_cb,
+                    pending_notif_count=pending_count,
                     title=header_title,
                     subtitle=header_subtitle,
                     stat_label=header_stat,
@@ -1284,6 +1301,7 @@ def main(page: ft.Page):
             on_back=exit_cartera_panel,
             user_id=state.get("user_id"),
             role=state.get("role"),
+            state=state,
         )
         content_area.current.controls = [cartera_container]
         safe_update(content_area.current)
@@ -1458,8 +1476,8 @@ def main(page: ft.Page):
             footer_container.current.content = new_footer.content
             safe_update(footer_container.current)
 
-    def build_stats_cards_ui():
-        records = state["records"]
+    def build_stats_cards_ui(target_records=None):
+        records = target_records if target_records is not None else state.get("all_filtered", state["records"])
         total = len(records)
         
         sin_contactar = 0
@@ -1742,9 +1760,9 @@ def main(page: ft.Page):
         dlg.open = True
         page.update()
 
-    def update_stats():
+    def update_stats(records_override=None):
         if stats_ref.current is not None:
-            stats_ref.current.content = build_stats_cards_ui()
+            stats_ref.current.content = build_stats_cards_ui(records_override)
             safe_update(stats_ref.current)
 
     def on_search_change(query: str):
@@ -2152,9 +2170,28 @@ def main(page: ft.Page):
         threading.Thread(target=run_live_search, daemon=True).start()
 
     def open_detail(record: dict):
+        # ── Normalizar claves: los registros de Cartera usan "matricula"/"cuit"/"nombre"
+        # mientras que los del Buscador usan "productor_matricula"/"productor_id"/etc.
+        # Hacemos que ambos formatos funcionen de forma transparente.
+        if not record.get("productor_matricula") and record.get("matricula"):
+            record["productor_matricula"] = record["matricula"]
+        if not record.get("productor_id") and record.get("cuit"):
+            record["productor_id"] = record["cuit"]
+        if not record.get("productor_apellido_nombre") and record.get("nombre"):
+            record["productor_apellido_nombre"] = record["nombre"]
+        if not record.get("productor_ramo") and record.get("ramo"):
+            record["productor_ramo"] = record["ramo"]
+
         state["selected_record"] = record
         def on_back():
-            if state.get("detail_back_to_dashboard"):
+            if state.get("detail_back_to_cartera"):
+                state["viewing_detail"] = False
+                state["selected_record"] = None
+                state["viewing_cartera"] = True
+                state["viewing_dashboard"] = False
+                sidebar_selected["index"] = 2
+                state["detail_back_to_cartera"] = False
+            elif state.get("detail_back_to_dashboard"):
                 state["viewing_detail"] = False
                 state["selected_record"] = None
                 state["viewing_dashboard"] = True
@@ -2282,9 +2319,11 @@ def main(page: ft.Page):
             record["estado_contacto"] = cached.get("estado_contacto") or "Sin contactar"
             record["observaciones"] = cached.get("observaciones") or ""
             record["companias"] = cached.get("companias") or ""
+            record["sociedades"] = cached.get("sociedades") or ""
         else:
             record["observaciones"] = ""
             record["companias"] = ""
+            record["sociedades"] = ""
 
         def on_save_notes(obs_text: str, show_alert: bool = True):
             mat = record.get("productor_matricula")
@@ -2438,20 +2477,22 @@ def main(page: ft.Page):
             content_area.current.controls = [detail_view]
             safe_update(content_area.current)
 
-    def open_detail_by_matricula(matricula_val):
+    def open_detail_by_matricula(matricula_val, back_to="dashboard"):
         if not matricula_val:
             return
         try:
             from ssn_test import obtener_de_db
             rec = obtener_de_db(str(matricula_val))
             if rec:
-                state["detail_back_to_dashboard"] = True
+                # Configurar el estado de navegación según el origen
+                state["detail_back_to_dashboard"] = (back_to == "dashboard")
+                state["detail_back_to_cartera"]   = (back_to == "cartera")
                 state["viewing_dashboard"] = False
                 state["viewing_detail"] = True
                 state["viewing_cartera"] = False
                 state["viewing_admin"] = False
                 state["viewing_profile"] = False
-                sidebar_selected["index"] = 1
+                sidebar_selected["index"] = 2 if back_to == "cartera" else 1
                 open_detail(rec)
             else:
                 show_snackbar("No se encontró el productor en la base de datos local.", color=COLORS["warning"])
@@ -2577,8 +2618,9 @@ def main(page: ft.Page):
                         state["logged_in"] = True
                         current_user_context["user_id"] = state["user_id"]
                         current_user_context["role"] = state["role"]
-                        sidebar_selected["index"] = 1
-                        state["viewing_dashboard"] = False
+                        sidebar_selected["index"] = 0
+                        state["viewing_dashboard"] = True
+                        state["viewing_profile"] = False
                         
                         update_page_layout()
                         page.update()
@@ -2639,8 +2681,9 @@ def main(page: ft.Page):
                 state["logged_in"] = True
                 current_user_context["user_id"] = state["user_id"]
                 current_user_context["role"] = state["role"]
-                sidebar_selected["index"] = 1   # Arrancar en Buscador de PAS
-                state["viewing_dashboard"] = False
+                sidebar_selected["index"] = 0   # Arrancar en Gestión Comercial
+                state["viewing_dashboard"] = True
+                state["viewing_profile"] = False
                 
                 show_snackbar("¡Sesión iniciada con éxito!")
                 update_page_layout()
@@ -2657,6 +2700,17 @@ def main(page: ft.Page):
                     state["loading_login"] = False
                     update_page_layout()
                     render_content()
+                    
+                    try:
+                        from notificaciones import obtener_resumen_reuniones, enviar_notificacion_sistema
+                        res_notif = obtener_resumen_reuniones()
+                        tot_pend = res_notif.get("total_pendientes", 0)
+                        tot_hoy = res_notif.get("total_hoy", 0)
+                        if tot_pend > 0:
+                            msg_notif = f"Tenés {tot_pend} reunión(es) pendiente(s)" + (f" ({tot_hoy} agendada(s) para hoy)." if tot_hoy > 0 else ".")
+                            enviar_notificacion_sistema("CRM Seguros - Recordatorio", msg_notif)
+                    except Exception as ex:
+                        print("[NOTIF LOGIN EXCEPTION]", ex)
                 
                 page.run_thread(bg_initialize)
         else:
@@ -2826,141 +2880,204 @@ def main(page: ft.Page):
         sidebar_bg     = "#111827" if is_dark else "#FFFFFF"
         active_color   = COLORS["primary"]
         inactive_color = "#94A3B8" if is_dark else "#64748B"
-        logo_bg        = ft.Colors.with_opacity(0.15, active_color)
+
+        # ── Estado de expansión (persiste entre builds) ──────────────────────
+        if "sidebar_expanded" not in sidebar_selected:
+            sidebar_selected["sidebar_expanded"] = False   # colapsar por defecto
+        expanded = sidebar_selected["sidebar_expanded"]
+        W_EXPANDED  = 220
+        W_COLLAPSED = 72
+
+        def toggle_expand(e):
+            sidebar_selected["sidebar_expanded"] = not sidebar_selected["sidebar_expanded"]
+            update_page_layout()
 
         def nav_item(icon_name, label, index):
             is_active = sidebar_selected["index"] == index
-            
-            # Dynamic permission check
-            is_restricted = False
+
+            # Permisos dinámicos
             if state.get("logged_in"):
-                if index == 0 and "comercial" not in state.get("permisos", set()):
-                    is_restricted = True
-                elif index == 1 and "buscador" not in state.get("permisos", set()):
-                    is_restricted = True
-                elif index == 2 and "cartera" not in state.get("permisos", set()):
-                    is_restricted = True
+                perm_map = {0: "comercial", 1: "buscador", 2: "cartera"}
+                if perm_map.get(index) not in state.get("permisos", set()):
+                    return None
 
-            if is_restricted:
-                return None
+            icon_color = active_color if is_active else inactive_color
+            text_color = active_color if is_active else inactive_color
+            pill_bg    = ft.Colors.with_opacity(0.12, active_color) if is_active else "transparent"
 
-            display_icon = icon_name
-            display_label = label
-            
-            item_active_color = active_color
-            item_inactive_color = inactive_color
-            
-            icon_color = item_active_color if is_active else item_inactive_color
-            text_color = item_active_color if is_active else item_inactive_color
+            def _click(e, i=index):
+                on_sidebar_nav(type("E", (), {"control": type("C", (), {"selected_index": i})()})())
 
-            return ft.Container(
+            if expanded:
+                return ft.Container(
+                    content=ft.Row(
+                        controls=[
+                            ft.Container(
+                                content=ft.Icon(icon_name, color=icon_color, size=20),
+                                width=36, height=36,
+                                border_radius=18,
+                                alignment=ft.Alignment(0, 0),
+                            ),
+                            ft.Text(
+                                label, size=13, color=text_color,
+                                weight=ft.FontWeight.W_600 if is_active else ft.FontWeight.W_400,
+                                no_wrap=True, expand=True,
+                            ),
+                        ],
+                        spacing=12,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    bgcolor=pill_bg,
+                    border_radius=50,
+                    padding=ft.Padding(left=14, right=18, top=10, bottom=10),
+                    margin=ft.Margin(left=8, right=8, top=2, bottom=2),
+                    on_click=_click,
+                    ink=True,
+                    animate=ft.Animation(180, "easeOut"),
+                )
+            else:
+                return ft.Container(
+                    content=ft.Container(
+                        content=ft.Icon(icon_name, color=icon_color, size=20),
+                        width=44, height=44,
+                        border_radius=22,
+                        bgcolor=pill_bg,
+                        alignment=ft.Alignment(0, 0),
+                    ),
+                    tooltip=label,
+                    alignment=ft.Alignment(0, 0),
+                    margin=ft.Margin(left=0, right=0, top=2, bottom=2),
+                    on_click=_click,
+                    ink=True,
+                    animate=ft.Animation(180, "easeOut"),
+                )
+
+        # ── Hamburger + Logo header ───────────────────────────────────────────
+        hamburger = ft.IconButton(
+            icon=ft.Icons.MENU_ROUNDED,
+            icon_color=inactive_color,
+            icon_size=20,
+            tooltip="Expandir / colapsar menú",
+            on_click=toggle_expand,
+            style=ft.ButtonStyle(
+                overlay_color=ft.Colors.with_opacity(0.08, active_color),
+                shape=ft.RoundedRectangleBorder(radius=12),
+            ),
+        )
+
+        _logo_path = "LogoJCOrg.png"   # assets/LogoJCOrg.png — Flet lo resuelve desde assets/
+
+        if expanded:
+            header_row = ft.Container(
+                content=ft.Row(
+                    controls=[
+                        hamburger,
+                        ft.Image(
+                            src=_logo_path,
+                            width=120,
+                            height=36,
+                            tooltip="CRM Seguros",
+                        ),
+                    ],
+                    spacing=4,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                padding=ft.Padding(left=4, right=12, top=12, bottom=10),
+            )
+        else:
+            header_row = ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Container(
-                            content=ft.Icon(
-                                display_icon,
-                                color=icon_color,
-                                size=22,
-                            ),
-                            bgcolor=ft.Colors.with_opacity(0.18, item_active_color) if is_active else "transparent",
-                            border_radius=12,
-                            padding=10,
-                            width=44, height=44,
-                            alignment=ft.Alignment(0, 0),
-                        ),
-                        ft.Text(
-                            display_label,
-                            size=10,
-                            color=text_color,
-                            weight=ft.FontWeight.W_600 if is_active else ft.FontWeight.NORMAL,
-                            text_align=ft.TextAlign.CENTER,
-                            no_wrap=False,
-                            width=68,
+                        hamburger,
+                        ft.Image(
+                            src=_logo_path,
+                            width=38,
+                            height=38,
+                            tooltip="CRM Seguros",
                         ),
                     ],
                     spacing=4,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    tight=True,
                 ),
-                padding=ft.Padding(left=8, right=8, top=12, bottom=12),
-                border_radius=14,
-                bgcolor=ft.Colors.with_opacity(0.1, item_active_color) if is_active else "transparent",
-                on_click=lambda e, i=index: on_sidebar_nav(type('E', (), {'control': type('C', (), {'selected_index': i})()})()),
-                animate=ft.Animation(200, "easeOut"),
+                padding=ft.Padding(left=0, right=0, top=12, bottom=10),
+                alignment=ft.Alignment(0, 0),
             )
 
+        divider = ft.Container(
+            content=ft.Divider(height=1, color=ft.Colors.with_opacity(0.08, "#000000")),
+            padding=ft.Padding(left=10, right=10, top=0, bottom=0),
+        )
+
+        nav_items = [item for item in [
+            nav_item(ft.Icons.TRENDING_UP_ROUNDED,  "Gestión Comercial", 0),
+            nav_item(ft.Icons.SEARCH_ROUNDED,       "Red de PAS",        1),
+            nav_item(ft.Icons.FOLDER_SPECIAL_ROUNDED, "Cartera",         2),
+        ] if item is not None]
+
+        def _bottom_btn(icon, tip, cb):
+            if expanded:
+                return ft.Container(
+                    content=ft.Row([
+                        ft.Icon(icon, color=inactive_color, size=20),
+                        ft.Text(tip, size=13, color=inactive_color),
+                    ], spacing=12, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                    padding=ft.Padding(left=14, right=18, top=10, bottom=10),
+                    margin=ft.Margin(left=8, right=8, top=1, bottom=1),
+                    border_radius=50,
+                    on_click=cb, ink=True,
+                )
+            else:
+                return ft.Container(
+                    content=ft.Icon(icon, color=inactive_color, size=20),
+                    tooltip=tip, padding=10, border_radius=22,
+                    alignment=ft.Alignment(0, 0),
+                    on_click=cb, ink=True,
+                )
+
+        bottom_col = ft.Column(
+            controls=[
+                _bottom_btn(ft.Icons.PERSON_ROUNDED, "Mi Perfil",
+                            lambda e: open_profile_panel()),
+                _bottom_btn(ft.Icons.LOGOUT_ROUNDED, "Cerrar sesión", on_logout),
+                ft.Container(height=12),
+            ],
+            spacing=0,
+            horizontal_alignment=(
+                ft.CrossAxisAlignment.STRETCH if expanded
+                else ft.CrossAxisAlignment.CENTER
+            ),
+        )
+
+        sidebar_content = ft.Column(
+            controls=[
+                header_row,
+                divider,
+                ft.Container(height=8),
+                *nav_items,
+                ft.Container(expand=True),
+                bottom_col,
+            ],
+            spacing=0,
+            expand=True,
+            horizontal_alignment=(
+                ft.CrossAxisAlignment.STRETCH if expanded
+                else ft.CrossAxisAlignment.CENTER
+            ),
+        )
+
         return ft.Container(
-            content=ft.Column(
-                controls=[
-                    # Logo/brand mark
-                    ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Container(
-                                    content=ft.Icon(ft.Icons.SHIELD_OUTLINED, color=active_color, size=22),
-                                    bgcolor=logo_bg,
-                                    border_radius=12,
-                                    padding=10,
-                                    width=44, height=44,
-                                    alignment=ft.Alignment(0, 0),
-                                ),
-                                ft.Text("K", size=11, weight=ft.FontWeight.W_900, color=active_color, text_align=ft.TextAlign.CENTER),
-                            ],
-                            spacing=4,
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            tight=True,
-                        ),
-                        padding=ft.Padding(left=8, right=8, top=16, bottom=8),
-                    ),
-                    ft.Container(
-                        content=ft.Divider(height=1, color=ft.Colors.with_opacity(0.15, active_color)),
-                        padding=ft.Padding(left=12, right=12, top=0, bottom=0),
-                    ),
-                    ft.Container(height=8),
-                    # Nav items
-                    *[item for item in [
-                        nav_item(ft.Icons.TRENDING_UP_ROUNDED, "Gestión\nComercial", 0),
-                        nav_item(ft.Icons.SEARCH_ROUNDED, "Red de PAS", 1),
-                        nav_item(ft.Icons.FOLDER_SPECIAL_ROUNDED, "Cartera &\nOperaciones", 2),
-                    ] if item is not None],
-                    # Spacer
-                    ft.Container(expand=True),
-                    # Bottom: Profile & Logout
-                    ft.Container(
-                        content=ft.Icon(ft.Icons.PERSON_ROUNDED, color=inactive_color, size=20),
-                        padding=10,
-                        border_radius=12,
-                        tooltip="Mi Perfil",
-                        on_click=lambda e: open_profile_panel(),
-                    ),
-                    ft.Container(
-                        content=ft.Icon(ft.Icons.LOGOUT_ROUNDED, color=inactive_color, size=20),
-                        padding=10,
-                        border_radius=12,
-                        tooltip="Cerrar sesión",
-                        on_click=on_logout,
-                    ),
-                    ft.Container(height=16),
-                ],
-                spacing=0,
-                expand=True,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
+            content=sidebar_content,
             bgcolor=sidebar_bg,
-            width=80,
+            width=W_EXPANDED if expanded else W_COLLAPSED,
             expand=False,
-            border=None if is_dark else ft.Border(right=ft.BorderSide(1, COLORS["border"])),
-            shadow=ft.BoxShadow(
-                spread_radius=0, blur_radius=16,
-                color=ft.Colors.with_opacity(0.05 if not is_dark else 0.3, "#000000"),
-                offset=ft.Offset(2, 0),
-            ),
+            border=ft.Border(right=ft.BorderSide(1, ft.Colors.with_opacity(0.08, "#000000"))),
+            animate=ft.Animation(200, "easeOut"),
         )
 
     # ── Áreas de layout ───────────────────────────────────
     content_column = ft.Column(spacing=0, expand=True)
     sidebar_ref    = ft.Ref[ft.Container]()
-    main_row       = ft.Row(spacing=24, expand=True, controls=[content_column])
+    main_row       = ft.Row(spacing=0, expand=True, controls=[content_column])
 
     layout_container = ft.Container(
         content=ft.Column(

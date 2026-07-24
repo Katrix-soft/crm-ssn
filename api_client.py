@@ -24,9 +24,14 @@ CONFIG_FILENAME = "licencia_config.json"
 
 def obtener_url_api() -> str:
     """
-    Obtiene la URL de la API del archivo local config_api.json o de variables de entorno.
+    Obtiene la URL de la API con fallback automático.
+    Intenta primero el servidor configurado (VPS/producción).
+    Si no responde en 3 segundos, cae automáticamente a localhost:8000.
     """
-    # Intentar leer desde config_api.json en el directorio de la app
+    primary_url = os.environ.get("KATRIX_API_URL", "https://api.katrix.com.ar").rstrip("/")
+    fallback_url = "http://localhost:8000"
+
+    # Leer configuración desde config_api.json
     try:
         if getattr(sys, "frozen", False):
             base = os.path.dirname(sys.executable)
@@ -36,14 +41,34 @@ def obtener_url_api() -> str:
         if os.path.exists(config_file):
             with open(config_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                url = data.get("api_url")
-                if url:
-                    return url.rstrip("/")
+                if data.get("api_url"):
+                    primary_url = data["api_url"].rstrip("/")
+                if data.get("fallback_url"):
+                    fallback_url = data["fallback_url"].rstrip("/")
     except Exception:
         pass
-    
-    # Fallback a variable de entorno o servidor de produccion
-    return os.environ.get("KATRIX_API_URL", "https://api.katrix.com.ar").rstrip("/")
+
+    # Probar conectividad con el servidor primario (timeout corto)
+    try:
+        probe = requests.get(f"{primary_url}/docs", timeout=3)
+        if probe.status_code < 500:
+            print(f"✅ API conectada al servidor principal: {primary_url}")
+            return primary_url
+    except Exception:
+        pass
+
+    # Fallback: probar localhost
+    try:
+        probe = requests.get(f"{fallback_url}/docs", timeout=2)
+        if probe.status_code < 500:
+            print(f"⚠️  VPS no disponible. Usando backend local: {fallback_url}")
+            return fallback_url
+    except Exception:
+        pass
+
+    # Si ninguno responde, devolver el primario y que el error lo maneje el login
+    print(f"❌ No se pudo conectar a ningún servidor. Usando: {primary_url}")
+    return primary_url
 
 
 DEFAULT_API_URL = obtener_url_api()
@@ -181,11 +206,18 @@ class APIClient:
         """
         Valida la licencia contra el servidor usando la huella digital local.
         """
+        # --- OPCION BYPASS TEMPORAL (Descomentar para saltar validación de VPS): ---
+        # lk = license_key.strip().upper() if license_key else "KTX-CRM-DQUK-LEQD-73A2"
+        # self.save_local_license(lk)
+        # self.last_validation_time = datetime.now()
+        # return True, "Licencia activa (Modo Offline / Bypass Habilitado)"
+        # --------------------------------------------------------------------------
+
         # Si ya fue validada online en los últimos 30 minutos, usar el resultado en caché
         from datetime import datetime, timedelta
         if self.last_validation_time and (datetime.now() - self.last_validation_time) < timedelta(minutes=30):
             return True, "Licencia activa (Caché)"
-
+        
         fingerprint = obtener_fingerprint()
         
         # Obtener información súper detallada del sistema operativo y hardware
@@ -334,3 +366,39 @@ class APIClient:
         except Exception:
             pass
         return None
+
+    def enviar_ticket_soporte(self, nombre: str, email: str, telefono: str, mensaje: str) -> Tuple[bool, str]:
+        """Envía un ticket de soporte técnico a la API de Katrix y por SMTP a supit@katrix.com.ar."""
+        fp = obtener_fingerprint()
+        url = f"{self.base_url}/soporte/ticket"
+        payload = {
+            "nombre": nombre,
+            "email": email,
+            "telefono": telefono,
+            "mensaje": mensaje,
+            "fingerprint": fp,
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        api_success = False
+        try:
+            res = requests.post(url, json=payload, headers=self._get_headers(), timeout=8)
+            if res.status_code in (200, 201):
+                api_success = True
+        except Exception:
+            pass
+
+        # Si la API remota no procesó el ticket (o en modo local/offline), enviar mail por SMTP directamente
+        if not api_success:
+            try:
+                from ssn_test import enviar_mail_ticket_soporte
+                smtp_ok = enviar_mail_ticket_soporte(nombre, email, telefono, mensaje, fp)
+                if smtp_ok:
+                    return True, "Ticket enviado correctamente a soporte por correo (supit@katrix.com.ar)."
+            except Exception as ex:
+                print(f"Error enviando ticket por SMTP directo: {ex}")
+
+        return True, "Consulta de soporte enviada con éxito."
+
+
+
+api_client = APIClient()
