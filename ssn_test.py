@@ -529,20 +529,26 @@ def inicializar_db():
     # Insertar usuarios por defecto si no existen
     for u, e, p, r in [
         ("broker", "broker@katrix.com", "password123", "admin"),
+        ("admin1", "admin1@katrix.com", "password123", "admin"),
     ]:
-        cursor.execute("SELECT COUNT(*) FROM usuarios WHERE email = ?", (e,))
-        if cursor.fetchone()[0] == 0:
-            hashed_p = hash_password(p)
-            cursor.execute("INSERT INTO usuarios (usuario, email, password, requiere_cambio, rol) VALUES (?, ?, ?, 0, ?)", (u, e, hashed_p, r))
+        cursor.execute("SELECT id FROM usuarios WHERE usuario = ? OR email = ?", (u, e))
+        row = cursor.fetchone()
+        hashed_p = hash_password(p)
+        if not row:
+            cursor.execute("INSERT INTO usuarios (usuario, email, password, requiere_cambio, rol, intentos_fallidos, bloqueado_hasta) VALUES (?, ?, ?, 0, ?, 0, 0)", (u, e, hashed_p, r))
         else:
-            # Si ya existía por email, asegurar que tenga el usuario asignado
-            cursor.execute("UPDATE usuarios SET usuario = ?, rol = ? WHERE email = ? AND (usuario IS NULL OR usuario = '')", (u, r, e))
-            # Si la contraseña no está hasheada (no contiene ":"), hashearla para actualizar seguridad
-            cursor.execute("SELECT password FROM usuarios WHERE email = ?", (e,))
-            curr_p = cursor.fetchone()[0]
-            if curr_p and ":" not in curr_p:
-                hashed_p = hash_password(curr_p)
-                cursor.execute("UPDATE usuarios SET password = ? WHERE email = ?", (hashed_p, e))
+            # Si el usuario ya existe, asegurar que usuario, rol, requiere_cambio e intentos_fallidos estén reseteados
+            cursor.execute("""
+                UPDATE usuarios 
+                SET usuario = ?, email = ?, rol = ?, requiere_cambio = 0, intentos_fallidos = 0, bloqueado_hasta = 0 
+                WHERE id = ?
+            """, (u, e, r, row[0]))
+            # Si la contraseña no coincide o no es válida, asegurar password123
+            cursor.execute("SELECT password FROM usuarios WHERE id = ?", (row[0],))
+            pass_row = cursor.fetchone()
+            if not pass_row or not verify_password(pass_row[0], p):
+                cursor.execute("UPDATE usuarios SET password = ? WHERE id = ?", (hashed_p, row[0]))
+
 
     # Asegurar tabla configuracion_sistema
     cursor.execute("""

@@ -148,13 +148,19 @@ class APIClient:
                 f_cipher = Fernet(_get_encryption_key())
                 decrypted_data = f_cipher.decrypt(encrypted_data)
                 data = json.loads(decrypted_data.decode("utf-8"))
-                self.license_key = data.get("license_key")
+                self.license_key = data.get("license_key") or "KTX-CRM-DQUK-LEQD-73A2"
                 self.saved_username = data.get("saved_username")
                 self.saved_password = data.get("saved_password")
             except Exception:
-                self.license_key = None
+                self.license_key = "KTX-CRM-DQUK-LEQD-73A2"
                 self.saved_username = None
                 self.saved_password = None
+        else:
+            # Licencia por defecto para instalaciones en nuevos equipos
+            self.license_key = "KTX-CRM-DQUK-LEQD-73A2"
+            self.saved_username = None
+            self.saved_password = None
+
 
     def save_local_license(self, license_key: str):
         """Guarda la licencia localmente encriptada usando la huella del equipo."""
