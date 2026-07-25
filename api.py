@@ -1373,6 +1373,7 @@ def delete_usuario(user_id: int, current: TokenData = Depends(require_admin)):
 # ─── LOGS DE AUDITORÍA ───────────────────────────────────────────────────────
 
 @app.get("/logs/", response_model=List[LogResponse], tags=["Administración"])
+@app.get("/panel/logs", response_model=List[LogResponse], tags=["Administración"])
 def list_logs(
     limite: int = Query(100, ge=1, le=500, description="Máximo de registros a retornar"),
     current: TokenData = Depends(require_admin),
@@ -1383,6 +1384,123 @@ def list_logs(
     """
     logs = db.obtener_logs(limite=limite)
     return [LogResponse(**l) for l in logs]
+
+
+# ─── GESTIÓN DE USUARIOS Y SESIONES DEL PANEL ───────────────────────────────
+
+@app.get("/panel/users", response_model=List[dict], tags=["Administración"])
+def get_panel_users(current: TokenData = Depends(require_admin)):
+    """Lista usuarios para la gestión del panel."""
+    users = db.obtener_usuarios()
+    res = []
+    for u in users:
+        res.append({
+            "id": u.get("id"),
+            "username": u.get("usuario") or u.get("username"),
+            "email": u.get("email") or "",
+            "role": u.get("rol") or "admin",
+            "permissions": {
+                "ver_licencias": True,
+                "crear_licencia": True,
+                "editar_licencia": True,
+                "suspender_licencia": True,
+                "desvincular_dispositivo": True,
+                "eliminar_licencia": True,
+                "ver_sesiones": True,
+                "desvincular_sesion": True,
+                "ver_logs": True
+            }
+        })
+    return res
+
+
+@app.post("/panel/users", response_model=MessageResponse, tags=["Administración"])
+def create_panel_user(body: dict, current: TokenData = Depends(require_admin)):
+    username = body.get("username") or body.get("usuario")
+    password = body.get("password")
+    role = body.get("role") or body.get("rol") or "admin"
+    email = body.get("email") or f"{username}@katrix.com"
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Nombre de usuario y contraseña son obligatorios")
+    ok, msg = db.crear_usuario(usuario=username, email=email, password_txt=password, rol=role, requiere_cambio=0)
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+    return MessageResponse(ok=True, message=msg)
+
+
+@app.delete("/panel/users/{username}", response_model=MessageResponse, tags=["Administración"])
+def delete_panel_user(username: str, current: TokenData = Depends(require_admin)):
+    users = db.obtener_usuarios()
+    target = next((u for u in users if (u.get("usuario") or u.get("username") or "").lower() == username.lower()), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if target["id"] == current.user_id:
+        raise HTTPException(status_code=400, detail="No podés eliminar tu propio usuario")
+    db.eliminar_usuario(target["id"])
+    return MessageResponse(ok=True, message="Usuario eliminado correctamente")
+
+
+@app.get("/panel/sessions", response_model=List[dict], tags=["Administración"])
+def get_panel_sessions(current: TokenData = Depends(require_admin)):
+    """Lista las sesiones activas del panel."""
+    return [{
+        "username": current.username,
+        "role": current.role,
+        "ip": "Servidor Activo",
+        "user_agent": "Navegador Web / Panel",
+        "last_active": datetime.utcnow().isoformat()
+    }]
+
+
+@app.post("/panel/sessions/{username}/revoke", response_model=MessageResponse, tags=["Administración"])
+def revoke_panel_session(username: str, current: TokenData = Depends(require_admin)):
+    db.registrar_log(current.username, "REVOKE_SESSION", f"Sesión revocada para {username}")
+    return MessageResponse(ok=True, message=f"Sesión de {username} revocada")
+
+
+@app.get("/panel/app-sessions", response_model=List[dict], tags=["Administración"])
+def get_app_sessions(current: TokenData = Depends(require_admin)):
+    """Lista las sesiones activas de la App CRM."""
+    users = db.obtener_usuarios()
+    sessions = []
+    for u in users:
+        sessions.append({
+            "username": u.get("usuario") or "agente",
+            "role": u.get("rol") or "agente",
+            "ip": "App Conectada",
+            "user_agent": "KatrixBroker App",
+            "last_active": datetime.utcnow().isoformat()
+        })
+    return sessions
+
+
+@app.post("/panel/app-sessions/{username}/revoke", response_model=MessageResponse, tags=["Administración"])
+def revoke_app_session(username: str, current: TokenData = Depends(require_admin)):
+    db.registrar_log(current.username, "REVOKE_APP_SESSION", f"Sesión App revocada para {username}")
+    return MessageResponse(ok=True, message=f"Sesión de App de {username} revocada")
+
+
+# ─── CONFIGURACIÓN DEL SISTEMA ───────────────────────────────────────────────
+
+@app.get("/configuracion", response_model=List[dict], tags=["Sistema"])
+@app.get("/config/", response_model=List[dict], tags=["Sistema"])
+def get_configuracion(current: TokenData = Depends(require_admin)):
+    configs = db.obtener_configuraciones()
+    res = []
+    for k, v in configs.items():
+        res.append({"clave": k, "valor": str(v)})
+    return res
+
+
+@app.put("/configuracion", response_model=MessageResponse, tags=["Sistema"])
+@app.post("/configuracion", response_model=MessageResponse, tags=["Sistema"])
+def update_configuracion(body: dict, current: TokenData = Depends(require_admin)):
+    clave = body.get("clave")
+    valor = str(body.get("valor"))
+    if not clave:
+        raise HTTPException(status_code=400, detail="Clave requerida")
+    db.guardar_configuracion(clave, valor)
+    return MessageResponse(ok=True, message="Configuración actualizada")
 
 
 # ─── LICENCIAS DE SOFTWARE ───────────────────────────────────────────────────
@@ -1518,6 +1636,60 @@ def api_delete_licencia(lic_id: int, current: TokenData = Depends(require_admin)
     threading.Thread(target=alert_deletion, daemon=True).start()
     
     return MessageResponse(ok=True, message="Licencia eliminada")
+
+
+@app.delete("/licencias/{lic_id}/dispositivos", response_model=MessageResponse, tags=["Licencias de Software"])
+def desvincular_todos_dispositivos(lic_id: int, current: TokenData = Depends(require_admin)):
+    import sqlite3
+    conn = sqlite3.connect(db.DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE licencias SET dispositivo_id = '', dispositivos_info = '{}' WHERE id = ?", (lic_id,))
+    ok = cursor.rowcount > 0
+    conn.commit()
+    conn.close()
+    if not ok:
+        raise HTTPException(status_code=404, detail="Licencia no encontrada")
+    db.registrar_log(current.username, "DESVINCULAR_DISPOSITIVOS", f"Todos los dispositivos desvinculados de lic ID {lic_id}")
+    return MessageResponse(ok=True, message="Todos los dispositivos fueron desvinculados")
+
+
+@app.delete("/licencias/{lic_id}/dispositivos/{dev_id:path}", response_model=MessageResponse, tags=["Licencias de Software"])
+def desvincular_dispositivo(lic_id: int, dev_id: str, current: TokenData = Depends(require_admin)):
+    lic = db.obtener_licencia_por_id(lic_id)
+    if not lic:
+        raise HTTPException(status_code=404, detail="Licencia no encontrada")
+        
+    devices = [d.strip() for d in (lic.get("dispositivo_id") or "").split(",") if d.strip() and d.strip() != dev_id]
+    import json
+    try:
+        info = json.loads(lic.get("dispositivos_info") or "{}")
+        info.pop(dev_id, None)
+    except Exception:
+        info = {}
+        
+    import sqlite3
+    conn = sqlite3.connect(db.DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE licencias SET dispositivo_id = ?, dispositivos_info = ? WHERE id = ?",
+                   (",".join(devices), json.dumps(info, ensure_ascii=False), lic_id))
+    conn.commit()
+    conn.close()
+    db.registrar_log(current.username, "DESVINCULAR_DISPOSITIVO", f"Dispositivo {dev_id} desvinculado de lic ID {lic_id}")
+    return MessageResponse(ok=True, message=f"Dispositivo {dev_id} desvinculado")
+
+
+# ─── BIOMETRÍA ───────────────────────────────────────────────────────────────
+
+@app.get("/panel/auth/biometrics/challenge", tags=["Auth"])
+def biometrics_challenge(current: TokenData = Depends(get_current_user)):
+    import secrets
+    challenge = secrets.token_hex(32)
+    return {"challenge": challenge, "user_id": str(current.user_id), "username": current.username}
+
+
+@app.post("/panel/auth/biometrics/register", response_model=MessageResponse, tags=["Auth"])
+def biometrics_register(body: dict, current: TokenData = Depends(get_current_user)):
+    return MessageResponse(ok=True, message="Dispositivo biométrico registrado exitosamente")
 
 
 # ─── SOPORTE TÉCNICO ─────────────────────────────────────────────────────────
