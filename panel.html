@@ -335,7 +335,7 @@
       <input type="text" id="buscar" placeholder="Buscar por cliente, email o clave..." />
       <select id="filtroUso">
         <option value="uso" selected>📱 Solo en uso (Equipos vinculados)</option>
-        <option value="todas">🌐 Todas las licencias (Padrón entero)</option>
+        <option value="todas">🌐 Todas las licencias</option>
       </select>
       <select id="filtroEstado">
         <option value="todos">Todos los estados</option>
@@ -350,6 +350,7 @@
         <option value="POS">POS</option>
       </select>
       <button class="btn-ghost" id="btnRefrescar">Actualizar</button>
+      <button class="btn-warn" id="btnLimpiarMasivas">🧹 Limpiar Sin Uso</button>
       <button class="btn-ok" id="btnExportCSV">📥 Exportar CSV</button>
     </div>
 
@@ -1404,6 +1405,23 @@ async function cargarLicencias(searchQuery = ""){
   }
 }
 $("btnRefrescar").addEventListener("click", () => cargarLicencias($("buscar").value.trim()));
+if ($("btnLimpiarMasivas")) {
+  $("btnLimpiarMasivas").addEventListener("click", () => {
+    customConfirm({
+      title: "Limpiar Licencias Sin Uso",
+      message: "¿Estás seguro de eliminar todas las licencias autogeneradas que no tengan ningún dispositivo vinculado?",
+      onAccept: async () => {
+        try {
+          const res = await apiFetch("/licencias/limpiar-masivas", { method: "DELETE" });
+          showToast(res.message || "Licencias sin uso eliminadas con éxito.");
+          cargarLicencias($("buscar").value.trim());
+        } catch (err) {
+          showToast(err.message || "Error al limpiar licencias", true);
+        }
+      }
+    });
+  });
+}
 $("btnExportCSV").addEventListener("click", () => {
     let csv = "Cliente,Clave,Dominio,Email,Dispositivo ID,Estado,Hardware\n";
     licencias.forEach(l => {

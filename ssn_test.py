@@ -3759,6 +3759,7 @@ def limpiar_licencias_masivas() -> int:
         DELETE FROM licencias 
         WHERE (dispositivo_id IS NULL OR dispositivo_id = '') 
           AND (dispositivos_info IS NULL OR dispositivos_info = '' OR dispositivos_info = '{}')
+          AND clave NOT IN ('KTX-CRM-DQUK-LEQD-73A2', 'KTX-CRM-DQUK-LEGD-73A2', 'KTX-TEST-VALID-2026')
     """)
     count = cursor.rowcount
     conn.commit()
