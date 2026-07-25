@@ -40,6 +40,9 @@ app = FastAPI(
     contact={"name": "Katrix ERP", "email": "admin@katrix.com"},
     license_info={"name": "Privado"},
     lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 # CORS — ajustá los orígenes a tu dominio real en producción
@@ -99,10 +102,69 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> TokenData:
         raise cred_err
 
 
+def get_current_user_from_header_or_query(
+    request: Request,
+    token_header: Optional[str] = Depends(OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)),
+    token_query: Optional[str] = Query(None, alias="token")
+) -> TokenData:
+    raw_token = token_query or token_header
+    if not raw_token and "Authorization" in request.headers:
+        auth_h = request.headers["Authorization"]
+        if auth_h.startswith("Bearer "):
+            raw_token = auth_h[7:]
+            
+    cred_err = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Acceso denegado: se requiere inicio de sesión para acceder a la documentación.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if not raw_token:
+        raise cred_err
+        
+    try:
+        payload = jwt.decode(raw_token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: int = payload.get("user_id")
+        username: str = payload.get("username")
+        role: str = payload.get("role")
+        matricula: str = payload.get("matricula")
+        if user_id is None or username is None:
+            raise cred_err
+        return TokenData(user_id=user_id, username=username, role=role, matricula=matricula)
+    except JWTError:
+        raise cred_err
+
+
 def require_admin(current: TokenData = Depends(get_current_user)) -> TokenData:
     if current.role != "admin":
         raise HTTPException(status_code=403, detail="Se requiere rol de administrador")
     return current
+
+
+# ─── DOCUMENTACIÓN API PROTEGIDA ─────────────────────────────────────────────
+
+@app.get("/openapi.json", include_in_schema=False)
+def get_protected_openapi(current: TokenData = Depends(get_current_user_from_header_or_query)):
+    return app.openapi()
+
+
+@app.get("/docs", include_in_schema=False)
+def get_protected_docs(token: Optional[str] = Query(None), current: TokenData = Depends(get_current_user_from_header_or_query)):
+    from fastapi.openapi.docs import get_swagger_ui_html
+    openapi_target = f"/openapi.json?token={token}" if token else "/openapi.json"
+    return get_swagger_ui_html(
+        openapi_url=openapi_target,
+        title=app.title + " - Documentación API Swagger"
+    )
+
+
+@app.get("/redoc", include_in_schema=False)
+def get_protected_redoc(token: Optional[str] = Query(None), current: TokenData = Depends(get_current_user_from_header_or_query)):
+    from fastapi.openapi.docs import get_redoc_html
+    openapi_target = f"/openapi.json?token={token}" if token else "/openapi.json"
+    return get_redoc_html(
+        openapi_url=openapi_target,
+        title=app.title + " - Documentación ReDoc"
+    )
 
 
 # ─── AUTH ────────────────────────────────────────────────────────────────────
@@ -1720,8 +1782,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @app.get("/", include_in_schema=False)
 def redirect_root():
-    """Redirige la raíz a la documentación Swagger de la API."""
-    return RedirectResponse(url="/docs")
+    """Redirige la raíz al Panel Web HTML."""
+    return RedirectResponse(url="/panel.html")
 
 @app.get("/panel.html", response_class=FileResponse, include_in_schema=False)
 @app.get("/panel", response_class=FileResponse, include_in_schema=False)

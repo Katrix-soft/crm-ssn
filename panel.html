@@ -297,6 +297,7 @@
     <div style="display:flex; gap:8px;">
       <button class="btn-ghost" id="btnManageUsers" style="display:none;">👥 Usuarios</button>
       <button class="btn-ghost" id="btnPushAlerts">🔔 Activar Alertas</button>
+      <button class="btn-ghost" id="btnDocs">📖 Documentación API</button>
       <button class="btn-ghost" id="btnChangePass" style="display:none;">🔐 Cambiar Clave Panel</button>
       <button class="btn-ghost" id="btnRegBio" style="display:none;">👤 Registrar Huella</button>
       <button class="btn-primary" id="btnInstallApp" style="display:none;">📱 Instalar App</button>
@@ -1432,6 +1433,16 @@ $("btnExportCSV").addEventListener("click", () => {
     a.click();
     showToast("CSV descargado exitosamente", "success");
 });
+
+if ($("btnDocs")) {
+  $("btnDocs").addEventListener("click", () => {
+    if (TOKEN) {
+      window.open(`${API_BASE}/docs?token=${encodeURIComponent(TOKEN)}`, "_blank");
+    } else {
+      showToast("Debés iniciar sesión para acceder a la documentación.", true);
+    }
+  });
+}
 
 function render(){
   const q = $("buscar").value.toLowerCase();
