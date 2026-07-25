@@ -1059,34 +1059,21 @@ function mostrarDashboard(){
   $("dashboard").style.display = "block";
   $("userInfo").textContent = `Conectado como ${USER.username} (${USER.role}) · ${API_BASE}`;
   
-  if (USER.role === "panel_admin" || USER.role === "panel_superadmin" || USER.role === "superadmin") {
-    $("btnChangePass").style.display = "inline-flex";
-    $("btnRegBio").style.display = "inline-flex";
-  } else {
-    $("btnChangePass").style.display = "none";
-    $("btnRegBio").style.display = "none";
-  }
-  
-  if (USER.role === "panel_superadmin" || USER.role === "superadmin") {
-    $("btnManageUsers").style.display = "inline-flex";
-  } else {
-    $("btnManageUsers").style.display = "none";
-  }
-  
-  if (hasPerm("crear_licencia")) {
-    $("btnNueva").style.display = "inline-flex";
-  } else {
-    $("btnNueva").style.display = "none";
-  }
+  const isAnyAdmin = ["admin", "superadmin", "panel_admin", "panel_superadmin"].includes(USER.role);
 
-  // Control Visibility of Tabs
-  if (USER.role === "panel_superadmin" || USER.role === "superadmin") {
+  // Permitir cambiar contraseña y biometría a todos los administradores y usuarios
+  $("btnChangePass").style.display = "inline-flex";
+  $("btnRegBio").style.display = "inline-flex";
+
+  if (isAnyAdmin) {
+    $("btnManageUsers").style.display = "inline-flex";
     $("navTabUsers").style.display = "inline-flex";
     $("navTabCrmUsers").style.display = "inline-flex";
     $("navTabSesiones").style.display = "inline-flex";
     $("navTabLogs").style.display = "inline-flex";
     $("navTabConfigCRM").style.display = "inline-flex";
   } else {
+    $("btnManageUsers").style.display = "none";
     $("navTabUsers").style.display = "none";
     $("navTabCrmUsers").style.display = "none";
     $("navTabConfigCRM").style.display = "none";
@@ -1102,6 +1089,12 @@ function mostrarDashboard(){
     } else {
       $("navTabLogs").style.display = "none";
     }
+  }
+
+  if (hasPerm("crear_licencia")) {
+    $("btnNueva").style.display = "inline-flex";
+  } else {
+    $("btnNueva").style.display = "none";
   }
 
   switchTab("tab-licencias");
@@ -1149,7 +1142,7 @@ function setApiUrl(url) {
   const b = sessionStorage.getItem("katrix_api_base");
   if (t && u && b){
     const parsedUser = JSON.parse(u);
-    if (parsedUser.role === "panel_admin" || parsedUser.role === "panel_superadmin") {
+    if (["admin", "superadmin", "panel_admin", "panel_superadmin", "agente"].includes(parsedUser.role)) {
       TOKEN = t; USER = parsedUser; API_BASE = b;
       $("apiBase").value = API_BASE;
       mostrarDashboard();

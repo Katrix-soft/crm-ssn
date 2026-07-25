@@ -2807,15 +2807,12 @@ def actualizar_usuario(id_usuario: int, nuevo_usuario: str, nuevo_email: str, pa
         actual_usuario, actual_email, user_changed, actual_rol = res
         
         # Normalizar valores
-        nuevo_usuario = nuevo_usuario.strip()
-        nuevo_email = nuevo_email.strip().lower()
+        nuevo_usuario = nuevo_usuario.strip() if (nuevo_usuario and nuevo_usuario.strip()) else actual_usuario
+        nuevo_email = nuevo_email.strip().lower() if (nuevo_email and nuevo_email.strip()) else actual_email
         
         # Validar cambio de nombre de usuario
         set_changed = 0
         if nuevo_usuario.lower() != actual_usuario.lower():
-            if is_self_update and user_changed:
-                conn.close()
-                return False, "El nombre de usuario solo se puede cambiar una sola vez"
             set_changed = 1
             
         # Verificar si el nuevo nombre de usuario o email ya existen en otro usuario

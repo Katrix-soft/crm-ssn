@@ -19,6 +19,11 @@ class ResetPasswordRequest(BaseModel):
     token: str = Field(..., description="Token JWT de recuperación")
     password: str = Field(..., min_length=6, description="Nueva contraseña")
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=4)
+    new_username: Optional[str] = None
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"

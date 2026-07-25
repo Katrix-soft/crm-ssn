@@ -179,6 +179,42 @@ def get_me(current: TokenData = Depends(get_current_user)):
     )
 
 
+@app.post("/panel/auth/change-password", response_model=MessageResponse, tags=["Auth"])
+@app.post("/auth/change-password", response_model=MessageResponse, tags=["Auth"])
+def change_password(body: ChangePasswordRequest, current: TokenData = Depends(get_current_user)):
+    """Permite al usuario autenticado cambiar su contraseña y/o su nombre de usuario."""
+    import sqlite3
+    conn = sqlite3.connect(db.DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM usuarios WHERE id = ? OR usuario = ?", (current.user_id, current.username))
+    user_row = cursor.fetchone()
+    conn.close()
+
+    if not user_row:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    u_dict = dict(user_row)
+    if not db.verify_password(u_dict["password"], body.current_password):
+        raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta")
+        
+    nuevo_username = body.new_username.strip() if (body.new_username and body.new_username.strip()) else u_dict["usuario"]
+    
+    ok, msg = db.actualizar_usuario(
+        id_usuario=u_dict["id"],
+        nuevo_usuario=nuevo_username,
+        nuevo_email=u_dict.get("email") or "",
+        password_txt=body.new_password,
+        rol=u_dict.get("rol") or current.role,
+        is_self_update=False
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+        
+    db.registrar_log(current.username, "CHANGE_PASSWORD", f"Usuario {current.username} cambió credenciales (Nuevo nombre: {nuevo_username})")
+    return MessageResponse(ok=True, message=msg)
+
+
 @app.post("/auth/forgot-password", response_model=MessageResponse, tags=["Auth"])
 @limiter.limit("3/minute")
 def forgot_password(request: Request, body: ForgotPasswordRequest):
