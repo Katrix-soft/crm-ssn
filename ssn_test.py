@@ -2592,7 +2592,7 @@ def parsear_e_importar_archivo(file_path: str) -> int:
                 
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
-                registros_insertados = 0
+                to_upsert = []
                 
                 # Fila 1 suele ser el encabezado, iterar desde la fila 2
                 for r in rows[1:]:
@@ -2612,37 +2612,11 @@ def parsear_e_importar_archivo(file_path: str) -> int:
                                 
                         row_data[col_letter] = val.strip() if val else ""
                     
-                    matricula = row_data.get('A', '')
+                    matricula = row_data.get('A', '').strip()
                     if matricula:
                         provincia = row_data.get('H', '').strip().upper() or "—"
                         localidad = row_data.get('G', '').strip().upper() or "—"
-                        cursor.execute("""
-                            INSERT INTO productores_detalle (
-                                matricula, nombre, documento, cuit, ramo, provincia, telefono, email, 
-                                resolucion, fecha_resolucion, domicilio, localidad, cod_postal, scraped_at
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                            ON CONFLICT(matricula) DO UPDATE SET
-                                nombre = CASE WHEN excluded.nombre != '' THEN excluded.nombre ELSE productores_detalle.nombre END,
-                                documento = CASE WHEN excluded.documento != '' THEN excluded.documento ELSE productores_detalle.documento END,
-                                cuit = CASE WHEN excluded.cuit != '' THEN excluded.cuit ELSE productores_detalle.cuit END,
-                                ramo = CASE WHEN excluded.ramo != '' AND excluded.ramo != 'Patrimoniales y Vida' THEN excluded.ramo ELSE productores_detalle.ramo END,
-                                provincia = CASE WHEN excluded.provincia != '—' AND excluded.provincia != '' THEN excluded.provincia ELSE productores_detalle.provincia END,
-                                telefono = CASE WHEN excluded.telefono != '—' AND excluded.telefono != '' THEN excluded.telefono ELSE productores_detalle.telefono END,
-                                email = CASE WHEN excluded.email != '—' AND excluded.email != '' THEN excluded.email ELSE productores_detalle.email END,
-                                domicilio = CASE WHEN excluded.domicilio != '—' AND excluded.domicilio != '' THEN excluded.domicilio ELSE productores_detalle.domicilio END,
-                                localidad = CASE WHEN excluded.localidad != '—' AND excluded.localidad != '' THEN excluded.localidad ELSE productores_detalle.localidad END,
-                                cod_postal = CASE WHEN excluded.cod_postal != '—' AND excluded.cod_postal != '' THEN excluded.cod_postal ELSE productores_detalle.cod_postal END,
-                                scraped_at = CURRENT_TIMESTAMP
-                            WHERE (
-                                (CASE WHEN productores_detalle.telefono IS NULL OR productores_detalle.telefono IN ('', '—') THEN 1 ELSE 0 END) +
-                                (CASE WHEN productores_detalle.email IS NULL OR productores_detalle.email IN ('', '—') THEN 1 ELSE 0 END) +
-                                (CASE WHEN productores_detalle.domicilio IS NULL OR productores_detalle.domicilio IN ('', '—') THEN 1 ELSE 0 END) +
-                                (CASE WHEN productores_detalle.localidad IS NULL OR productores_detalle.localidad IN ('', '—') THEN 1 ELSE 0 END) +
-                                (CASE WHEN productores_detalle.cod_postal IS NULL OR productores_detalle.cod_postal IN ('', '—') THEN 1 ELSE 0 END) +
-                                (CASE WHEN productores_detalle.resolucion IS NULL OR productores_detalle.resolucion IN ('', '—') THEN 1 ELSE 0 END) +
-                                (CASE WHEN productores_detalle.fecha_resolucion IS NULL OR productores_detalle.fecha_resolucion IN ('', '—') THEN 1 ELSE 0 END)
-                            ) >= 2
-                        """, (
+                        to_upsert.append((
                             matricula,
                             row_data.get('B', '').strip(),
                             row_data.get('C', '').strip(),
@@ -2657,8 +2631,37 @@ def parsear_e_importar_archivo(file_path: str) -> int:
                             localidad,
                             row_data.get('K', '').strip()
                         ))
-                        registros_insertados += 1
                 
+                if to_upsert:
+                    cursor.executemany("""
+                        INSERT INTO productores_detalle (
+                            matricula, nombre, documento, cuit, ramo, provincia, telefono, email, 
+                            resolucion, fecha_resolucion, domicilio, localidad, cod_postal, scraped_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                        ON CONFLICT(matricula) DO UPDATE SET
+                            nombre = CASE WHEN excluded.nombre != '' THEN excluded.nombre ELSE productores_detalle.nombre END,
+                            documento = CASE WHEN excluded.documento != '' THEN excluded.documento ELSE productores_detalle.documento END,
+                            cuit = CASE WHEN excluded.cuit != '' THEN excluded.cuit ELSE productores_detalle.cuit END,
+                            ramo = CASE WHEN excluded.ramo != '' AND excluded.ramo != 'Patrimoniales y Vida' THEN excluded.ramo ELSE productores_detalle.ramo END,
+                            provincia = CASE WHEN excluded.provincia != '—' AND excluded.provincia != '' THEN excluded.provincia ELSE productores_detalle.provincia END,
+                            telefono = CASE WHEN excluded.telefono != '—' AND excluded.telefono != '' THEN excluded.telefono ELSE productores_detalle.telefono END,
+                            email = CASE WHEN excluded.email != '—' AND excluded.email != '' THEN excluded.email ELSE productores_detalle.email END,
+                            domicilio = CASE WHEN excluded.domicilio != '—' AND excluded.domicilio != '' THEN excluded.domicilio ELSE productores_detalle.domicilio END,
+                            localidad = CASE WHEN excluded.localidad != '—' AND excluded.localidad != '' THEN excluded.localidad ELSE productores_detalle.localidad END,
+                            cod_postal = CASE WHEN excluded.cod_postal != '—' AND excluded.cod_postal != '' THEN excluded.cod_postal ELSE productores_detalle.cod_postal END,
+                            scraped_at = CURRENT_TIMESTAMP
+                        WHERE (
+                            (CASE WHEN productores_detalle.telefono IS NULL OR productores_detalle.telefono IN ('', '—') THEN 1 ELSE 0 END) +
+                            (CASE WHEN productores_detalle.email IS NULL OR productores_detalle.email IN ('', '—') THEN 1 ELSE 0 END) +
+                            (CASE WHEN productores_detalle.domicilio IS NULL OR productores_detalle.domicilio IN ('', '—') THEN 1 ELSE 0 END) +
+                            (CASE WHEN productores_detalle.localidad IS NULL OR productores_detalle.localidad IN ('', '—') THEN 1 ELSE 0 END) +
+                            (CASE WHEN productores_detalle.cod_postal IS NULL OR productores_detalle.cod_postal IN ('', '—') THEN 1 ELSE 0 END) +
+                            (CASE WHEN productores_detalle.resolucion IS NULL OR productores_detalle.resolucion IN ('', '—') THEN 1 ELSE 0 END) +
+                            (CASE WHEN productores_detalle.fecha_resolucion IS NULL OR productores_detalle.fecha_resolucion IN ('', '—') THEN 1 ELSE 0 END)
+                        ) >= 2
+                    """, to_upsert)
+                
+                registros_insertados = len(to_upsert)
                 cursor.execute("SELECT COUNT(*) FROM productores_detalle WHERE telefono IN ('', '—') OR email IN ('', '—')")
                 incompletos = cursor.fetchone()[0]
                 conn.commit()
@@ -2722,7 +2725,7 @@ def parsear_e_importar_archivo(file_path: str) -> int:
                 
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            registros_insertados = 0
+            to_upsert = []
             
             for row in reader:
                 matricula = row.get(col_mat, "").strip()
@@ -2740,7 +2743,13 @@ def parsear_e_importar_archivo(file_path: str) -> int:
                 localidad = (row.get(col_loc, "").strip().upper() if col_loc else "").strip() or "—"
                 cod_postal = row.get(col_cp, "").strip() if col_cp else "—"
                 
-                cursor.execute("""
+                to_upsert.append((
+                    matricula, nombre, documento, cuit, ramo, provincia, telefono, email,
+                    "CSV Import", "—", domicilio, localidad, cod_postal
+                ))
+            
+            if to_upsert:
+                cursor.executemany("""
                     INSERT INTO productores_detalle (
                         matricula, nombre, documento, cuit, ramo, provincia, telefono, email, 
                         resolucion, fecha_resolucion, domicilio, localidad, cod_postal, scraped_at
@@ -2766,12 +2775,9 @@ def parsear_e_importar_archivo(file_path: str) -> int:
                         (CASE WHEN productores_detalle.resolucion IS NULL OR productores_detalle.resolucion IN ('', '—') THEN 1 ELSE 0 END) +
                         (CASE WHEN productores_detalle.fecha_resolucion IS NULL OR productores_detalle.fecha_resolucion IN ('', '—') THEN 1 ELSE 0 END)
                     ) >= 2
-                """, (
-                    matricula, nombre, documento, cuit, ramo, provincia, telefono, email,
-                    "CSV Import", "—", domicilio, localidad, cod_postal
-                ))
-                registros_insertados += 1
-                
+                """, to_upsert)
+
+            registros_insertados = len(to_upsert)
             cursor.execute("SELECT COUNT(*) FROM productores_detalle WHERE telefono IN ('', '—') OR email IN ('', '—')")
             incompletos = cursor.fetchone()[0]
             conn.commit()
