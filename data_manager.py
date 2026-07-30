@@ -188,10 +188,15 @@ class DataManager:
                     
                     rec = {
                         COL_MATRICULA: mat,
+                        "matricula": mat,
                         COL_NOMBRE: db_rec.get("nombre", ""),
+                        "nombre": db_rec.get("nombre", ""),
                         COL_ID: cuit,
+                        "cuit": db_rec.get("cuit") or cuit,
+                        "documento": db_rec.get("documento") or cuit,
                         COL_TIPO_ID: tipo_id,
                         COL_RAMO: db_rec.get("ramo", "Patrimoniales y Vida"),
+                        "ramo": db_rec.get("ramo", "Patrimoniales y Vida"),
                         "provincia": db_rec.get("provincia", "—"),
                         "telefono": db_rec.get("telefono", "—"),
                         "email": db_rec.get("email", "—"),
@@ -201,6 +206,7 @@ class DataManager:
                         "localidad": db_rec.get("localidad", "—"),
                         "cod_postal": db_rec.get("cod_postal", "—"),
                         "estado_contacto": db_rec.get("estado_contacto") or "Sin contactar",
+                        "observaciones": db_rec.get("observaciones", ""),
                         "companias": db_rec.get("companias", ""),
                         "sociedades": db_rec.get("sociedades", ""),
                     }

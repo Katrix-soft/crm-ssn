@@ -1335,28 +1335,38 @@ def guardar_en_db(datos: dict, user_id: int = None):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Preservar o definir estado de contacto, observaciones, usuario_id, domicilio, localidad y cod_postal
-    matricula = datos.get("matricula")
+    matricula = str(datos.get("matricula")).strip()
     cursor.execute("""
-        SELECT estado_contacto, observaciones, usuario_id, domicilio, localidad, cod_postal 
+        SELECT nombre, documento, cuit, ramo, provincia, telefono, email, resolucion, fecha_resolucion, 
+               estado_contacto, observaciones, usuario_id, domicilio, localidad, cod_postal 
         FROM productores_detalle WHERE matricula = ?
     """, (matricula,))
     res = cursor.fetchone()
     
-    existing_estado = res[0] if res else None
-    existing_obs = res[1] if res else None
-    existing_user_id = res[2] if res else None
-    existing_dom = res[3] if res else None
-    existing_loc = res[4] if res else None
-    existing_cp = res[5] if res else None
+    # Si existe registro anterior, tomar como fallback los datos guardados
+    ex_nom, ex_doc, ex_cuit, ex_ramo, ex_prov, ex_tel, ex_mail, ex_res, ex_fres, ex_est, ex_obs, ex_uid, ex_dom, ex_loc, ex_cp = res if res else (None,)*15
+
+    def seleccionar_valor(nuevo, existente):
+        if nuevo is not None and str(nuevo).strip() not in ("", "—", "None", "null", "Sin Tel", "Sin Email"):
+            return str(nuevo).strip()
+        return existente or ""
+
+    nombre = seleccionar_valor(datos.get("nombre"), ex_nom)
+    documento = seleccionar_valor(datos.get("documento"), ex_doc)
+    cuit = seleccionar_valor(datos.get("cuit"), ex_cuit)
+    ramo = seleccionar_valor(datos.get("ramo"), ex_ramo)
+    provincia = seleccionar_valor(datos.get("provincia"), ex_prov)
+    telefono = seleccionar_valor(datos.get("telefono"), ex_tel)
+    email = seleccionar_valor(datos.get("email"), ex_mail)
+    resolucion = seleccionar_valor(datos.get("resolucion"), ex_res)
+    fecha_resolucion = seleccionar_valor(datos.get("fecha_resolucion"), ex_fres)
+    domicilio = seleccionar_valor(datos.get("domicilio"), ex_dom)
+    localidad = seleccionar_valor(datos.get("localidad"), ex_loc)
+    cod_postal = seleccionar_valor(datos.get("cod_postal"), ex_cp)
     
-    estado = datos.get("estado_contacto") or existing_estado or "Sin contactar"
-    obs = datos.get("observaciones") or existing_obs
-    final_user_id = existing_user_id if existing_user_id is not None else user_id
-    
-    domicilio = datos.get("domicilio") or existing_dom
-    localidad = datos.get("localidad") or existing_loc
-    cod_postal = datos.get("cod_postal") or existing_cp
+    estado = datos.get("estado_contacto") or ex_est or "Sin contactar"
+    obs = datos.get("observaciones") or ex_obs or ""
+    final_user_id = ex_uid if ex_uid is not None else user_id
     
     cursor.execute("""
         INSERT OR REPLACE INTO productores_detalle (
@@ -1364,22 +1374,9 @@ def guardar_en_db(datos: dict, user_id: int = None):
             resolucion, fecha_resolucion, domicilio, localidad, cod_postal, estado_contacto, observaciones, usuario_id, scraped_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     """, (
-        datos.get("matricula"),
-        datos.get("nombre"),
-        datos.get("documento"),
-        datos.get("cuit"),
-        datos.get("ramo"),
-        datos.get("provincia"),
-        datos.get("telefono"),
-        datos.get("email"),
-        datos.get("resolucion"),
-        datos.get("fecha_resolucion"),
-        domicilio,
-        localidad,
-        cod_postal,
-        estado,
-        obs,
-        final_user_id
+        matricula, nombre, documento, cuit, ramo, provincia, telefono, email, 
+        resolucion, fecha_resolucion, domicilio, localidad, cod_postal, 
+        estado, obs, final_user_id
     ))
     conn.commit()
     conn.close()
@@ -1419,6 +1416,7 @@ def obtener_todos_db(user_id: int = None, role: str = None, regional_only: bool 
                 WHERE (p.usuario_id = ? 
                    OR p.usuario_id IN (SELECT usuario_propietario_id FROM permisos_visibilidad WHERE usuario_lector_id = ?)
                    OR p.usuario_id IS NULL)
+                  AND (p.nombre IS NOT NULL AND p.nombre != '' AND p.nombre != '—')
                   {regional_clause}
                 ORDER BY CAST(p.matricula AS INTEGER) DESC
             """, (user_id, user_id))
@@ -1429,7 +1427,7 @@ def obtener_todos_db(user_id: int = None, role: str = None, regional_only: bool 
                        p.estado_contacto, p.observaciones, p.companias, p.usuario_id,
                        '' as sociedades
                 FROM productores_detalle p
-                WHERE 1=1 {regional_clause}
+                WHERE (p.nombre IS NOT NULL AND p.nombre != '' AND p.nombre != '—') {regional_clause}
                 ORDER BY CAST(p.matricula AS INTEGER) DESC
             """)
         rows = cursor.fetchall()
@@ -1452,8 +1450,14 @@ def guardar_pas_masivos(records: list[dict]):
     to_upsert = []
     for r in records:
         mat = str(r.get("matricula", "")).strip()
-        if not mat:
+        nombre = str(r.get("nombre", "")).strip()
+        doc = str(r.get("documento", "")).strip()
+        cuit = str(r.get("cuit", "")).strip()
+        
+        # Ignorar registros completamente vacíos que no tengan ni nombre, ni documento, ni CUIT
+        if not mat or (not nombre and not doc and not cuit):
             continue
+
         to_upsert.append((
             mat,
             r.get("nombre", ""),
@@ -1461,7 +1465,7 @@ def guardar_pas_masivos(records: list[dict]):
             r.get("cuit", ""),
             r.get("ramo", "Patrimoniales y Vida"),
             r.get("provincia", ""),
-            r.get("telefono", ""),
+            r.get("telefono") or r.get("telefonos") or "",
             r.get("email", ""),
             r.get("resolucion", ""),
             r.get("fecha_resolucion", ""),
@@ -1480,25 +1484,85 @@ def guardar_pas_masivos(records: list[dict]):
             estado_contacto, observaciones, companias
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(matricula) DO UPDATE SET
-            nombre=EXCLUDED.nombre,
-            documento=EXCLUDED.documento,
-            cuit=EXCLUDED.cuit,
-            ramo=EXCLUDED.ramo,
-            provincia=EXCLUDED.provincia,
-            telefono=EXCLUDED.telefono,
-            email=EXCLUDED.email,
-            resolucion=EXCLUDED.resolucion,
-            fecha_resolucion=EXCLUDED.fecha_resolucion,
-            domicilio=EXCLUDED.domicilio,
-            localidad=EXCLUDED.localidad,
-            cod_postal=EXCLUDED.cod_postal,
-            estado_contacto=EXCLUDED.estado_contacto,
-            observaciones=EXCLUDED.observaciones,
-            companias=EXCLUDED.companias
+            nombre=CASE WHEN EXCLUDED.nombre IS NOT NULL AND EXCLUDED.nombre != '' THEN EXCLUDED.nombre ELSE productores_detalle.nombre END,
+            documento=CASE WHEN EXCLUDED.documento IS NOT NULL AND EXCLUDED.documento != '' THEN EXCLUDED.documento ELSE productores_detalle.documento END,
+            cuit=CASE WHEN EXCLUDED.cuit IS NOT NULL AND EXCLUDED.cuit != '' THEN EXCLUDED.cuit ELSE productores_detalle.cuit END,
+            ramo=CASE WHEN EXCLUDED.ramo IS NOT NULL AND EXCLUDED.ramo != '' THEN EXCLUDED.ramo ELSE productores_detalle.ramo END,
+            provincia=CASE WHEN EXCLUDED.provincia IS NOT NULL AND EXCLUDED.provincia != '' THEN EXCLUDED.provincia ELSE productores_detalle.provincia END,
+            telefono=CASE WHEN EXCLUDED.telefono IS NOT NULL AND EXCLUDED.telefono != '' THEN EXCLUDED.telefono ELSE productores_detalle.telefono END,
+            email=CASE WHEN EXCLUDED.email IS NOT NULL AND EXCLUDED.email != '' THEN EXCLUDED.email ELSE productores_detalle.email END,
+            resolucion=CASE WHEN EXCLUDED.resolucion IS NOT NULL AND EXCLUDED.resolucion != '' THEN EXCLUDED.resolucion ELSE productores_detalle.resolucion END,
+            fecha_resolucion=CASE WHEN EXCLUDED.fecha_resolucion IS NOT NULL AND EXCLUDED.fecha_resolucion != '' THEN EXCLUDED.fecha_resolucion ELSE productores_detalle.fecha_resolucion END,
+            domicilio=CASE WHEN EXCLUDED.domicilio IS NOT NULL AND EXCLUDED.domicilio != '' THEN EXCLUDED.domicilio ELSE productores_detalle.domicilio END,
+            localidad=CASE WHEN EXCLUDED.localidad IS NOT NULL AND EXCLUDED.localidad != '' THEN EXCLUDED.localidad ELSE productores_detalle.localidad END,
+            cod_postal=CASE WHEN EXCLUDED.cod_postal IS NOT NULL AND EXCLUDED.cod_postal != '' THEN EXCLUDED.cod_postal ELSE productores_detalle.cod_postal END,
+            estado_contacto=CASE WHEN EXCLUDED.estado_contacto IS NOT NULL AND EXCLUDED.estado_contacto != '' AND EXCLUDED.estado_contacto != 'Sin contactar' THEN EXCLUDED.estado_contacto ELSE productores_detalle.estado_contacto END,
+            observaciones=CASE WHEN EXCLUDED.observaciones IS NOT NULL AND EXCLUDED.observaciones != '' THEN EXCLUDED.observaciones ELSE productores_detalle.observaciones END,
+            companias=CASE WHEN EXCLUDED.companias IS NOT NULL AND EXCLUDED.companias != '' THEN EXCLUDED.companias ELSE productores_detalle.companias END
     """, to_upsert)
 
     conn.commit()
     conn.close()
+
+
+
+def parsear_texto_crudo_ssn(texto_crudo: str) -> list[dict]:
+    """
+    Recibe el texto copiado directamente de la pantalla de la SSN 
+    y extrae todos los productores de forma estructurada.
+    """
+    if not texto_crudo or not texto_crudo.strip():
+        return []
+
+    # Dividir por "Matrícula:" (soporta acentos y variaciones de formato)
+    bloques = re.split(r"(?=Matr[ií]cula:?)", texto_crudo, flags=re.IGNORECASE)
+    resultados = []
+
+    patrones = {
+        "matricula": r"Matr[ií]cula:?\s*(\d+)",
+        "nombre": r"Nombre:?\s*(.+)",
+        "documento": r"Documento:?\s*(.+)",
+        "cuit": r"C\.?U\.?I\.?T\.?:?\s*([\d\-]+)",
+        "ramo": r"Ramo:?\s*(.+)",
+        "provincia": r"Provincia:?\s*(.+)",
+        "telefono": r"Tel[ée]fonos?:?\s*(.+)",
+        "email": r"E-?mail:?\s*(.+)",
+        "resolucion": r"(?:Nro\.\s*de\s*)?Resoluci[oó]n:?\s*(.+)",
+        "fecha_resolucion": r"(?:Fº|Fecha)\s*de\s*Resoluci[oó]n:?\s*(.+)"
+    }
+
+    for bloque in bloques:
+        if not bloque.strip() or not re.search(r"Matr[ií]cula", bloque, re.IGNORECASE):
+            continue
+
+        datos = {}
+        for campo, patron in patrones.items():
+            match = re.search(patron, bloque, re.IGNORECASE)
+            if match:
+                val = match.group(1).strip()
+                # Cortar si capturó encabezados del siguiente campo en la misma línea
+                for kw in ["Nombre:", "Documento:", "CUIT:", "Ramo:", "Provincia", "Teléfonos:", "E-mail:", "Nro. de", "Fº de"]:
+                    if kw in val and not val.startswith(kw):
+                        val = val.split(kw)[0].strip()
+                datos[campo] = val
+
+        if datos.get("matricula"):
+            if datos.get("cuit") and not datos.get("documento"):
+                datos["documento"] = f"CUIT {datos['cuit']}"
+            resultados.append(datos)
+
+    return resultados
+
+
+def importar_desde_texto_crudo(texto_crudo: str) -> tuple[int, list[dict]]:
+    """
+    Parsea un texto copiado directamente del portal de la SSN,
+    guarda los productores en la base de datos local SQLite y retorna el conteo y los registros.
+    """
+    records = parsear_texto_crudo_ssn(texto_crudo)
+    if records:
+        guardar_pas_masivos(records)
+    return len(records), records
 
 
 
@@ -2277,7 +2341,7 @@ def buscar_en_ssn(documento: str, tipo_doc: str = "DNI", token: str = "") -> str
 
 # ─── PASO 3: Parsear el HTML resultado ────────────────────
 def parsear_resultado(html: str) -> dict | None:
-    print("Iniciando Paso 3: Parseando el HTML de respuesta con extractor posicional...")
+    print("Iniciando Paso 3: Parseando el HTML de respuesta con BeautifulSoup y extractor de respaldo...")
     if not html:
         return None
         
@@ -2286,77 +2350,132 @@ def parsear_resultado(html: str) -> dict | None:
         print("  Búsqueda finalizada sin resultados o con error en el formulario.")
         return None
 
-    # El servidor de la SSN a veces devuelve el formulario HTML concatenado con el resultado HTML.
-    # Para evitar que el extractor posicional encuentre los labels en el formulario (ej. <option value="matricula">Matrícula</option>),
-    # nos quedamos solo con la última etiqueta <body>, que contiene los resultados reales.
+    # Quedarse con la última etiqueta <body> si la SSN devuelve formulario + resultado concatenado
     if html_lower.count("<body") > 1:
         last_body_idx = html_lower.rfind("<body")
-        html = html[last_body_idx:]
-
-    import html as html_mod
-    clean_text = html_mod.unescape(html)
-    clean_text = re.sub(r'<[^>]+>', ' ', clean_text)
-    clean_text = " ".join(clean_text.split())
-
-    # Definir los marcadores/labels
-    markers = [
-        "Matrícula:", "Nombre:", "Documento:", "CUIT:", "Ramo:", 
-        "Provincia", "Teléfonos:", "Teléfono:", "E-mail:", "Email:", 
-        "Nro. de Resolución", "Fº de Resolución", "F° de Resolución", "Datos de alta"
-    ]
-    
-    # Encontrar todas las posiciones reales de los marcadores en el texto
-    positions = []
-    text_lower = clean_text.lower()
-    for m in markers:
-        idx = text_lower.find(m.lower())
-        if idx != -1:
-            positions.append((idx, m))
-            
-    # Ordenar las posiciones por su ubicación en el texto
-    positions.sort(key=lambda x: x[0])
-
-    def extraer_valor_posicional(label: str) -> str:
-        target_idx = -1
-        for i, (pos, m) in enumerate(positions):
-            if m.lower() == label.lower():
-                target_idx = i
-                break
-                
-        if target_idx == -1:
-            return ""
-            
-        p_start, m_name = positions[target_idx]
-        val_start = p_start + len(m_name)
-        
-        if target_idx + 1 < len(positions):
-            p_end = positions[target_idx + 1][0]
-        else:
-            p_end = len(clean_text)
-            
-        val = clean_text[val_start:p_end].strip()
-        if val.startswith(":") or val.startswith("-"):
-            val = val[1:].strip()
-        return val
+        html_body = html[last_body_idx:]
+    else:
+        html_body = html
 
     resultado = {}
-    resultado["matricula"] = extraer_valor_posicional("Matrícula:")
-    resultado["nombre"] = extraer_valor_posicional("Nombre:")
-    resultado["documento"] = extraer_valor_posicional("Documento:")
-    resultado["cuit"] = extraer_valor_posicional("CUIT:")
-    resultado["ramo"] = extraer_valor_posicional("Ramo:")
-    resultado["provincia"] = extraer_valor_posicional("Provincia")
-    
-    tel = extraer_valor_posicional("Teléfonos:") or extraer_valor_posicional("Teléfono:")
-    resultado["telefono"] = tel
-    
-    mail = extraer_valor_posicional("E-mail:") or extraer_valor_posicional("Email:")
-    resultado["email"] = mail
-    
-    resultado["resolucion"] = extraer_valor_posicional("Nro. de Resolución")
-    
-    f_res = extraer_valor_posicional("Fº de Resolución") or extraer_valor_posicional("F° de Resolución")
-    resultado["fecha_resolucion"] = f_res
+    try:
+        soup = BeautifulSoup(html_body, "html.parser")
+        spans = soup.find_all(["span", "b", "strong"], class_=lambda c: c and "destacado" in str(c).lower())
+        if not spans:
+            spans = soup.find_all(["span", "b", "strong"])
+
+        for el in spans:
+            raw_label = el.get_text(strip=True)
+            # Limpiar posibles mojibake de encoding (ej. TelÃ©fonos)
+            try:
+                clean_label = raw_label.encode("latin1").decode("utf-8")
+            except Exception:
+                clean_label = raw_label
+            
+            label = clean_label.rstrip(":").lower()
+
+            parent_text = el.parent.get_text(" ", strip=True) if el.parent else ""
+            try:
+                parent_text = parent_text.encode("latin1").decode("utf-8")
+            except Exception:
+                pass
+
+            val = parent_text
+            for prefix in [raw_label, clean_label, raw_label.rstrip(":"), clean_label.rstrip(":")]:
+                if val.lower().startswith(prefix.lower()):
+                    val = val[len(prefix):].strip()
+
+            if val.startswith(":") or val.startswith("-"):
+                val = val[1:].strip()
+
+            if "matricula" in label or "matrícula" in label:
+                resultado["matricula"] = val
+            elif "nombre" in label:
+                resultado["nombre"] = val
+            elif "documento" in label:
+                resultado["documento"] = val
+            elif "cuit" in label:
+                resultado["cuit"] = val
+            elif "ramo" in label:
+                resultado["ramo"] = val
+            elif "provincia" in label:
+                resultado["provincia"] = val
+            elif "telefono" in label or "teléfono" in label or "telefonos" in label or "teléfonos" in label:
+                resultado["telefono"] = val
+            elif "e-mail" in label or "email" in label or "mail" in label:
+                resultado["email"] = val
+            elif "resolución" in label or "resolucion" in label:
+                if "fº" in label or "f°" in label or "fecha" in label:
+                    resultado["fecha_resolucion"] = val
+                else:
+                    resultado["resolucion"] = val
+
+    except Exception as ex:
+        print(f"  [Warning] Falló BeautifulSoup en parsear_resultado: {ex}")
+
+    # Estrategia 2: Fallback posicional si falta algún campo clave
+    if not resultado.get("telefono") or not resultado.get("email"):
+        import html as html_mod
+        clean_text = html_mod.unescape(html_body)
+        clean_text = re.sub(r'<[^>]+>', ' ', clean_text)
+        clean_text = " ".join(clean_text.split())
+
+        try:
+            clean_text = clean_text.encode("latin1").decode("utf-8")
+        except Exception:
+            pass
+
+        markers = [
+            "Matrícula:", "Nombre:", "Documento:", "CUIT:", "Ramo:", 
+            "Provincia", "Teléfonos:", "Teléfono:", "E-mail:", "Email:", 
+            "Nro. de Resolución", "Fº de Resolución", "F° de Resolución", "Datos de alta"
+        ]
+        
+        positions = []
+        text_lower = clean_text.lower()
+        for m in markers:
+            idx = text_lower.find(m.lower())
+            if idx != -1:
+                positions.append((idx, m))
+                
+        positions.sort(key=lambda x: x[0])
+
+        def extraer_posicional(label: str) -> str:
+            target_idx = -1
+            for i, (pos, m) in enumerate(positions):
+                if m.lower() == label.lower():
+                    target_idx = i
+                    break
+            if target_idx == -1:
+                return ""
+            p_start, m_name = positions[target_idx]
+            val_start = p_start + len(m_name)
+            p_end = positions[target_idx + 1][0] if target_idx + 1 < len(positions) else len(clean_text)
+            val = clean_text[val_start:p_end].strip()
+            if val.startswith(":") or val.startswith("-"):
+                val = val[1:].strip()
+            return val
+
+        if not resultado.get("matricula"):
+            resultado["matricula"] = extraer_posicional("Matrícula:")
+        if not resultado.get("nombre"):
+            resultado["nombre"] = extraer_posicional("Nombre:")
+        if not resultado.get("documento"):
+            resultado["documento"] = extraer_posicional("Documento:")
+        if not resultado.get("cuit"):
+            resultado["cuit"] = extraer_posicional("CUIT:")
+        if not resultado.get("ramo"):
+            resultado["ramo"] = extraer_posicional("Ramo:")
+        if not resultado.get("provincia"):
+            resultado["provincia"] = extraer_posicional("Provincia")
+        if not resultado.get("telefono"):
+            resultado["telefono"] = extraer_posicional("Teléfonos:") or extraer_posicional("Teléfono:")
+        if not resultado.get("email"):
+            resultado["email"] = extraer_posicional("E-mail:") or extraer_posicional("Email:")
+        if not resultado.get("resolucion"):
+            resultado["resolucion"] = extraer_posicional("Nro. de Resolución")
+        if not resultado.get("fecha_resolucion"):
+            resultado["fecha_resolucion"] = extraer_posicional("Fº de Resolución") or extraer_posicional("F° de Resolución")
 
     if not any(resultado.values()):
         return None

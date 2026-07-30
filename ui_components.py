@@ -48,6 +48,46 @@ LIGHT_COLORS = {
     "header_text":     "#111827",
 }
 
+
+def copiar_al_portapapeles(texto: str, page=None) -> bool:
+    """
+    Copia texto al portapapeles del sistema (compatible con Linux, Windows, Mac).
+    """
+    if not texto:
+        return False
+    exito = False
+
+    # 1. Intentar con pyperclip
+    try:
+        import pyperclip
+        pyperclip.copy(str(texto))
+        exito = True
+    except Exception:
+        pass
+
+    # 2. Intentar con Tkinter (Funciona nativamente en Linux GTK)
+    try:
+        import tkinter as tk
+        r = tk.Tk()
+        r.withdraw()
+        r.clipboard_clear()
+        r.clipboard_append(str(texto))
+        r.update()
+        r.destroy()
+        exito = True
+    except Exception:
+        pass
+
+    # 3. Intentar Flet en caso de que esté disponible
+    if page and hasattr(page, "set_clipboard"):
+        try:
+            page.set_clipboard(str(texto))
+            exito = True
+        except Exception:
+            pass
+
+    return exito
+
 DARK_COLORS = {
     "primary":         "#38BDF8",       # Vibrant Sky Blue accent (high-contrast, modern)
     "primary_dark":    "#0284C7",
@@ -215,6 +255,161 @@ def build_header(
     )
 
 
+def open_info_padron_dialog(page: ft.Page):
+    """
+    Muestra un diálogo informativo completo sobre las categorías, brokers,
+    restricciones y habilitaciones del Padrón SSN.
+    """
+    dlg = ft.AlertDialog(
+        modal=True,
+        title=ft.Row(
+            controls=[
+                ft.Icon(ft.Icons.SHIELD_OUTLINED, color=COLORS["primary"], size=26),
+                ft.Column(
+                    controls=[
+                        ft.Text("Información y Criterios del Padrón de Productores SSN", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                        ft.Text("Superintendencia de Seguros de la Nación · Registro Nacional", size=11, color=COLORS["text_secondary"]),
+                    ],
+                    spacing=2,
+                ),
+            ],
+            spacing=10,
+        ),
+        content=ft.Container(
+            content=ft.Column(
+                controls=[
+                    # Banner Informativo Principal
+                    ft.Container(
+                        content=ft.Row(
+                            controls=[
+                                ft.Icon(ft.Icons.HELP_OUTLINE_ROUNDED, color=COLORS["primary"], size=22),
+                                ft.Text(
+                                    "Este apartado detalla la composición, tipos de maticulados, brokers de seguros y restricciones operativas presentes en esta base de datos.",
+                                    size=12,
+                                    color=COLORS["text_primary"],
+                                    expand=True,
+                                ),
+                            ],
+                            spacing=10,
+                        ),
+                        bgcolor=ft.Colors.with_opacity(0.1, COLORS["primary"]),
+                        border=ft.Border.all(1, COLORS["primary"]),
+                        border_radius=8,
+                        padding=12,
+                    ),
+
+                    # 1. Categorías de Productores e Intermediarios
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.BADGE_OUTLINED, color=COLORS["accent"], size=18),
+                                        ft.Text("1. Tipos de Matriculados y Organizaciones", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                                    ],
+                                    spacing=8,
+                                ),
+                                ft.Text("• PAS (Personas Físicas): Productores Asesores de Seguros individuales matriculados ante la SSN.", size=12, color=COLORS["text_secondary"]),
+                                ft.Text("• Sociedades de PAS & Brokers: Sociedades de corretaje, organizadores y brokers matriculados para intermediación comercial.", size=12, color=COLORS["text_secondary"]),
+                                ft.Text("• Organizaciones y Redes: Grupos de producción y asesores coordinadores de carteras.", size=12, color=COLORS["text_secondary"]),
+                            ],
+                            spacing=6,
+                        ),
+                        bgcolor=COLORS["surface"],
+                        border=ft.Border.all(1, COLORS["border"]),
+                        border_radius=8,
+                        padding=12,
+                    ),
+
+                    # 2. Ramos Habilitados
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.VERIFIED_USER_OUTLINED, color=COLORS["success"], size=18),
+                                        ft.Text("2. Habilitación por Ramos de Cobertura", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                                    ],
+                                    spacing=8,
+                                ),
+                                ft.Text("• Patrimoniales y Vida: Habilitación plena para comercializar Seguros Generales (Automotores, Combinados, Incendio, AP) y Seguros de Personas.", size=12, color=COLORS["text_secondary"]),
+                                ft.Text("• Vida y Retiro: Habilitación exclusiva para operar con Seguros de Vida (Individual/Colectivo) y Fondos de Retiro.", size=12, color=COLORS["text_secondary"]),
+                            ],
+                            spacing=6,
+                        ),
+                        bgcolor=COLORS["surface"],
+                        border=ft.Border.all(1, COLORS["border"]),
+                        border_radius=8,
+                        padding=12,
+                    ),
+
+                    # 3. Restricciones y Estados Registrales SSN
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.GAVEL_ROUNDED, color=COLORS["warning"], size=18),
+                                        ft.Text("3. Estados de Habilitación y Restricciones SSN", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                                    ],
+                                    spacing=8,
+                                ),
+                                ft.Text("• Habilitados (En Regla): Asesores con matrícula activa y derecho a emisión de pólizas.", size=12, color=COLORS["text_secondary"]),
+                                ft.Text("• Restricción Art. 19 / Suspensión Preventiva: Registros con sanciones, inhabilitaciones temporales o limitaciones operativas notificadas por la SSN.", size=12, color=COLORS["text_secondary"]),
+                                ft.Text("• Datos Incompletos / Sin Contacto: Matrículas históricas con domicilio o CUIT pendiente de validación (enriquecibles en tiempo real con Dateas).", size=12, color=COLORS["text_secondary"]),
+                            ],
+                            spacing=6,
+                        ),
+                        bgcolor=COLORS["surface"],
+                        border=ft.Border.all(1, COLORS["border"]),
+                        border_radius=8,
+                        padding=12,
+                    ),
+
+                    # 4. Visibilidad Regional vs Nacional
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.PUBLIC_ROUNDED, color=COLORS["primary"], size=18),
+                                        ft.Text("4. Cobertura Geográfica y Filtros", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                                    ],
+                                    spacing=8,
+                                ),
+                                ft.Text("• Universo Nacional: Padrón completo de 54.399 productores matriculados en todo el país.", size=12, color=COLORS["text_secondary"]),
+                                ft.Text("• Filtro Regional (Cuyo): Modo priorizado para prospección comercial en Mendoza, San Juan y San Luis.", size=12, color=COLORS["text_secondary"]),
+                            ],
+                            spacing=6,
+                        ),
+                        bgcolor=COLORS["surface"],
+                        border=ft.Border.all(1, COLORS["border"]),
+                        border_radius=8,
+                        padding=12,
+                    ),
+                ],
+                spacing=10,
+                tight=True,
+                scroll=ft.ScrollMode.AUTO,
+            ),
+            width=620,
+            height=460,
+        ),
+        actions=[
+            ft.ElevatedButton(
+                "Entendido / Cerrar",
+                icon=ft.Icons.CHECK_ROUNDED,
+                style=ft.ButtonStyle(bgcolor=COLORS["primary"], color="#FFFFFF"),
+                on_click=lambda _: setattr(dlg, "open", False) or page.update(),
+            )
+        ],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+    page.overlay.append(dlg)
+    dlg.open = True
+    page.update()
+
+
 # ---------------------------------------------------------------------------
 # Barra de búsqueda
 # ---------------------------------------------------------------------------
@@ -236,6 +431,7 @@ def build_search_bar(
     on_localidad2_change: Optional[Callable[[Optional[str]], None]] = None,
     on_export_click: Optional[Callable[[Any], None]] = None,
     on_import_click: Optional[Callable[[Any], None]] = None,
+    on_import_text_click: Optional[Callable[[Any], None]] = None,
     on_submit: Optional[Callable[[Any], None]] = None,
     is_admin: bool = False,
     ultima_actualizacion: str = "Nunca",
@@ -243,11 +439,17 @@ def build_search_bar(
     on_admin_click: Optional[Callable[[Any], None]] = None,
     mostly_complete_value: bool = False,
     on_mostly_complete_change: Optional[Callable[[bool], None]] = None,
+    completitud_filter_value: str = "todos",
+    on_completitud_filter_change: Optional[Callable[[str], None]] = None,
     sort_descending_value: bool = False,
     on_sort_direction_change: Optional[Callable[[bool], None]] = None,
     selected_ramo: Optional[str] = None,
     regional_only_value: bool = False,
     on_regional_only_change: Optional[Callable[[bool], None]] = None,
+    on_dateas_enrich_click: Optional[Callable[[Any], None]] = None,
+    is_dateas_active: bool = False,
+    dateas_timer_text: str = "",
+    on_info_padron_click: Optional[Callable[[Any], None]] = None,
 ) -> ft.Container:
 
     ramo_options = [ft.dropdown.Option("Todos los ramos")]
@@ -312,34 +514,64 @@ def build_search_bar(
                                 provincia_dropdown2,
                                 localidad_dropdown2,
                                 estado_dropdown,
-                                ft.Container(
+                                (lambda is_completos: ft.Container(
                                     content=ft.Row(
                                         controls=[
                                             ft.Icon(
-                                                ft.Icons.CHECK_CIRCLE_ROUNDED if mostly_complete_value else ft.Icons.RADIO_BUTTON_UNCHECKED_ROUNDED,
+                                                ft.Icons.CHECK_CIRCLE_ROUNDED if is_completos else ft.Icons.RADIO_BUTTON_UNCHECKED_ROUNDED,
                                                 size=16,
-                                                color=COLORS["success"] if mostly_complete_value else COLORS["text_secondary"]
+                                                color=COLORS["success"] if is_completos else COLORS["text_secondary"]
                                             ),
                                             ft.Text(
                                                 "Datos Completos",
                                                 size=12,
-                                                weight=ft.FontWeight.W_600 if mostly_complete_value else ft.FontWeight.NORMAL,
-                                                color=COLORS["success"] if mostly_complete_value else COLORS["text_secondary"]
+                                                weight=ft.FontWeight.W_600 if is_completos else ft.FontWeight.NORMAL,
+                                                color=COLORS["success"] if is_completos else COLORS["text_secondary"]
                                             ),
                                         ],
                                         spacing=6,
                                         tight=True,
                                     ),
-                                    bgcolor=ft.Colors.with_opacity(0.1, COLORS["success"]) if mostly_complete_value else ft.Colors.TRANSPARENT,
-                                    border=ft.Border.all(
-                                        1.5,
-                                        COLORS["success"] if mostly_complete_value else COLORS["border"]
-                                    ),
+                                    bgcolor=ft.Colors.with_opacity(0.12, COLORS["success"]) if is_completos else ft.Colors.TRANSPARENT,
+                                    border=ft.Border.all(1.5, COLORS["success"] if is_completos else COLORS["border"]),
                                     border_radius=8,
                                     padding=ft.Padding(left=10, right=12, top=6, bottom=6),
-                                    on_click=lambda e: on_mostly_complete_change(not mostly_complete_value) if on_mostly_complete_change else None,
-                                    tooltip="Ocultar productores con datos de contacto incompletos (teléfono, email, etc.)",
-                                ) if on_mostly_complete_change else ft.Container(),
+                                    on_click=lambda _: (
+                                        on_completitud_filter_change("todos" if is_completos else "completos")
+                                        if on_completitud_filter_change
+                                        else (on_mostly_complete_change(not mostly_complete_value) if on_mostly_complete_change else None)
+                                    ),
+                                    tooltip="Filtrar productores con datos de contacto completos",
+                                ))(completitud_filter_value == "completos" or (mostly_complete_value and completitud_filter_value == "todos")),
+
+                                (lambda is_incompletos: ft.Container(
+                                    content=ft.Row(
+                                        controls=[
+                                            ft.Icon(
+                                                ft.Icons.WARNING_AMBER_ROUNDED if is_incompletos else ft.Icons.RADIO_BUTTON_UNCHECKED_ROUNDED,
+                                                size=16,
+                                                color=COLORS["warning"] if is_incompletos else COLORS["text_secondary"]
+                                            ),
+                                            ft.Text(
+                                                "Datos Incompletos",
+                                                size=12,
+                                                weight=ft.FontWeight.W_600 if is_incompletos else ft.FontWeight.NORMAL,
+                                                color=COLORS["warning"] if is_incompletos else COLORS["text_secondary"]
+                                            ),
+                                        ],
+                                        spacing=6,
+                                        tight=True,
+                                    ),
+                                    bgcolor=ft.Colors.with_opacity(0.15, COLORS["warning"]) if is_incompletos else ft.Colors.TRANSPARENT,
+                                    border=ft.Border.all(1.5, COLORS["warning"] if is_incompletos else COLORS["border"]),
+                                    border_radius=8,
+                                    padding=ft.Padding(left=10, right=12, top=6, bottom=6),
+                                    on_click=lambda _: (
+                                        on_completitud_filter_change("todos" if is_incompletos else "incompletos")
+                                        if on_completitud_filter_change else None
+                                    ),
+                                    tooltip="Filtrar productores a los que les faltan datos de contacto",
+                                ))(completitud_filter_value == "incompletos"),
                                 ft.Container(
                                     content=ft.Row(
                                         controls=[
@@ -396,6 +628,22 @@ def build_search_bar(
                                     on_click=lambda e: on_regional_only_change(not regional_only_value) if on_regional_only_change else None,
                                     tooltip="Alternar entre ver solo productores de la región Cuyo (Mendoza, San Juan, San Luis) o de todo el país",
                                 ) if on_regional_only_change else ft.Container(),
+                                ft.Container(
+                                    content=ft.Row(
+                                        controls=[
+                                            ft.Icon(ft.Icons.INFO_OUTLINED, size=16, color=COLORS["accent"]),
+                                            ft.Text("Info & Restricciones", size=12, weight=ft.FontWeight.W_600, color=COLORS["accent"]),
+                                        ],
+                                        spacing=6,
+                                        tight=True,
+                                    ),
+                                    bgcolor=ft.Colors.with_opacity(0.1, COLORS["accent"]),
+                                    border=ft.Border.all(1.5, COLORS["accent"]),
+                                    border_radius=8,
+                                    padding=ft.Padding(left=10, right=12, top=6, bottom=6),
+                                    on_click=on_info_padron_click if on_info_padron_click else None,
+                                    tooltip="Ver detalles del Padrón: PAS, Sociedades/Brokers, Ramos y Restricciones SSN",
+                                ) if on_info_padron_click else ft.Container(),
                             ],
                             spacing=14,
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -417,6 +665,37 @@ def build_search_bar(
                                     tooltip="Importar productores (Excel/CSV)",
                                     on_click=on_import_click if on_import_click else None,
                                 ) if on_import_click else ft.Container(),
+                                ft.IconButton(
+                                    icon=ft.Icons.CONTENT_PASTE_ROUNDED,
+                                    icon_size=20,
+                                    icon_color=COLORS["primary"],
+                                    tooltip="Importar pegando texto SSN",
+                                    on_click=on_import_text_click if on_import_text_click else None,
+                                ) if on_import_text_click else ft.Container(),
+                                ft.Container(
+                                    content=ft.Row(
+                                        controls=[
+                                            ft.Icon(ft.Icons.SYNC_ROUNDED, size=16, color=COLORS["success"]),
+                                            ft.Text(f"Dateas Activo ({dateas_timer_text})" if dateas_timer_text else "Dateas Activo", size=12, weight=ft.FontWeight.BOLD, color=COLORS["success"]),
+                                        ],
+                                        spacing=6,
+                                        tight=True,
+                                    ),
+                                    bgcolor=ft.Colors.with_opacity(0.18, COLORS["success"]),
+                                    border=ft.Border.all(1.5, COLORS["success"]),
+                                    border_radius=8,
+                                    padding=ft.Padding(left=8, right=10, top=4, bottom=4),
+                                    on_click=on_dateas_enrich_click if on_dateas_enrich_click else None,
+                                    tooltip="🌐 Dateas TRABAJANDO en segundo plano (50 CUITs / 5 min). Hacé clic para detener.",
+                                ) if (on_dateas_enrich_click and is_dateas_active) else (
+                                    ft.IconButton(
+                                        icon=ft.Icons.TRAVEL_EXPLORE_ROUNDED,
+                                        icon_size=20,
+                                        icon_color=COLORS["warning"],
+                                        tooltip="Auto-completar Provincia y Localidad desde Dateas (por CUIT)",
+                                        on_click=on_dateas_enrich_click if on_dateas_enrich_click else None,
+                                    ) if on_dateas_enrich_click else ft.Container()
+                                ),
                                 ft.IconButton(
                                     icon=ft.Icons.DOWNLOAD_ROUNDED,
                                     icon_size=20,
@@ -446,6 +725,11 @@ def build_search_bar(
                                             content="Importar Productores (Excel/CSV)",
                                             icon=ft.Icons.UPLOAD_FILE_ROUNDED,
                                             on_click=on_import_click if on_import_click else None,
+                                        ),
+                                        ft.PopupMenuItem(
+                                            content="Importar Pegando Texto SSN",
+                                            icon=ft.Icons.CONTENT_PASTE_ROUNDED,
+                                            on_click=on_import_text_click if on_import_text_click else None,
                                         ),
                                         ft.PopupMenuItem(),
                                         ft.PopupMenuItem(
@@ -490,6 +774,7 @@ def build_results_badge(
     query: str,
     current_page: int = 0,
     total_pages: int = 1,
+    on_info_click: Optional[Callable[[Any], None]] = None,
 ) -> ft.Container:
     start = current_page * PAGE_SIZE + 1
     end   = min((current_page + 1) * PAGE_SIZE, count)
@@ -511,7 +796,26 @@ def build_results_badge(
         color = COLORS["text_secondary"]
 
     return ft.Container(
-        content=ft.Text(text, size=12, color=color, italic=(count == 0)),
+        content=ft.Row(
+            controls=[
+                ft.Text(text, size=12, color=color, italic=(count == 0)),
+                ft.Container(expand=True),
+                ft.Container(
+                    content=ft.Row(
+                        controls=[
+                            ft.Icon(ft.Icons.HELP_OUTLINE_ROUNDED, size=14, color=COLORS["primary"]),
+                            ft.Text("Ver Alcance, Brokers y Restricciones del Padrón", size=11, weight=ft.FontWeight.W_600, color=COLORS["primary"]),
+                        ],
+                        spacing=4,
+                        tight=True,
+                    ),
+                    on_click=on_info_click,
+                    tooltip="Ver detalles sobre las categorías de PAS, Sociedades/Brokers y Restricciones SSN",
+                    ink=True,
+                ) if on_info_click else ft.Container(),
+            ],
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
         padding=ft.Padding(left=48, right=48, top=8, bottom=8),
         bgcolor=COLORS["background"],
     )
@@ -803,14 +1107,42 @@ def _build_result_row(rec: Dict[str, Any], bg_color: str, on_click: Callable) ->
         padding=ft.Padding(left=8, right=8, top=4, bottom=4),
     )
 
+    mat_val = str(rec.get(COL_MATRICULA) or rec.get("matricula") or "").strip()
+
+    def _copy_mat_click(e):
+        try:
+            copiar_al_portapapeles(mat_val, e.page)
+            e.page.snack_bar = ft.SnackBar(
+                content=ft.Row([
+                    ft.Icon(ft.Icons.CONTENT_COPY_ROUNDED, color=ft.Colors.WHITE, size=16),
+                    ft.Text(f"📋 Matrícula {mat_val} copiada al portapapeles", color=ft.Colors.WHITE, size=13, weight=ft.FontWeight.W_500)
+                ], spacing=8),
+                bgcolor=COLORS["success"],
+                duration=2000,
+            )
+            e.page.snack_bar.open = True
+            e.page.update()
+        except Exception as ex:
+            print(f"Error copying matricula: {ex}")
+
+    mat_cell = ft.Container(
+        content=ft.Row([
+            ft.Text(mat_val, size=13, weight=ft.FontWeight.BOLD, color=COLORS["primary"]),
+            ft.Icon(ft.Icons.CONTENT_COPY_ROUNDED, size=12, color=ft.Colors.with_opacity(0.5, COLORS["primary"])),
+        ], spacing=4, tight=True),
+        width=100,
+        alignment=ft.Alignment(-1, 0),
+        on_click=_copy_mat_click,
+        tooltip=f"Hacé clic para copiar la matrícula {mat_val}",
+        ink=True,
+        border_radius=4,
+        padding=ft.Padding(2, 2, 4, 2),
+    )
+
     return ft.Container(
         content=ft.Row(
             controls=[
-                ft.Container(
-                    content=ft.Text(rec.get(COL_MATRICULA, ""), size=13, weight=ft.FontWeight.W_600, color=COLORS["primary"]),
-                    width=100,
-                    alignment=ft.Alignment(-1, 0),
-                ),
+                mat_cell,
                 ft.Container(
                     content=ft.Text(truncate(rec.get(COL_NOMBRE, ""), 40), size=13, color=COLORS["text_primary"], weight=ft.FontWeight.W_500),
                     expand=True,
@@ -2188,6 +2520,7 @@ def build_detail_view(
     state: Optional[Dict[str, Any]] = None,
     on_register_visit_click: Optional[Callable[[Dict[str, Any]], None]] = None,
     on_go_cartera: Optional[Callable] = None,
+    on_paste_text_click: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> ft.Container:
     nombre    = record.get(COL_NOMBRE) or record.get("nombre") or "Productor"
     matricula = record.get(COL_MATRICULA) or record.get("matricula") or ""
@@ -2298,6 +2631,18 @@ def build_detail_view(
                     go_cartera_btn,
                     org_toggle_btn,
                     ft.ElevatedButton(
+                        "Completar Pegando Texto",
+                        icon=ft.Icons.CONTENT_PASTE_ROUNDED,
+                        on_click=lambda e: on_paste_text_click(record) if on_paste_text_click else None,
+                        style=ft.ButtonStyle(
+                            bgcolor=COLORS["accent"],
+                            color="#FFFFFF",
+                            shape=ft.RoundedRectangleBorder(radius=8),
+                            padding=ft.Padding(14, 10, 14, 10),
+                        ),
+                        tooltip="Pegar texto de la SSN para autocompletar CUIT, DNI, Domicilio, Teléfono y Email",
+                    ) if on_paste_text_click else ft.Container(),
+                    ft.ElevatedButton(
                         "Copiar Datos",
                         icon=ft.Icons.CONTENT_COPY_ROUNDED,
                         on_click=lambda e: on_copy(record),
@@ -2319,8 +2664,7 @@ def build_detail_view(
     # Info grid items
     info_items = []
     
-    # We display them as beautiful cards/containers in a grid (2 columns)
-    def make_info_card(label: str, value: str, icon=None):
+    def make_info_card(label: str, value: str, icon=None, on_click=None, tooltip=None):
         return ft.Container(
             content=ft.Row(
                 controls=[
@@ -2340,14 +2684,33 @@ def build_detail_view(
             padding=12,
             border_radius=8,
             expand=True,
+            on_click=on_click,
+            tooltip=tooltip,
+            ink=bool(on_click),
         )
+
+    def _copy_mat_detail(e):
+        try:
+            copiar_al_portapapeles(str(matricula), page)
+            page.snack_bar = ft.SnackBar(
+                content=ft.Row([
+                    ft.Icon(ft.Icons.CONTENT_COPY_ROUNDED, color=ft.Colors.WHITE, size=16),
+                    ft.Text(f"📋 Matrícula {matricula} copiada al portapapeles", color=ft.Colors.WHITE, size=13, weight=ft.FontWeight.W_500)
+                ], spacing=8),
+                bgcolor=COLORS["success"],
+                duration=2000,
+            )
+            page.snack_bar.open = True
+            page.update()
+        except Exception as ex:
+            print(f"Error copying matricula in detail: {ex}")
 
     # Cuit/Doc
     cuit_val = format_cuit(record.get(COL_ID) or record.get("cuit") or "—")
     info_items.append(
         ft.Row(
             controls=[
-                make_info_card("Matrícula", matricula, ft.Icons.NUMBERS_ROUNDED),
+                make_info_card("Matrícula", matricula, ft.Icons.NUMBERS_ROUNDED, on_click=_copy_mat_detail, tooltip=f"Hacé clic para copiar la matrícula {matricula}"),
                 make_info_card("CUIT / Documento", cuit_val, ft.Icons.BADGE_ROUNDED),
             ],
             spacing=12,
@@ -3454,6 +3817,50 @@ def build_detail_view(
                 # Quick actions
                 actions_section,
                 ft.Divider(height=16, color=COLORS["divider"]),
+                # Banner si la ficha está incompleta
+                (lambda rec: ft.Container() if (
+                    bool(str(rec.get("telefono", "")).strip() and str(rec.get("telefono", "")).strip() not in ("—", "None", "") and not str(rec.get("telefono", "")).strip().startswith("E-mail")) or
+                    bool(str(rec.get("email", "")).strip() and str(rec.get("email", "")).strip() not in ("—", "None", "")) or
+                    (bool(str(rec.get("cuit", "") or rec.get("documento", "") or rec.get("productor_id", "")).strip() and str(rec.get("cuit", "")).strip() not in ("—", "None", "")) and bool(str(rec.get("provincia", "")).strip() and str(rec.get("provincia", "")).strip() not in ("—", "None", "")))
+                ) else ft.Container(
+                    content=ft.Row(
+                        controls=[
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(ft.Icons.WARNING_AMBER_ROUNDED, color=COLORS["warning"], size=24),
+                                    ft.Column(
+                                        controls=[
+                                            ft.Text("Ficha Incompleta — Faltan datos de contacto / CUIT", size=13, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                                            ft.Text("Copiá el texto de la pantalla de la SSN y pegalo aquí para autocompletar este productor en 1 segundo.", size=12, color=COLORS["text_secondary"]),
+                                        ],
+                                        spacing=2,
+                                        tight=True,
+                                    ),
+                                ],
+                                spacing=12,
+                                expand=True,
+                            ),
+                            ft.ElevatedButton(
+                                "📋 Completar Pegando Texto",
+                                icon=ft.Icons.CONTENT_PASTE_ROUNDED,
+                                on_click=lambda e: on_paste_text_click(record) if on_paste_text_click else None,
+                                style=ft.ButtonStyle(
+                                    bgcolor=COLORS["accent"],
+                                    color="#FFFFFF",
+                                    shape=ft.RoundedRectangleBorder(radius=8),
+                                    padding=ft.Padding(12, 8, 12, 8),
+                                ),
+                            ) if on_paste_text_click else ft.Container(),
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    bgcolor=ft.Colors.with_opacity(0.12, COLORS["warning"]),
+                    border=ft.Border.all(1.5, ft.Colors.with_opacity(0.4, COLORS["warning"])),
+                    border_radius=10,
+                    padding=14,
+                    margin=ft.Margin(0, 0, 0, 8),
+                ))(record),
                 # Grid of info
                 ft.Column(controls=info_items, spacing=12),
 

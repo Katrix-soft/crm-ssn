@@ -27,6 +27,7 @@ from ui_components import (
     build_footer,
     build_login_view,
     build_licensing_view,
+    open_info_padron_dialog,
 )
 from ssn_test import (
     DB_PATH,
@@ -92,6 +93,26 @@ def get_incomplete_fields_count(r: dict) -> int:
         if val is None or str(val).strip() in ("", "—", "None", "null"):
             missing += 1
     return missing
+
+
+def is_producer_complete(r: dict) -> bool:
+    tel = str(r.get("telefono", "")).strip()
+    email = str(r.get("email", "")).strip()
+    cuit = str(r.get("cuit", "") or r.get("documento", "") or r.get("productor_id", "")).strip()
+    prov = str(r.get("provincia", "")).strip()
+    
+    has_tel = bool(tel and tel not in ("—", "None", "null", "") and not tel.startswith("E-mail"))
+    has_email = bool(email and email not in ("—", "None", "null", ""))
+    has_cuit = bool(cuit and cuit not in ("—", "None", "null", ""))
+    has_prov = bool(prov and prov not in ("—", "None", "null", ""))
+    
+    if has_tel or has_email:
+        return True
+        
+    if has_cuit and has_prov:
+        return True
+
+    return False
 
 
 def get_asset_path(filename: str) -> str:
@@ -369,6 +390,10 @@ def main(page: ft.Page):
         "provincia2":   None,
         "localidad2":   None,
         "estado_contacto": None,
+        "selected_ramo": None,
+        "selected_provincia": None,
+        "selected_localidad": None,
+        "selected_estado": None,
         "custom_filters": [],
         "page":         0,
         "loading":      True,
@@ -479,6 +504,7 @@ def main(page: ft.Page):
                     
                     # Reinicializar DataManager para recargar los registros de la DB
                     dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False))
+                    state["records"] = dm.records
                     
                     # Cerrar modal
                     loading_import_dlg.open = False
@@ -521,6 +547,454 @@ def main(page: ft.Page):
                 "Error de Importación", 
                 f"No se pudo iniciar el selector de archivos:\n{str(ex)[:200]}"
             )
+
+    def trigger_import_text_dialog(e):
+        text_field = ft.TextField(
+            multiline=True,
+            min_lines=8,
+            max_lines=14,
+            hint_text="Pegá aquí el texto copiado de la pantalla de la SSN...\n\nEjemplo:\nMatrícula: 108458\nNombre: SORIA MAUCO ALEXANDER\nCUIT: 20362309612\n...",
+            text_size=13,
+            border_color=COLORS["border"],
+            focused_border_color=COLORS["accent"],
+            border_radius=8,
+            color=COLORS["text_primary"],
+            bgcolor=COLORS["surface"],
+        )
+
+        status_text = ft.Text("", size=12, color=COLORS["text_secondary"])
+
+        def on_process_click(ev):
+            raw_text = text_field.value or ""
+            if not raw_text.strip():
+                status_text.value = "⚠️ Por favor pegá el texto antes de procesar."
+                status_text.color = COLORS["warning"]
+                page.update()
+                return
+
+            from ssn_test import importar_desde_texto_crudo, obtener_total_cached
+            count, records = importar_desde_texto_crudo(raw_text)
+
+            if count == 0:
+                status_text.value = "❌ No se encontraron datos válidos con 'Matrícula:' en el texto pegado."
+                status_text.color = ft.Colors.RED_500
+                page.update()
+                return
+
+            dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False))
+            state["records"] = dm.records
+            
+            dlg.open = False
+            page.update()
+
+            total_db = obtener_total_cached()
+            incompletos_count = len([r for r in dm.records if not is_producer_complete(r)])
+            completos_count = len([r for r in dm.records if is_producer_complete(r)])
+
+            nombres_completados = [r.get("nombre") or r.get("productor_apellido_nombre") or "" for r in records if (r.get("nombre") or r.get("productor_apellido_nombre"))]
+            nombres_str = ", ".join([n for n in nombres_completados if n][:3])
+            if len(nombres_completados) > 3:
+                nombres_str += f" y {len(nombres_completados) - 3} más"
+
+            show_alert_dialog(
+                "Importación Exitosa",
+                f"Se procesaron e importaron {count} productor(es) de forma exitosa:\n"
+                f"👤 {nombres_str}\n\n"
+                f"📊 Quedan {incompletos_count:,} productores incompletos (ya tenés {completos_count:,} completos).\n"
+                f"La lista en pantalla se actualizó automáticamente.".replace(",", ".")
+            )
+            show_snackbar(f"✓ ¡Se completó a {nombres_str}! Faltan {incompletos_count:,} incompletos.".replace(",", "."), COLORS["success"])
+
+            if state.get("username"):
+                registrar_log(state["username"], "IMPORT_RAW_TEXT", f"Importados {count} registros pegando texto de la SSN")
+
+            render_content()
+
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.CONTENT_PASTE_ROUNDED, color=COLORS["accent"], size=22),
+                ft.Text("Importar Pegando Texto SSN", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])
+            ], spacing=8),
+            content=ft.Container(
+                content=ft.Column([
+                    ft.Text("Copiá todo el texto de la pantalla de resultados de la SSN y pegalo a continuación:", size=13, color=COLORS["text_secondary"]),
+                    text_field,
+                    status_text,
+                ], spacing=10, tight=True),
+                width=500,
+            ),
+            actions=[
+                ft.TextButton("Cancelar", on_click=lambda _: setattr(dlg, "open", False) or page.update()),
+                ft.ElevatedButton(
+                    "Procesar e Importar",
+                    icon=ft.Icons.CHECK_ROUNDED,
+                    on_click=on_process_click,
+                    style=ft.ButtonStyle(bgcolor=COLORS["accent"], color="#FFFFFF")
+                )
+            ]
+        )
+        page.overlay.append(dlg)
+        dlg.open = True
+        page.update()
+
+    dateas_logs = []
+    dateas_metrics = {"ok": 0, "error": 0, "current": 0, "total": 150, "batch": 1, "start_time": time.time()}
+    dateas_active_update_func = None
+    _last_monitor_update = [0.0]  # throttle: max 1 update/s
+
+    def format_hhmmss(seconds: float) -> str:
+        s = max(0, int(seconds))
+        h = s // 3600
+        m = (s % 3600) // 60
+        sec = s % 60
+        return f"{h:02d}:{m:02d}:{sec:02d}"
+
+    def start_dateas_worker():
+        if state.get("dateas_active", False):
+            return
+        state["dateas_active"] = True
+        dateas_metrics["start_time"] = time.time()
+        
+        import importlib
+        import enriquecer_provincia_localidad_dateas
+        try:
+            importlib.reload(enriquecer_provincia_localidad_dateas)
+        except Exception:
+            pass
+        from enriquecer_provincia_localidad_dateas import ejecutar_ciclo_continuo, limpiar_marcas_error_dateas
+
+        # Limpiar falsas marcas de rate limit de ejecuciones anteriores antes de empezar
+        try:
+            limpiar_marcas_error_dateas()
+        except Exception:
+            pass
+
+        def on_item_proc(idx, total, mat, nombre, cuit, status, info):
+            dateas_metrics["current"] = idx
+            dateas_metrics["total"] = total
+            if status == "OK":
+                dateas_metrics["ok"] += 1
+            elif status == "RATE_LIMIT":
+                dateas_metrics["rate_limits"] = dateas_metrics.get("rate_limits", 0) + 1
+            else:
+                dateas_metrics["error"] += 1
+
+            dateas_logs.append({"mat": mat, "nombre": nombre, "cuit": cuit, "status": status, "info": info})
+
+            # Throttle: actualizar la UI del monitor máximo 1 vez por segundo
+            now = time.time()
+            if dateas_active_update_func and (now - _last_monitor_update[0]) >= 1.0:
+                _last_monitor_update[0] = now
+                page.run_thread(dateas_active_update_func)
+
+        def on_batch_finish(count, batch_num):
+            dateas_metrics["batch"] = batch_num + 1
+            # Actualizar la lista de productores solo al terminar cada lote
+            dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False))
+            state["records"] = dm.records
+            page.run_thread(render_content)
+            if dateas_active_update_func:
+                page.run_thread(dateas_active_update_func)
+
+        def run_enrich():
+            try:
+                ejecutar_ciclo_continuo(batch_size=600, pause_seconds=12, max_workers=1, delay_between=1.5, on_batch_finish=on_batch_finish, on_item_processed=on_item_proc)
+            except Exception as ex:
+                print(f"Error Dateas enrichment: {ex}")
+            finally:
+                state["dateas_active"] = False
+                page.run_thread(render_content)
+
+        threading.Thread(target=run_enrich, daemon=True).start()
+
+    def trigger_dateas_enrichment(e=None, open_modal: bool = True):
+        nonlocal dateas_active_update_func
+        from enriquecer_provincia_localidad_dateas import detener_enriquecimiento
+
+        # Always make sure background worker is running
+        start_dateas_worker()
+
+        if not open_modal:
+            return
+
+        log_listview = ft.ListView(
+            expand=True,
+            spacing=6,
+            padding=10,
+            auto_scroll=True,
+        )
+
+        ok_counter_text = ft.Text(str(dateas_metrics["ok"]), size=18, weight=ft.FontWeight.BOLD, color=COLORS["success"])
+        err_counter_text = ft.Text(str(dateas_metrics["error"]), size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.RED_500)
+        progress_text = ft.Text(f"{dateas_metrics['current']} / {dateas_metrics['total']}", size=14, weight=ft.FontWeight.BOLD, color=COLORS["primary"])
+        timer_text = ft.Text("00:00:00", size=14, weight=ft.FontWeight.BOLD, color=COLORS["accent"])
+        countdown_text = ft.Text("Calculando...", size=14, weight=ft.FontWeight.BOLD, color="#FF6B35")
+        status_badge = ft.Text("🟢 Procesando Lote..." if state.get("dateas_active", False) else "⏹️ Detenido", size=12, weight=ft.FontWeight.BOLD, color=COLORS["success"] if state.get("dateas_active", False) else COLORS["warning"])
+        _eta_cache = {"pending": None, "last_check": 0.0}
+
+        def update_monitor_ui():
+            ok_counter_text.value = str(dateas_metrics["ok"])
+            err_counter_text.value = str(dateas_metrics["error"])
+            progress_text.value = f"{dateas_metrics['current']} / {dateas_metrics['total']}"
+            
+            elapsed = time.time() - dateas_metrics.get("start_time", time.time())
+            fmt_str = format_hhmmss(elapsed)
+            timer_text.value = fmt_str
+            state["dateas_timer_text"] = fmt_str
+
+            # --- Cuenta regresiva: velocidad real de los últimos 60 items procesados ---
+            now = time.time()
+            ok_count = dateas_metrics["ok"]
+            if ok_count >= 5 and elapsed > 5:
+                # items/seg reales en esta sesión
+                speed = ok_count / elapsed  # items OK por segundo
+                # Consultar pendientes de DB cada 30 seg para no saturar
+                if now - _eta_cache["last_check"] >= 30 or _eta_cache["pending"] is None:
+                    try:
+                        import sqlite3 as _sq
+                        _db = _sq.connect(
+                            os.path.expanduser("~/.katrixbroker/data/productores_scraped.db"),
+                            timeout=5.0
+                        )
+                        _cur = _db.cursor()
+                        _cur.execute("""
+                            SELECT COUNT(*) FROM productores_detalle
+                            WHERE (provincia IS NULL OR provincia = '' OR provincia = '\u2014')
+                            AND (observaciones NOT LIKE '%NO_DATEAS_2%')
+                        """)
+                        _eta_cache["pending"] = _cur.fetchone()[0]
+                        _eta_cache["last_check"] = now
+                        _db.close()
+                    except Exception:
+                        pass
+                if _eta_cache["pending"] is not None and speed > 0:
+                    secs_left = int(_eta_cache["pending"] / speed)
+                    countdown_text.value = format_hhmmss(secs_left)
+                    countdown_text.color = "#4CAF50" if secs_left < 3600 else ("#FF9800" if secs_left < 7200 else "#FF6B35")
+                else:
+                    countdown_text.value = "Calculando..."
+            elif ok_count == 0:
+                countdown_text.value = "Esperando..."
+            else:
+                countdown_text.value = "Calculando..."
+
+            controls = []
+            is_currently_cooling = False
+            for item in dateas_logs[-100:]:
+                st = item["status"]
+                if st == "OK":
+                    badge_bg = ft.Colors.with_opacity(0.15, COLORS["success"])
+                    badge_border = COLORS["success"]
+                    badge_text = "🟢 OK"
+                elif st == "RATE_LIMIT":
+                    badge_bg = ft.Colors.with_opacity(0.15, COLORS["warning"])
+                    badge_border = COLORS["warning"]
+                    badge_text = "⚠️ PAUSA IP"
+                    is_currently_cooling = True
+                else:
+                    badge_bg = ft.Colors.with_opacity(0.15, ft.Colors.RED_500)
+                    badge_border = ft.Colors.RED_500
+                    badge_text = "🔴 SIN DATOS"
+                
+                row_item = ft.Container(
+                    content=ft.Row(
+                        controls=[
+                            ft.Container(
+                                content=ft.Text(badge_text, size=10, weight=ft.FontWeight.BOLD, color=badge_border),
+                                bgcolor=badge_bg,
+                                border=ft.Border.all(1, badge_border),
+                                border_radius=4,
+                                padding=ft.Padding(6, 2, 6, 2),
+                            ),
+                            ft.Text(f"Mat. {item['mat']} | {item['nombre']}", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                            ft.Text(f"-> {item['info']}", size=12, color=COLORS["text_secondary"], expand=True, overflow=ft.TextOverflow.ELLIPSIS),
+                        ],
+                        spacing=10,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    bgcolor=COLORS["surface"],
+                    border_radius=6,
+                    padding=ft.Padding(8, 6, 8, 6),
+                )
+                controls.append(row_item)
+                
+            log_listview.controls = controls
+
+            if state.get("dateas_active", False):
+                if dateas_logs and dateas_logs[-1]["status"] == "RATE_LIMIT":
+                    status_badge.value = f"⚠️ Rate Limit: {dateas_logs[-1]['info']}"
+                    status_badge.color = COLORS["warning"]
+                else:
+                    status_badge.value = "🟢 Procesando Lote (Modo Anti Rate-Limit)..."
+                    status_badge.color = COLORS["success"]
+
+            try:
+                if dlg_monitor.page and dlg_monitor.open:
+                    dlg_monitor.update()
+            except Exception:
+                pass
+
+        dateas_active_update_func = update_monitor_ui
+
+        def close_monitor_dialog(e):
+            nonlocal dateas_active_update_func
+            dateas_active_update_func = None
+            dlg_monitor.open = False
+            page.update()
+
+        def toggle_start_stop(ev):
+            if state.get("dateas_active", False):
+                detener_enriquecimiento()
+                state["dateas_active"] = False
+                status_badge.value = "⏹️ Detenido"
+                status_badge.color = COLORS["warning"]
+                btn_toggle.text = "▶️ Reanudar Consulta"
+                btn_toggle.icon = ft.Icons.PLAY_ARROW_ROUNDED
+                btn_toggle.style = ft.ButtonStyle(bgcolor=COLORS["primary"], color="#FFFFFF")
+                render_content()
+                try:
+                    if dlg_monitor.page and dlg_monitor.open:
+                        dlg_monitor.update()
+                except Exception:
+                    pass
+            else:
+                start_dateas_worker()
+                status_badge.value = "🟢 Procesando Lote..."
+                status_badge.color = COLORS["success"]
+                btn_toggle.text = "⏹️ Detener Consulta"
+                btn_toggle.icon = ft.Icons.STOP_ROUNDED
+                btn_toggle.style = ft.ButtonStyle(bgcolor=ft.Colors.RED_500, color="#FFFFFF")
+                render_content()
+                try:
+                    if dlg_monitor.page and dlg_monitor.open:
+                        dlg_monitor.update()
+                except Exception:
+                    pass
+
+        btn_toggle = ft.ElevatedButton(
+            "⏹️ Detener Consulta" if state.get("dateas_active", False) else "▶️ Iniciar Consulta Dateas",
+            icon=ft.Icons.STOP_ROUNDED if state.get("dateas_active", False) else ft.Icons.PLAY_ARROW_ROUNDED,
+            style=ft.ButtonStyle(bgcolor=ft.Colors.RED_500 if state.get("dateas_active", False) else COLORS["primary"], color="#FFFFFF"),
+            on_click=toggle_start_stop,
+        )
+
+        dlg_monitor = ft.AlertDialog(
+            modal=False,
+            title=ft.Row(
+                controls=[
+                    ft.Icon(ft.Icons.TRAVEL_EXPLORE_ROUNDED, color=COLORS["primary"], size=24),
+                    ft.Column(
+                        controls=[
+                            ft.Text("Monitor de Consultas Dateas en Vivo", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                            status_badge,
+                        ],
+                        spacing=2,
+                    ),
+                ],
+                spacing=10,
+            ),
+            content=ft.Container(
+                content=ft.Column(
+                    controls=[
+                        # Metrics row (4 metric cards including timer!)
+                        ft.Row(
+                            controls=[
+                                ft.Container(
+                                    content=ft.Column(
+                                        controls=[
+                                            ft.Text("ÉXITO (OK)", size=10, color=COLORS["success"], weight=ft.FontWeight.BOLD),
+                                            ok_counter_text,
+                                        ],
+                                        spacing=2,
+                                    ),
+                                    bgcolor=ft.Colors.with_opacity(0.12, COLORS["success"]),
+                                    padding=10,
+                                    border_radius=8,
+                                    expand=True,
+                                ),
+                                ft.Container(
+                                    content=ft.Column(
+                                        controls=[
+                                            ft.Text("SIN DATOS / ERR", size=10, color=ft.Colors.RED_500, weight=ft.FontWeight.BOLD),
+                                            err_counter_text,
+                                        ],
+                                        spacing=2,
+                                    ),
+                                    bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.RED_500),
+                                    padding=10,
+                                    border_radius=8,
+                                    expand=True,
+                                ),
+                                ft.Container(
+                                    content=ft.Column(
+                                        controls=[
+                                            ft.Text("PROGRESO LOTE", size=10, color=COLORS["primary"], weight=ft.FontWeight.BOLD),
+                                            progress_text,
+                                        ],
+                                        spacing=2,
+                                    ),
+                                    bgcolor=ft.Colors.with_opacity(0.12, COLORS["primary"]),
+                                    padding=10,
+                                    border_radius=8,
+                                    expand=True,
+                                ),
+                                ft.Container(
+                                    content=ft.Column(
+                                        controls=[
+                                            ft.Text("TIEMPO ACTIVO", size=10, color=COLORS["accent"], weight=ft.FontWeight.BOLD),
+                                            timer_text,
+                                        ],
+                                        spacing=2,
+                                    ),
+                                    bgcolor=ft.Colors.with_opacity(0.12, COLORS["accent"]),
+                                    padding=10,
+                                    border_radius=8,
+                                    expand=True,
+                                ),
+                                ft.Container(
+                                    content=ft.Column(
+                                        controls=[
+                                            ft.Text("⏳ RESTA ESTIMADO", size=10, color="#FF6B35", weight=ft.FontWeight.BOLD),
+                                            countdown_text,
+                                        ],
+                                        spacing=2,
+                                    ),
+                                    bgcolor=ft.Colors.with_opacity(0.12, ft.Colors.ORANGE_400),
+                                    padding=10,
+                                    border_radius=8,
+                                    expand=True,
+                                ),
+                            ],
+                            spacing=10,
+                        ),
+                        ft.Divider(height=10, color=COLORS["divider"]),
+                        ft.Text("Registro de Consultas en Tiempo Real:", size=12, weight=ft.FontWeight.BOLD, color=COLORS["text_secondary"]),
+                        ft.Container(
+                            content=log_listview,
+                            bgcolor=COLORS["background"],
+                            border=ft.Border.all(1, COLORS["border"]),
+                            border_radius=8,
+                            height=300,
+                        ),
+                    ],
+                    spacing=10,
+                    tight=True,
+                ),
+                width=680,
+            ),
+            actions=[
+                btn_toggle,
+                ft.TextButton("Minimizar / Cerrar", on_click=close_monitor_dialog),
+            ],
+            actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        )
+
+        page.overlay.append(dlg_monitor)
+        dlg_monitor.open = True
+        page.update()
+        update_monitor_ui()
+
 
     def on_vaciar_db_click(e):
         def _confirm_delete(ev):
@@ -788,9 +1262,13 @@ def main(page: ft.Page):
             if state["estado_contacto"] and not is_specific_search:
                 all_filtered = [r for r in all_filtered if r.get("estado_contacto", "Sin contactar").strip().lower() == state["estado_contacto"].lower()]
 
-            # Filtro de registros mayormente completos (máx 3 incompletos)
-            if state.get("mostly_complete") and not is_specific_search:
-                all_filtered = [r for r in all_filtered if get_incomplete_fields_count(r) <= 3]
+            # Filtro de completitud de datos (todos / completos / incompletos)
+            if not is_specific_search:
+                comp_filter = state.get("completitud_filter", "todos")
+                if comp_filter == "completos" or state.get("mostly_complete"):
+                    all_filtered = [r for r in all_filtered if is_producer_complete(r)]
+                elif comp_filter == "incompletos":
+                    all_filtered = [r for r in all_filtered if not is_producer_complete(r)]
 
             # Filtros personalizados
             if not is_specific_search:
@@ -844,7 +1322,10 @@ def main(page: ft.Page):
             start        = current_page * PAGE_SIZE
             page_records = all_filtered[start:start + PAGE_SIZE]
 
-            badge      = build_results_badge(total_matches, len(records), query, current_page, total_pages)
+            badge      = build_results_badge(
+                total_matches, len(records), query, current_page, total_pages,
+                on_info_click=lambda _: open_info_padron_dialog(page)
+            )
             table      = build_results_table(
                 page_records,
                 on_row_click=open_detail,
@@ -1110,6 +1591,7 @@ def main(page: ft.Page):
             on_localidad2_change=on_localidad2_change,
             on_export_click=export_to_csv,
             on_import_click=trigger_import_picker,
+            on_import_text_click=trigger_import_text_dialog,
             on_submit=on_search_submit,
             is_admin=(state.get("role") == "admin"),
             ultima_actualizacion=obtener_ultima_actualizacion(),
@@ -1117,14 +1599,25 @@ def main(page: ft.Page):
             on_admin_click=open_admin_panel,
             mostly_complete_value=state.get("mostly_complete", False),
             on_mostly_complete_change=on_mostly_complete_change,
+            completitud_filter_value=state.get("completitud_filter", "todos"),
+            on_completitud_filter_change=on_completitud_filter_change,
             sort_descending_value=state.get("sort_descending", False),
             on_sort_direction_change=on_sort_direction_change,
             selected_ramo=state.get("ramo"),
             regional_only_value=state.get("regional_only", False),
             on_regional_only_change=on_regional_only_change,
+            on_dateas_enrich_click=trigger_dateas_enrichment,
+            is_dateas_active=state.get("dateas_active", False),
+            dateas_timer_text=state.get("dateas_timer_text", ""),
+            on_info_padron_click=lambda _: open_info_padron_dialog(page),
         )
         initial_search.content = new_search.content
         initial_search.bgcolor = new_search.bgcolor
+        if getattr(initial_search, "page", None):
+            try:
+                initial_search.update()
+            except Exception:
+                pass
         
         if search_ref.current:
             search_ref.current.value = search_val
@@ -1335,101 +1828,143 @@ def main(page: ft.Page):
     def export_to_csv(e):
         import csv
         import urllib.parse
+        import threading
         
-        query = search_ref.current.value.strip() if search_ref.current else ""
-        ramo = state["selected_ramo"]
-        provincia = state["selected_provincia"]
-        localidad = state["selected_localidad"]
-        estado = state["selected_estado"]
+        if state.get("all_filtered") is not None:
+            records_to_export = state.get("all_filtered")
+        else:
+            records_to_export = state.get("records", [])
         
-        records_to_export = []
-        for rec in state["records"]:
-            if ramo and rec.get("productor_ramo") != ramo:
-                continue
-            if provincia:
-                cached = obtener_de_db(rec.get("productor_matricula", "")) or (obtener_de_db(rec.get("productor_id", "")) if rec.get("productor_id") else None)
-                prov_val = cached.get("provincia") if cached else None
-                if not prov_val or prov_val.lower() != provincia.lower():
-                    continue
-            if localidad:
-                cached = obtener_de_db(rec.get("productor_matricula", "")) or (obtener_de_db(rec.get("productor_id", "")) if rec.get("productor_id") else None)
-                loc_val = cached.get("localidad") if cached else None
-                if not loc_val or loc_val.lower() != localidad.lower():
-                    continue
-            if estado:
-                cached = obtener_de_db(rec.get("productor_matricula", "")) or (obtener_de_db(rec.get("productor_id", "")) if rec.get("productor_id") else None)
-                est_val = cached.get("estado_contacto", "Sin contactar") if cached else "Sin contactar"
-                if est_val != estado:
-                    continue
-            if state["custom_filters"]:
-                cached = obtener_de_db(rec.get("productor_matricula", "")) or (obtener_de_db(rec.get("productor_id", "")) if rec.get("productor_id") else None)
-                c_dict = dict(cached) if cached else {}
-                c_dict["nombre"] = rec.get("nombre", "")
-                c_dict["matricula"] = rec.get("productor_matricula", "")
-                c_dict["cuit"] = rec.get("productor_id", "")
-                c_dict["ramo"] = rec.get("productor_ramo", "")
-                
-                match = True
-                for rule in state["custom_filters"]:
-                    field = rule["field"]
-                    op = rule["op"]
-                    val = rule["value"].lower()
-                    rec_val = str(c_dict.get(field) or "").lower()
-                    if op == "Contiene" and val not in rec_val:
-                        match = False
-                        break
-                    elif op == "Es igual a" and rec_val != val:
-                        match = False
-                        break
-                    elif op == "Comienza con" and not rec_val.startswith(val):
-                        match = False
-                        break
-                    elif op == "Termina con" and not rec_val.endswith(val):
-                        match = False
-                        break
-                if not match:
-                    continue
-            if query:
-                name_val = rec.get("nombre", "")
-                mat_val = rec.get("productor_matricula", "")
-                id_val = rec.get("productor_id", "")
-                if not (fuzzy_filter(query, name_val) or query in mat_val or query in id_val):
-                    continue
-            records_to_export.append(rec)
-            
         if not records_to_export:
-            show_alert_dialog("Exportar a CSV", "No hay registros que coincidan con los filtros actuales para exportar.")
+            show_alert_dialog("Exportar a CSV", "No hay registros disponibles para exportar.")
             return
             
         export_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "exportaciones")
         os.makedirs(export_dir, exist_ok=True)
         filename = f"productores_exportados_{int(time.time())}.csv"
         filepath = os.path.join(export_dir, filename)
-        
-        try:
-            with open(filepath, mode="w", newline="", encoding="utf-8-sig") as f:
-                writer = csv.writer(f, delimiter=";")
-                writer.writerow(["Matricula", "Nombre", "CUIT/DNI", "Ramo", "Provincia", "Localidad", "Telefono", "Email", "Domicilio", "Estado Contacto", "Observaciones"])
-                for rec in records_to_export:
-                    mat = rec.get("productor_matricula", "")
-                    cuit = rec.get("productor_id", "")
-                    cached = obtener_de_db(mat) or (obtener_de_db(cuit) if cuit else None)
-                    prov = cached.get("provincia", "—") if cached else "—"
-                    loc = cached.get("localidad", "—") if cached else "—"
-                    tel = cached.get("telefono", "—") if cached else "—"
-                    email = cached.get("email", "—") if cached else "—"
-                    dom = cached.get("domicilio", "—") if cached else "—"
-                    est = cached.get("estado_contacto", "Sin contactar") if cached else "Sin contactar"
-                    obs = cached.get("observaciones", "") if cached else ""
-                    writer.writerow([mat, rec.get("nombre", ""), cuit, rec.get("productor_ramo", ""), prov, loc, tel, email, dom, est, obs])
-            
-            # Registrar acción en log de auditoría
-            if state["username"]:
-                registrar_log(state["username"], "EXPORT_CSV", f"Exportación de {len(records_to_export)} productores a CSV")
+
+        loading_dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.DOWNLOAD_ROUNDED, color=COLORS["primary"], size=22),
+                ft.Text("Generando CSV...", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+            ], spacing=8),
+            content=ft.Container(
+                content=ft.Row([
+                    ft.ProgressRing(color=COLORS["primary"], width=24, height=24, stroke_width=3),
+                    ft.Text(f"Exportando {len(records_to_export):,} registros...".replace(",", "."), size=13, color=COLORS["text_primary"]),
+                ], spacing=12),
+                padding=10, width=280
+            )
+        )
+        page.overlay.append(loading_dlg)
+        loading_dlg.open = True
+        page.update()
+
+        def run_export():
+            try:
+                from ssn_test import obtener_todos_db
+                db_records = obtener_todos_db(user_id=state.get("user_id"), role=state.get("role"))
+                db_map = {}
+                for dbr in db_records:
+                    m = str(dbr.get("matricula", "")).strip()
+                    if m:
+                        db_map[m] = dbr
+
+                def clean_val(val, default="—"):
+                    if val is None:
+                        return default
+                    s = str(val).strip()
+                    if not s or s in ("None", "null", "—"):
+                        return default
+                    return s
+
+                with open(filepath, mode="w", newline="", encoding="utf-8-sig") as f:
+                    writer = csv.writer(f, delimiter=";")
+                    writer.writerow([
+                        "Matricula", "Nombre", "CUIT/DNI", "Ramo", "Provincia", 
+                        "Localidad", "Telefono", "Email", "Domicilio", "Estado Contacto", "Observaciones"
+                    ])
+                    for rec in records_to_export:
+                        mat = str(rec.get("productor_matricula") or rec.get("matricula") or "").strip()
+                        cuit = str(rec.get("cuit") or rec.get("documento") or rec.get("productor_id") or "").strip()
+                        nombre = str(rec.get("productor_apellido_nombre") or rec.get("nombre") or "").strip()
+                        ramo = str(rec.get("productor_ramo") or rec.get("ramo") or "").strip()
+                        
+                        cached = db_map.get(mat) or {}
+                        
+                        prov = clean_val(rec.get("provincia"))
+                        if prov == "—": prov = clean_val(cached.get("provincia"))
+                        
+                        loc = clean_val(rec.get("localidad"))
+                        if loc == "—": loc = clean_val(cached.get("localidad"))
+                        
+                        tel = clean_val(rec.get("telefono"))
+                        if tel == "—": tel = clean_val(cached.get("telefono"))
+                        
+                        email = clean_val(rec.get("email"))
+                        if email == "—": email = clean_val(cached.get("email"))
+                        
+                        dom = clean_val(rec.get("domicilio"))
+                        if dom == "—": dom = clean_val(cached.get("domicilio"))
+                        
+                        est = clean_val(rec.get("estado_contacto"), default="Sin contactar")
+                        if est == "Sin contactar" and cached.get("estado_contacto"):
+                            est = clean_val(cached.get("estado_contacto"), default="Sin contactar")
+                            
+                        obs = clean_val(rec.get("observaciones"), default="") or clean_val(cached.get("observaciones"), default="")
+                        if obs == "—": obs = ""
+
+                        writer.writerow([mat, nombre, cuit, ramo, prov, loc, tel, email, dom, est, obs])
                 
-            show_alert_dialog("Exportación Exitosa", f"Se exportaron {len(records_to_export)} productores con éxito.\nGuardado en: {filepath}")
-        except Exception as ex:
-            show_alert_dialog("Error de Exportación", f"No se pudo guardar el archivo: {str(ex)}")
+                if state.get("username"):
+                    registrar_log(state["username"], "EXPORT_CSV", f"Exportación de {len(records_to_export)} productores a CSV/Excel")
+
+                loading_dlg.open = False
+                page.update()
+
+                def abrir_archivo(ev=None):
+                    import subprocess
+                    try:
+                        subprocess.Popen(["xdg-open", filepath])
+                    except Exception as ex:
+                        print(f"Error abriendo archivo: {ex}")
+
+                def abrir_carpeta(ev=None):
+                    import subprocess
+                    try:
+                        subprocess.Popen(["xdg-open", export_dir])
+                    except Exception as ex:
+                        print(f"Error abriendo carpeta: {ex}")
+
+                export_dlg = ft.AlertDialog(
+                    title=ft.Row([
+                        ft.Icon(ft.Icons.FILE_DOWNLOAD_DONE_ROUNDED, color=COLORS["success"], size=22),
+                        ft.Text("Exportación Exitosa", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                    ], spacing=8),
+                    content=ft.Column([
+                        ft.Text(f"Se exportaron {len(records_to_export):,} productores con todos sus datos (Teléfono, Email, Ubicación, etc.) listos para Excel.".replace(",", "."), size=13, color=COLORS["text_primary"]),
+                        ft.Text(f"Archivo: {filename}\nCarpeta: {export_dir}", size=11, color=COLORS["text_secondary"]),
+                    ], spacing=8, tight=True),
+                    actions=[
+                        ft.TextButton("Abrir Carpeta", icon=ft.Icons.FOLDER_OPEN_ROUNDED, on_click=abrir_carpeta),
+                        ft.ElevatedButton("Abrir en Excel / Calc", icon=ft.Icons.OPEN_IN_NEW_ROUNDED, on_click=abrir_archivo, style=ft.ButtonStyle(bgcolor=COLORS["primary"], color="#FFFFFF")),
+                        ft.TextButton("Cerrar", on_click=lambda _: setattr(export_dlg, "open", False) or page.update()),
+                    ]
+                )
+                page.overlay.append(export_dlg)
+                export_dlg.open = True
+                page.update()
+            except Exception as ex:
+                try:
+                    loading_dlg.open = False
+                    page.update()
+                except Exception:
+                    pass
+                show_alert_dialog("Error de Exportación", f"No se pudo guardar el archivo: {str(ex)}")
+
+        threading.Thread(target=run_export, daemon=True).start()
 
     def update_footer():
         if footer_container.current is not None:
@@ -1922,6 +2457,7 @@ def main(page: ft.Page):
 
     def on_mostly_complete_change(val):
         state["mostly_complete"] = val
+        state["completitud_filter"] = "completos" if val else "todos"
         state["page"]            = 0
         recreate_dropdowns_and_search()
         render_content()
@@ -1929,6 +2465,19 @@ def main(page: ft.Page):
             show_snackbar("Filtro Activo: Se ocultan productores con datos de contacto incompletos.", COLORS["success"])
         else:
             show_snackbar("Filtro Desactivado: Se muestran todos los productores.", COLORS["primary"])
+
+    def on_completitud_filter_change(val: str):
+        state["completitud_filter"] = val
+        state["mostly_complete"] = (val == "completos")
+        state["page"] = 0
+        recreate_dropdowns_and_search()
+        render_content()
+        if val == "completos":
+            show_snackbar("Filtro Activo: Mostrando solo productores con datos de contacto completos.", COLORS["success"])
+        elif val == "incompletos":
+            show_snackbar("Filtro Activo: Mostrando productores a los que les faltan datos (teléfono, email, etc.). Usá 'Completar Datos' para enriquecerlos.", COLORS["warning"])
+        else:
+            show_snackbar("Filtro Desactivado: Mostrando todos los productores.", COLORS["primary"])
 
     def on_sort_direction_change(val):
         state["sort_descending"] = val
@@ -2166,7 +2715,8 @@ def main(page: ft.Page):
 
         def copy_to_clipboard(rec: dict):
             text = record_to_clipboard(rec)
-            page.set_clipboard(text)
+            from ui_components import copiar_al_portapapeles
+            copiar_al_portapapeles(text, page)
             show_snackbar("Datos copiados al portapapeles ✓")
 
         def on_register_visit_click(rec: dict):
@@ -2334,73 +2884,162 @@ def main(page: ft.Page):
                     show_alert_dialog("Error", "No se pudieron guardar las sociedades vinculadas.")
 
         def on_scrape_click(rec: dict, ev):
+            nombre_prod = rec.get("nombre") or rec.get("productor_apellido_nombre") or "Productor"
+            mat_prod = str(rec.get("matricula") or rec.get("productor_matricula") or "").strip()
+            doc_prod = str(rec.get("cuit") or rec.get("documento") or rec.get("productor_id") or "").strip()
+            
+            if mat_prod and mat_prod not in ("—", "None", "null", ""):
+                identificador = mat_prod
+                actual_type = "MATRICULA"
+            elif doc_prod and doc_prod not in ("—", "None", "null", ""):
+                identificador = re.sub(r"\D", "", doc_prod)
+                actual_type = "DNI"
+            else:
+                identificador = None
+                actual_type = "MATRICULA"
+
+            if not identificador:
+                show_alert_dialog("Datos Insuficientes", "El productor no posee matrícula ni CUIT/DNI válido registrado para consultar en la SSN.")
+                return
+
+            status_text = ft.Text("Iniciando conexión con la SSN...", size=13, weight=ft.FontWeight.W_500, color=COLORS["text_primary"])
+
+            progress_dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Row(
+                    controls=[
+                        ft.Icon(ft.Icons.REFRESH_ROUNDED, color=COLORS["accent"], size=22),
+                        ft.Text("Consultando SSN en Vivo", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                    ],
+                    spacing=8,
+                ),
+                content=ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Row(
+                                controls=[
+                                    ft.ProgressRing(color=COLORS["accent"], width=24, height=24, stroke_width=3),
+                                    status_text,
+                                ],
+                                spacing=12,
+                            ),
+                            ft.Text(f"Productor: {nombre_prod} (Mat/Doc: {identificador})\nDemora estimada: 15 a 20 segundos.", size=12, color=COLORS["text_secondary"]),
+                        ],
+                        spacing=12,
+                        tight=True,
+                    ),
+                    width=420,
+                    padding=10,
+                ),
+            )
+
+            if progress_dialog not in page.overlay:
+                page.overlay.append(progress_dialog)
+            progress_dialog.open = True
+            page.update()
+
+            def update_status(text: str):
+                status_text.value = text
+                try:
+                    progress_dialog.update()
+                except Exception:
+                    try:
+                        page.update()
+                    except Exception:
+                        pass
+
+            def close_progress_dialog():
+                try:
+                    progress_dialog.open = False
+                    page.update()
+                except Exception:
+                    pass
+
             def run_scrape():
                 current_user = state.get("username") or "broker"
                 try:
-                    # Notify start
-                    page.run_thread(lambda: show_snackbar(f"Actualizando datos de {rec.get('productor_apellido_nombre')} desde la SSN...", color=COLORS["accent"]))
-                    
-                    # Log start in DB
                     registrar_log(
                         current_user,
                         "UPDATE_SSN_START",
-                        f"Iniciando consulta live SSN para {rec.get('productor_apellido_nombre')} (Matrícula: {rec.get('productor_matricula')})"
+                        f"Iniciando consulta live SSN para {nombre_prod} (Matrícula/Doc: {identificador})"
                     )
 
+                    page.run_thread(lambda: update_status("Obteniendo formulario de la SSN..."))
                     sitekey = obtener_sitekey()
-                    page.run_thread(lambda: show_snackbar("Resolviendo reCAPTCHA con Capsolver... (demora ~15s)", color=COLORS["accent"]))
+
+                    page.run_thread(lambda: update_status("Resolviendo reCAPTCHA con CapSolver (~15s)..."))
                     token = resolver_captcha(sitekey)
                     
-                    identificador = rec.get("productor_id") or rec.get("productor_matricula")
-                    if not identificador:
-                        raise ValueError("No se encontró matrícula ni documento para consultar.")
-                    
-                    actual_type = "MATRICULA" if len(str(identificador).strip()) <= 6 else "DNI"
+                    page.run_thread(lambda: update_status("Consultando padrón oficial de la SSN..."))
                     html = buscar_en_ssn(str(identificador), actual_type, token)
+
+                    page.run_thread(lambda: update_status("Procesando resultados y guardando..."))
                     datos = parsear_resultado(html)
                     
-                    if datos:
+                    if datos and (datos.get("telefono") or datos.get("email") or datos.get("cuit") or datos.get("resolucion") or datos.get("provincia")):
+                        datos["matricula"] = mat_prod or datos.get("matricula") or identificador
                         guardar_en_db(datos)
-                        rec["provincia"] = datos.get("provincia", "—")
-                        rec["telefono"] = datos.get("telefono", "—")
-                        rec["email"] = datos.get("email", "—")
-                        rec["resolucion"] = datos.get("resolucion", "—")
-                        rec["fecha_resolucion"] = datos.get("fecha_resolucion", "—")
-                        rec["estado_contacto"] = datos.get("estado_contacto") or "Sin contactar"
-                        rec["companias"] = datos.get("companias", "")
                         
-                        # Log success in DB
+                        rec["provincia"] = datos.get("provincia") or rec.get("provincia") or "—"
+                        rec["localidad"] = datos.get("localidad") or rec.get("localidad") or "—"
+                        rec["telefono"] = datos.get("telefono") or rec.get("telefono") or "—"
+                        rec["email"] = datos.get("email") or rec.get("email") or "—"
+                        rec["resolucion"] = datos.get("resolucion") or rec.get("resolucion") or "—"
+                        rec["fecha_resolucion"] = datos.get("fecha_resolucion") or rec.get("fecha_resolucion") or "—"
+                        if datos.get("companias"):
+                            rec["companias"] = datos.get("companias")
+                        
                         registrar_log(
                             current_user,
                             "UPDATE_SSN_SUCCESS",
-                            f"Actualización SSN exitosa para {rec.get('productor_apellido_nombre')} (Matrícula: {rec.get('productor_matricula')})"
+                            f"Actualización SSN exitosa para {nombre_prod} (Matrícula: {identificador})"
                         )
                         
-                        def reopen():
+                        def reopen_success():
+                            close_progress_dialog()
                             build_index(state["records"])
                             open_detail(rec)
-                            show_alert_dialog("Consulta en Vivo SSN", "Datos de contacto obtenidos y guardados con éxito ✓")
+                            show_alert_dialog(
+                                "¡Actualización SSN Exitosa!", 
+                                f"Se obtuvieron y guardaron los datos de {nombre_prod}:\n\n"
+                                f"• Teléfono: {rec['telefono']}\n"
+                                f"• Email: {rec['email']}\n"
+                                f"• Provincia: {rec['provincia']}\n"
+                                f"• Localidad: {rec.get('localidad', '—')}\n"
+                                f"• Resolución: {rec['resolucion']}"
+                            )
                             update_stats()
-                        page.run_thread(reopen)
+                        page.run_thread(reopen_success)
                     else:
-                        # Log empty result in DB
                         registrar_log(
                             current_user,
                             "UPDATE_SSN_EMPTY",
-                            f"Consulta SSN sin resultados para {rec.get('productor_apellido_nombre')} (Matrícula: {rec.get('productor_matricula')})"
+                            f"Consulta SSN sin resultados detallados para {nombre_prod} (Matrícula: {identificador})"
                         )
-                        page.run_thread(lambda: show_snackbar("No se encontraron datos de contacto en la SSN.", color=COLORS["warning"]))
-                        page.run_thread(lambda: open_detail(rec))
+                        def reopen_empty():
+                            close_progress_dialog()
+                            open_detail(rec)
+                            show_alert_dialog(
+                                "Consulta SSN Finalizada", 
+                                f"Se consultó el registro en vivo de la SSN para {nombre_prod} (Matrícula/Doc: {identificador}), pero la SSN no posee teléfono ni email público en su padrón para esta matrícula."
+                            )
+                        page.run_thread(reopen_empty)
                 except Exception as ex:
                     print(f"Error al raspar en vivo: {ex}")
-                    # Log error in DB
                     registrar_log(
                         current_user,
                         "UPDATE_SSN_ERROR",
-                        f"Error actualizando {rec.get('productor_apellido_nombre')} (Matrícula: {rec.get('productor_matricula')}): {str(ex)[:200]}"
+                        f"Error actualizando {nombre_prod} ({identificador}): {str(ex)[:200]}"
                     )
-                    page.run_thread(lambda: show_snackbar(f"Error al consultar la SSN: {str(ex)[:60]}", color=COLORS["warning"]))
-                    page.run_thread(lambda: open_detail(rec))
+                    err_msg = str(ex)
+                    def reopen_error():
+                        close_progress_dialog()
+                        open_detail(rec)
+                        show_alert_dialog(
+                            "Error al Consultar SSN",
+                            f"Ocurrió un inconveniente al consultar la SSN para {nombre_prod}:\n\n{err_msg}"
+                        )
+                    page.run_thread(reopen_error)
             
             threading.Thread(target=run_scrape, daemon=True).start()
 
@@ -2419,6 +3058,90 @@ def main(page: ft.Page):
                 render_content()
                 update_header()
 
+            def on_paste_text_detail(rec):
+                text_field = ft.TextField(
+                    multiline=True,
+                    min_lines=8,
+                    max_lines=14,
+                    hint_text=f"Pegá aquí el texto copiado de la pantalla de la SSN para {rec.get('nombre', 'este productor')} (Matrícula: {rec.get('matricula')})...\n\nEjemplo:\nMatrícula: {rec.get('matricula')}\nNombre: {rec.get('nombre')}\nCUIT: 20362309612\n...",
+                    text_size=13,
+                    border_color=COLORS["border"],
+                    focused_border_color=COLORS["accent"],
+                    border_radius=8,
+                    color=COLORS["text_primary"],
+                    bgcolor=COLORS["surface"],
+                )
+
+                status_text = ft.Text("", size=12, color=COLORS["text_secondary"])
+
+                def on_process_click(ev):
+                    raw_text = text_field.value or ""
+                    if not raw_text.strip():
+                        status_text.value = "⚠️ Por favor pegá el texto antes de procesar."
+                        status_text.color = COLORS["warning"]
+                        page.update()
+                        return
+
+                    from ssn_test import importar_desde_texto_crudo, obtener_de_db
+                    count, records = importar_desde_texto_crudo(raw_text)
+
+                    if count == 0:
+                        status_text.value = "❌ No se encontraron datos válidos con 'Matrícula:' en el texto pegado."
+                        status_text.color = ft.Colors.RED_500
+                        page.update()
+                        return
+
+                    dm.initialize(user_id=state["user_id"], role=state["role"], regional_only=state.get("regional_only", False))
+                    state["records"] = dm.records
+
+                    dlg.open = False
+                    page.update()
+
+                    mat = rec.get("matricula") or rec.get(COL_MATRICULA)
+                    matching_dm = [r for r in dm.records if str(r.get("matricula", "")).strip() == str(mat).strip()]
+                    updated_rec = matching_dm[0] if matching_dm else (obtener_de_db(str(mat)) if mat else None)
+                    
+                    show_alert_dialog(
+                        "Ficha Actualizada",
+                        "Se procesó el texto e importaron los datos correctamente.\n\n"
+                        "La ficha del productor ha sido actualizada con la nueva información."
+                    )
+                    if state.get("username"):
+                        registrar_log(state["username"], "IMPORT_RAW_TEXT_DETAIL", f"Completados datos del productor {mat} desde texto SSN")
+
+                    if updated_rec:
+                        open_detail(updated_rec)
+                    else:
+                        render_content()
+
+                dlg = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Row([
+                        ft.Icon(ft.Icons.CONTENT_PASTE_ROUNDED, color=COLORS["accent"], size=22),
+                        ft.Text(f"Completar Ficha — Matrícula {rec.get('matricula')}", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"])
+                    ], spacing=8),
+                    content=ft.Container(
+                        content=ft.Column([
+                            ft.Text("Copiá todo el texto de la pantalla de la SSN y pegalo abajo para autocompletar este productor:", size=13, color=COLORS["text_secondary"]),
+                            text_field,
+                            status_text,
+                        ], spacing=10, tight=True),
+                        width=500,
+                    ),
+                    actions=[
+                        ft.TextButton("Cancelar", on_click=lambda _: setattr(dlg, "open", False) or page.update()),
+                        ft.ElevatedButton(
+                            "Procesar e Importar",
+                            icon=ft.Icons.CHECK_ROUNDED,
+                            on_click=on_process_click,
+                            style=ft.ButtonStyle(bgcolor=COLORS["accent"], color="#FFFFFF")
+                        )
+                    ]
+                )
+                page.overlay.append(dlg)
+                dlg.open = True
+                page.update()
+
             detail_view = build_detail_view(
                 record,
                 on_back,
@@ -2434,6 +3157,7 @@ def main(page: ft.Page):
                 state=state,
                 on_register_visit_click=on_register_visit_click,
                 on_go_cartera=_go_to_cartera,
+                on_paste_text_click=on_paste_text_detail,
             )
             content_area.current.controls = [detail_view]
             safe_update(content_area.current)
@@ -2476,9 +3200,9 @@ def main(page: ft.Page):
             if r.get("provincia") and r.get("provincia").strip() not in ["", "—", "-", "_"]
         )))
         provincia_dropdown.options = [ft.dropdown.Option("Todas las provincias")] + [ft.dropdown.Option(p) for p in provincias]
-        provincia_dropdown.value = "Todas las provincias"
+        provincia_dropdown.value = state.get("provincia") or "Todas las provincias"
         provincia_dropdown2.options = [ft.dropdown.Option("Todas las provincias")] + [ft.dropdown.Option(p) for p in provincias]
-        provincia_dropdown2.value = "Todas las provincias"
+        provincia_dropdown2.value = state.get("provincia2") or "Todas las provincias"
         
         safe_update(provincia_dropdown)
         safe_update(provincia_dropdown2)
@@ -2506,9 +3230,9 @@ def main(page: ft.Page):
             if r.get("provincia") and r.get("provincia").strip() not in ["", "—", "-", "_"]
         )))
         provincia_dropdown.options = [ft.dropdown.Option("Todas las provincias")] + [ft.dropdown.Option(p) for p in provincias]
-        provincia_dropdown.value = "Todas las provincias"
+        provincia_dropdown.value = state.get("provincia") or "Todas las provincias"
         provincia_dropdown2.options = [ft.dropdown.Option("Todas las provincias")] + [ft.dropdown.Option(p) for p in provincias]
-        provincia_dropdown2.value = "Todas las provincias"
+        provincia_dropdown2.value = state.get("provincia2") or "Todas las provincias"
         
         page.run_thread(safe_update, provincia_dropdown)
         page.run_thread(safe_update, provincia_dropdown2)
@@ -3134,6 +3858,13 @@ def main(page: ft.Page):
             update_header()
             sidebar_widget = build_sidebar()
 
+            if not state.get("dateas_autostarted"):
+                state["dateas_autostarted"] = True
+                def _autostart_dateas_bg():
+                    time.sleep(1)
+                    trigger_dateas_enrichment(e=None, open_modal=False)
+                threading.Thread(target=_autostart_dateas_bg, daemon=True).start()
+
             if (state.get("viewing_dashboard") or 
                 state.get("viewing_cartera") or 
                 state.get("viewing_admin") or 
@@ -3194,6 +3925,7 @@ def main(page: ft.Page):
         on_localidad2_change=on_localidad2_change,
         on_export_click=export_to_csv,
         on_import_click=trigger_import_picker,
+        on_import_text_click=trigger_import_text_dialog,
         on_submit=on_search_submit,
         is_admin=(state.get("role") == "admin"),
         ultima_actualizacion=obtener_ultima_actualizacion(),
@@ -3201,11 +3933,16 @@ def main(page: ft.Page):
         on_admin_click=open_admin_panel,
         mostly_complete_value=state.get("mostly_complete", False),
         on_mostly_complete_change=on_mostly_complete_change,
+        completitud_filter_value=state.get("completitud_filter", "todos"),
+        on_completitud_filter_change=on_completitud_filter_change,
         sort_descending_value=state.get("sort_descending", False),
         on_sort_direction_change=on_sort_direction_change,
         selected_ramo=state.get("ramo"),
         regional_only_value=state.get("regional_only", False),
         on_regional_only_change=on_regional_only_change,
+        on_dateas_enrich_click=trigger_dateas_enrichment,
+        is_dateas_active=state.get("dateas_active", False),
+        dateas_timer_text=state.get("dateas_timer_text", ""),
     )
     initial_footer = build_footer(state["cache_date"])
 

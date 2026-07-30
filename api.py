@@ -840,7 +840,7 @@ def export_pas_csv(
             r.get("productor_matricula") or r.get("matricula") or "",
             r.get("productor_apellido_nombre") or r.get("nombre") or "",
             r.get("cuit") or r.get("documento") or r.get("productor_id") or "",
-            r.get("ramo") or "",
+            r.get("ramo") or r.get("productor_ramo") or "",
             r.get("provincia") or "",
             r.get("localidad") or "",
             r.get("telefono") or "",

@@ -11,6 +11,8 @@ import socket
 import uuid
 import platform
 import requests
+import time
+import random
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 import base64
@@ -22,12 +24,20 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 CONFIG_FILENAME = "licencia_config.json"
 
 
-def obtener_url_api() -> str:
+_CACHED_API_URL: Optional[str] = None
+
+
+def obtener_url_api(force_refresh: bool = False) -> str:
     """
     Obtiene la URL de la API con fallback automático.
     Intenta primero el servidor configurado (VPS/producción).
     Si no responde en 3 segundos, cae automáticamente a localhost:8000.
+    Cachea el resultado para no repetir peticiones ni logs en cada importación.
     """
+    global _CACHED_API_URL
+    if _CACHED_API_URL is not None and not force_refresh:
+        return _CACHED_API_URL
+
     primary_url = os.environ.get("KATRIX_API_URL", "https://api.katrix.com.ar").rstrip("/")
     fallback_url = "http://localhost:8000"
 
@@ -50,24 +60,27 @@ def obtener_url_api() -> str:
 
     # Probar conectividad con el servidor primario (timeout corto)
     try:
-        probe = requests.get(f"{primary_url}/docs", timeout=3)
+        probe = requests.get(f"{primary_url}/docs", timeout=2)
         if probe.status_code < 500:
             print(f"✅ API conectada al servidor principal: {primary_url}")
+            _CACHED_API_URL = primary_url
             return primary_url
     except Exception:
         pass
 
     # Fallback: probar localhost
     try:
-        probe = requests.get(f"{fallback_url}/docs", timeout=2)
+        probe = requests.get(f"{fallback_url}/docs", timeout=1)
         if probe.status_code < 500:
             print(f"⚠️  VPS no disponible. Usando backend local: {fallback_url}")
+            _CACHED_API_URL = fallback_url
             return fallback_url
     except Exception:
         pass
 
     # Si ninguno responde, devolver el primario y que el error lo maneje el login
     print(f"❌ No se pudo conectar a ningún servidor. Usando: {primary_url}")
+    _CACHED_API_URL = primary_url
     return primary_url
 
 
@@ -133,6 +146,81 @@ class APIClient:
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
         return headers
+
+    def request_with_retry(
+        self,
+        method: str,
+        url: str,
+        max_retries: int = 5,
+        backoff_factor: float = 2.0,
+        initial_delay: float = 1.0,
+        base_delay: float = 0.5,
+        **kwargs
+    ) -> requests.Response:
+        """
+        Realiza peticiones HTTP implementando:
+        1. Respeto de encabezados de Rate Limit (Retry-After, X-RateLimit-Remaining).
+        2. Delay preventivo entre peticiones (base_delay).
+        3. Algoritmo de Exponencial Backoff con Jitter ante error HTTP 429 o 5xx.
+        """
+        for attempt in range(max_retries + 1):
+            if base_delay > 0 and attempt == 0:
+                time.sleep(base_delay)
+
+            try:
+                headers = kwargs.get("headers")
+                if headers is None:
+                    kwargs["headers"] = self._get_headers()
+
+                response = requests.request(method, url, **kwargs)
+
+                # 1. Monitorear encabezados de Rate Limit
+                remaining = response.headers.get("X-RateLimit-Remaining")
+                if remaining is not None:
+                    try:
+                        if int(remaining) <= 1:
+                            reset_time = response.headers.get("X-RateLimit-Reset")
+                            pause = float(reset_time) if reset_time else 2.0
+                            print(f"⚠️ Rate limit casi agotado (Remaining: {remaining}). Pausando {pause:.1f}s preventivamente...")
+                            time.sleep(pause)
+                    except ValueError:
+                        pass
+
+                # Retornar inmediatamente si no es 429 ni error de servidor (5xx)
+                if response.status_code not in (429, 500, 502, 503, 504):
+                    return response
+
+                if attempt == max_retries:
+                    print(f"❌ Reintentos agotados ({max_retries}). HTTP Status: {response.status_code}")
+                    return response
+
+                # 2. Respetar Retry-After si el servidor lo indica
+                retry_after = response.headers.get("Retry-After")
+                wait_time = None
+
+                if retry_after:
+                    try:
+                        wait_time = float(retry_after)
+                        print(f"⏳ Servidor devolvió Retry-After: {wait_time}s.")
+                    except ValueError:
+                        wait_time = None
+
+                # 3. Algoritmo Exponential Backoff con Jitter
+                if wait_time is None:
+                    jitter = random.uniform(0.0, 0.5)
+                    wait_time = (initial_delay * (backoff_factor ** attempt)) + jitter
+
+                print(f"⚠️ HTTP {response.status_code}. Reintento {attempt + 1}/{max_retries} en {wait_time:.2f}s...")
+                time.sleep(wait_time)
+
+            except requests.RequestException as e:
+                if attempt == max_retries:
+                    raise e
+                wait_time = (initial_delay * (backoff_factor ** attempt)) + random.uniform(0.0, 0.5)
+                print(f"⚠️ Error de conexión: {e}. Reintentando en {wait_time:.2f}s...")
+                time.sleep(wait_time)
+
+        return response
 
     # ─────────────────────────────────────────────────────────────────────────
     # Gestión de Licencia (Validación de Software)
