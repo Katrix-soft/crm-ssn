@@ -515,8 +515,17 @@ def registrar_log(usuario: str, accion: str, detalles: str):
 # ─── BASE DE DATOS SQLITE ─────────────────────────────────
 def inicializar_db():
     if not os.path.exists(DB_DIR):
-        os.makedirs(DB_DIR)
+        os.makedirs(DB_DIR, exist_ok=True)
     
+    # Copiar automáticamente la DB precargada local al directorio del usuario si no existe o es más pequeña
+    if os.path.exists(_local_db) and os.path.getsize(_local_db) > 0:
+        if not os.path.exists(_primary_db) or os.path.getsize(_primary_db) < (os.path.getsize(_local_db) - 1024):
+            try:
+                import shutil
+                shutil.copy2(_local_db, _primary_db)
+            except Exception as e:
+                print(f"Error al copiar DB precargada: {e}")
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""

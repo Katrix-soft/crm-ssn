@@ -10,6 +10,7 @@ temp_build/
 *.pyc
 .DS_Store
 *.db
+!data/productores_scraped.db
 *.log
 env.example
 exportaciones/
