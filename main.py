@@ -3193,25 +3193,84 @@ def main(page: ft.Page):
                 dlg.open = True
                 page.update()
 
-            detail_view = build_detail_view(
-                record,
-                on_back,
-                copy_to_clipboard,
-                on_status_change,
-                page,
-                on_scrape_click,
-                on_save_notes,
-                on_save_companias,
-                on_save_sociedades,
-                calendar_url=state.get("calendar_url", ""),
-                usuario=state.get("username", "broker"),
-                state=state,
-                on_register_visit_click=on_register_visit_click,
-                on_go_cartera=_go_to_cartera,
-                on_paste_text_click=on_paste_text_detail,
+        def on_delete_producer(rec: dict):
+            mat = str(rec.get("productor_matricula") or rec.get("matricula") or "").strip()
+            nombre_prod = rec.get("nombre") or rec.get("productor_apellido_nombre") or f"Matrícula {mat}"
+            if not mat:
+                return
+            
+            def confirm_delete_action(ev):
+                delete_dlg.open = False
+                page.update()
+                
+                from ssn_test import eliminar_productor_db
+                if eliminar_productor_db(mat):
+                    # Remover de los registros en memoria de DataManager
+                    dm.records = [r for r in dm.records if str(r.get("productor_matricula") or r.get("matricula") or "").strip() != mat]
+                    state["records"] = dm.records
+                    
+                    if state.get("username"):
+                        registrar_log(state["username"], "DELETE_PRODUCER", f"Eliminado productor {nombre_prod} (Matrícula {mat})")
+                    
+                    show_snackbar(f"Productor {nombre_prod} (Matrícula {mat}) eliminado exitosamente", COLORS["success"])
+                    on_back()
+                    render_content()
+                    update_stats()
+                else:
+                    show_alert_dialog("Error", "No se pudo eliminar el productor de la base de datos.")
+
+            delete_dlg = ft.AlertDialog(
+                modal=True,
+                title=ft.Row([
+                    ft.Icon(ft.Icons.DELETE_FOREVER_ROUNDED, color=ft.Colors.RED_500, size=24),
+                    ft.Text("Confirmar Eliminación", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                ], spacing=8),
+                content=ft.Container(
+                    content=ft.Column([
+                        ft.Text("¿Estás seguro de que deseas eliminar permanentemente a este productor?", size=13, color=COLORS["text_primary"]),
+                        ft.Container(
+                            content=ft.Column([
+                                ft.Text(f"👤 {nombre_prod}", size=13, weight=ft.FontWeight.BOLD, color=COLORS["primary"]),
+                                ft.Text(f"📜 Matrícula: {mat}", size=12, color=COLORS["text_secondary"]),
+                            ], spacing=2),
+                            bgcolor=COLORS["surface"],
+                            padding=10,
+                            border_radius=8,
+                            border=ft.Border.all(1, COLORS["border"]),
+                        ),
+                        ft.Text("⚠️ Esta acción no se puede deshacer.", size=12, color=ft.Colors.RED_500, weight=ft.FontWeight.W_500),
+                    ], spacing=10, tight=True),
+                    width=400, padding=10
+                ),
+                actions=[
+                    ft.TextButton("Cancelar", on_click=lambda _: setattr(delete_dlg, "open", False) or page.update()),
+                    ft.ElevatedButton("Eliminar Definitivamente", icon=ft.Icons.DELETE_OUTLINED, on_click=confirm_delete_action, style=ft.ButtonStyle(bgcolor=ft.Colors.RED_600, color="#FFFFFF")),
+                ]
             )
-            content_area.current.controls = [detail_view]
-            safe_update(content_area.current)
+            page.overlay.append(delete_dlg)
+            delete_dlg.open = True
+            page.update()
+
+        detail_view = build_detail_view(
+            record,
+            on_back,
+            copy_to_clipboard,
+            on_status_change,
+            page,
+            on_scrape_click,
+            on_save_notes,
+            on_save_companias,
+            on_save_sociedades,
+            calendar_url=state.get("calendar_url", ""),
+            usuario=state.get("username", "broker"),
+            state=state,
+            on_register_visit_click=on_register_visit_click,
+            on_go_cartera=_go_to_cartera,
+            on_paste_text_click=on_paste_text_detail,
+            on_delete_click=on_delete_producer,
+        )
+        content_area.current.controls = [detail_view]
+        safe_update(content_area.current)
 
     def open_detail_by_matricula(matricula_val, back_to="dashboard"):
         if not matricula_val:

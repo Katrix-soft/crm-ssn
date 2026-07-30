@@ -2521,6 +2521,7 @@ def build_detail_view(
     on_register_visit_click: Optional[Callable[[Dict[str, Any]], None]] = None,
     on_go_cartera: Optional[Callable] = None,
     on_paste_text_click: Optional[Callable[[Dict[str, Any]], None]] = None,
+    on_delete_click: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> ft.Container:
     nombre    = record.get(COL_NOMBRE) or record.get("nombre") or "Productor"
     matricula = record.get(COL_MATRICULA) or record.get("matricula") or ""
@@ -2653,6 +2654,18 @@ def build_detail_view(
                             padding=ft.Padding(16, 10, 16, 10),
                         )
                     ),
+                    ft.ElevatedButton(
+                        "Eliminar Productor",
+                        icon=ft.Icons.DELETE_OUTLINED,
+                        on_click=lambda e: on_delete_click(record) if on_delete_click else None,
+                        style=ft.ButtonStyle(
+                            bgcolor=ft.Colors.RED_600,
+                            color="#FFFFFF",
+                            shape=ft.RoundedRectangleBorder(radius=8),
+                            padding=ft.Padding(14, 10, 14, 10),
+                        ),
+                        tooltip="Eliminar permanentemente este productor de la base de datos",
+                    ) if on_delete_click else ft.Container(),
                 ],
                 spacing=8,
             ),

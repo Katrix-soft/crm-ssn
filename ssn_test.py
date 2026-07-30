@@ -2840,6 +2840,23 @@ def vaciar_base_de_datos() -> int:
         print(f"Error al vaciar base de datos: {e}")
         return 0
 
+def eliminar_productor_db(matricula: str) -> bool:
+    """Elimina un productor específico de la base de datos SQLite por su matrícula."""
+    if not matricula:
+        return False
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        mat_str = str(matricula).strip()
+        cursor.execute("DELETE FROM productores_detalle WHERE matricula = ?", (mat_str,))
+        cursor.execute("DELETE FROM productor_sociedad WHERE productor_matricula = ?", (mat_str,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error al eliminar productor {matricula}: {e}")
+        return False
+
 def obtener_configuraciones() -> dict:
     """Devuelve todas las configuraciones del sistema en un diccionario."""
     try:
