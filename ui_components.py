@@ -858,6 +858,7 @@ def build_results_table(
     sort_column: Optional[str] = None,
     sort_descending: bool = False,
     on_sort_change: Optional[Callable[[str], None]] = None,
+    on_delete_click: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> ft.Column:
 
     def _hcol(label, col_id, width=None, expand=False):
@@ -897,7 +898,7 @@ def build_results_table(
                 _hcol("CUIT / Doc.",      "cuit",      width=150),
                 _hcol("Ramo",             "ramo",      width=200),
                 _hcol("Estado",           "estado",    width=120),
-                ft.Container(width=40),
+                ft.Container(width=65),
             ],
             spacing=0,
         ),
@@ -909,7 +910,7 @@ def build_results_table(
     rows = []
     for i, rec in enumerate(records):
         bg = COLORS["surface"] if i % 2 == 0 else COLORS["row_alt"]
-        rows.append(_build_result_row(rec, bg, on_row_click))
+        rows.append(_build_result_row(rec, bg, on_row_click, on_delete_click=on_delete_click))
 
     if not rows:
         if db_is_empty:
@@ -1071,7 +1072,12 @@ def build_results_table(
     return ft.Column(controls=[header, list_view], spacing=0, expand=True)
 
 
-def _build_result_row(rec: Dict[str, Any], bg_color: str, on_click: Callable) -> ft.Container:
+def _build_result_row(
+    rec: Dict[str, Any],
+    bg_color: str,
+    on_click: Callable,
+    on_delete_click: Optional[Callable[[Dict[str, Any]], None]] = None,
+) -> ft.Container:
     ramo = rec.get(COL_RAMO, "") or ""
     chip_bg, chip_text = _ramo_colors(ramo)
     estado = rec.get("estado_contacto", "Sin contactar")
@@ -1139,6 +1145,23 @@ def _build_result_row(rec: Dict[str, Any], bg_color: str, on_click: Callable) ->
         padding=ft.Padding(2, 2, 4, 2),
     )
 
+    def _on_trash_row_click(e):
+        try:
+            if hasattr(e, "control") and hasattr(e.control, "page"):
+                pass
+        except Exception:
+            pass
+        if on_delete_click:
+            on_delete_click(rec)
+
+    trash_icon_btn = ft.IconButton(
+        icon=ft.Icons.DELETE_OUTLINED,
+        icon_color=ft.Colors.RED_400,
+        icon_size=16,
+        tooltip="Eliminar Productor",
+        on_click=_on_trash_row_click,
+    ) if on_delete_click else ft.Container()
+
     return ft.Container(
         content=ft.Row(
             controls=[
@@ -1164,8 +1187,15 @@ def _build_result_row(rec: Dict[str, Any], bg_color: str, on_click: Callable) ->
                     alignment=ft.Alignment(-1, 0),
                 ),
                 ft.Container(
-                    content=ft.Icon(ft.Icons.CHEVRON_RIGHT, size=18, color=ft.Colors.with_opacity(0.3, COLORS["text_secondary"])),
-                    width=40,
+                    content=ft.Row(
+                        controls=[
+                            trash_icon_btn,
+                            ft.Icon(ft.Icons.CHEVRON_RIGHT, size=18, color=ft.Colors.with_opacity(0.3, COLORS["text_secondary"])),
+                        ],
+                        spacing=0,
+                        tight=True,
+                    ),
+                    width=65,
                     alignment=ft.Alignment(1, 0),
                 ),
             ],

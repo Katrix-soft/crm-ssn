@@ -1189,6 +1189,67 @@ def main(page: ft.Page):
         dlg.open = True
         page.update()
 
+    def on_delete_producer(rec: dict):
+        mat = str(rec.get("productor_matricula") or rec.get("matricula") or "").strip()
+        nombre_prod = rec.get("nombre") or rec.get("productor_apellido_nombre") or f"Matrícula {mat}"
+        if not mat:
+            return
+        
+        def confirm_delete_action(ev):
+            delete_dlg.open = False
+            page.update()
+            
+            from ssn_test import eliminar_productor_db
+            if eliminar_productor_db(mat):
+                # Remover de la lista local en memoria de DataManager
+                dm.records = [r for r in dm.records if str(r.get("productor_matricula") or r.get("matricula") or "").strip() != mat]
+                state["records"] = dm.records
+                
+                if state.get("username"):
+                    registrar_log(state["username"], "DELETE_PRODUCER", f"Eliminado productor {nombre_prod} (Matrícula {mat})")
+                
+                show_snackbar(f"Productor {nombre_prod} (Matrícula {mat}) eliminado exitosamente", COLORS["success"])
+                if state.get("viewing_detail"):
+                    state["viewing_detail"] = False
+                    state["selected_record"] = None
+                    update_page_layout()
+                render_content()
+                update_stats()
+            else:
+                show_alert_dialog("Error", "No se pudo eliminar el productor de la base de datos.")
+
+        delete_dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.DELETE_FOREVER_ROUNDED, color=ft.Colors.RED_500, size=24),
+                ft.Text("Confirmar Eliminación", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+            ], spacing=8),
+            content=ft.Container(
+                content=ft.Column([
+                    ft.Text("¿Estás seguro de que deseas eliminar permanentemente a este productor?", size=13, color=COLORS["text_primary"]),
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Text(f"👤 {nombre_prod}", size=13, weight=ft.FontWeight.BOLD, color=COLORS["primary"]),
+                            ft.Text(f"📜 Matrícula: {mat}", size=12, color=COLORS["text_secondary"]),
+                        ], spacing=2),
+                        bgcolor=COLORS["surface"],
+                        padding=10,
+                        border_radius=8,
+                        border=ft.Border.all(1, COLORS["border"]),
+                    ),
+                    ft.Text("⚠️ Esta acción no se puede deshacer.", size=12, color=ft.Colors.RED_500, weight=ft.FontWeight.W_500),
+                ], spacing=10, tight=True),
+                width=400, padding=10
+            ),
+            actions=[
+                ft.TextButton("Cancelar", on_click=lambda _: setattr(delete_dlg, "open", False) or page.update()),
+                ft.ElevatedButton("Eliminar Definitivamente", icon=ft.Icons.DELETE_OUTLINED, on_click=confirm_delete_action, style=ft.ButtonStyle(bgcolor=ft.Colors.RED_600, color="#FFFFFF")),
+            ]
+        )
+        page.overlay.append(delete_dlg)
+        delete_dlg.open = True
+        page.update()
+
     def render_content():
         if content_area.current is None:
             return
@@ -1387,6 +1448,7 @@ def main(page: ft.Page):
                 sort_column=state.get("sort_column"),
                 sort_descending=state.get("sort_descending", False),
                 on_sort_change=on_sort_change,
+                on_delete_click=on_delete_producer,
             )
             pagination = build_pagination(current_page, total_pages, on_page_change=go_to_page)
 

@@ -2848,8 +2848,8 @@ def eliminar_productor_db(matricula: str) -> bool:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         mat_str = str(matricula).strip()
-        cursor.execute("DELETE FROM productores_detalle WHERE matricula = ?", (mat_str,))
-        cursor.execute("DELETE FROM productor_sociedad WHERE productor_matricula = ?", (mat_str,))
+        cursor.execute("DELETE FROM productores_detalle WHERE TRIM(LOWER(matricula)) = TRIM(LOWER(?))", (mat_str,))
+        cursor.execute("DELETE FROM productor_sociedad WHERE TRIM(LOWER(productor_matricula)) = TRIM(LOWER(?))", (mat_str,))
         conn.commit()
         conn.close()
         return True
