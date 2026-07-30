@@ -447,25 +447,76 @@ def main(page: ft.Page):
                     )
                     if res.returncode == 0 and res.stdout.strip():
                         file_path = res.stdout.strip()
-                except FileNotFoundError:
-                    show_alert_dialog("Error", "Zenity no está instalado en este sistema.")
-                    return
+                except Exception:
+                    file_path = None
             else:
-                # Fallback nativo para Windows (tkinter)
-                import tkinter as tk
-                from tkinter import filedialog
-                root = tk.Tk()
-                root.withdraw()
-                root.attributes('-topmost', True)
-                file_path = filedialog.askopenfilename(
-                    title="Seleccionar archivo de Productores",
-                    filetypes=[("Excel y CSV", "*.xlsx *.xlsm *.csv")]
-                )
-                root.destroy()
+                try:
+                    import tkinter as tk
+                    from tkinter import filedialog
+                    root = tk.Tk()
+                    root.withdraw()
+                    root.attributes('-topmost', True)
+                    file_path = filedialog.askopenfilename(
+                        title="Seleccionar archivo de Productores",
+                        filetypes=[("Excel y CSV", "*.xlsx *.xlsm *.csv")]
+                    )
+                    root.destroy()
+                except Exception:
+                    file_path = None
                 
             if not file_path:
+                # Diálogo de contingencia para ingresar la ruta del archivo manualmente si falló el selector del SO
+                path_tf = ft.TextField(
+                    label="Ruta completa al archivo (.xlsx, .xlsm, .csv)",
+                    hint_text="Ej: C:\\Usuarios\\TuNombre\\Descargas\\productores.csv",
+                    border_color=COLORS["border"],
+                    focused_border_color=COLORS["accent"],
+                    border_radius=8,
+                    color=COLORS["text_primary"],
+                    bgcolor=COLORS["surface"],
+                    autofocus=True,
+                )
+                def start_manual_import(ev):
+                    p_val = (path_tf.value or "").strip().strip('"').strip("'")
+                    if p_val and os.path.exists(p_val):
+                        manual_dlg.open = False
+                        page.update()
+                        process_file_import(p_val)
+                    else:
+                        path_tf.error_text = "Archivo no encontrado en esa ruta. Verificá la ruta."
+                        page.update()
+
+                manual_dlg = ft.AlertDialog(
+                    title=ft.Row([
+                        ft.Icon(ft.Icons.UPLOAD_FILE_ROUNDED, color=COLORS["primary"], size=22),
+                        ft.Text("Seleccionar Archivo de Productores", size=16, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                    ], spacing=8),
+                    content=ft.Container(
+                        content=ft.Column([
+                            ft.Text("Ingresá o pegá la ruta completa del archivo Excel o CSV a importar:", size=13, color=COLORS["text_secondary"]),
+                            path_tf,
+                        ], spacing=10, tight=True),
+                        width=450, padding=10
+                    ),
+                    actions=[
+                        ft.TextButton("Cancelar", on_click=lambda _: setattr(manual_dlg, "open", False) or page.update()),
+                        ft.ElevatedButton("Importar Archivo", icon=ft.Icons.CHECK_ROUNDED, on_click=start_manual_import, style=ft.ButtonStyle(bgcolor=COLORS["primary"], color="#FFFFFF")),
+                    ]
+                )
+                page.overlay.append(manual_dlg)
+                manual_dlg.open = True
+                page.update()
                 return
-                
+
+            process_file_import(file_path)
+        except Exception as ex:
+            show_alert_dialog(
+                "Error de Importación", 
+                f"No se pudo iniciar el selector de archivos:\n{str(ex)[:200]}"
+            )
+
+    def process_file_import(file_path: str):
+        try:
             loading_import_dlg = ft.AlertDialog(
                 modal=True,
                 title=ft.Row(
@@ -545,7 +596,7 @@ def main(page: ft.Page):
         except Exception as ex:
             show_alert_dialog(
                 "Error de Importación", 
-                f"No se pudo iniciar el selector de archivos:\n{str(ex)[:200]}"
+                f"No se pudo procesar la importación:\n{str(ex)[:200]}"
             )
 
     def trigger_import_text_dialog(e):

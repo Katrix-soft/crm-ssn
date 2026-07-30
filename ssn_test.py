@@ -2567,9 +2567,6 @@ def parsear_e_importar_archivo(file_path: str) -> int:
     ext = os.path.splitext(file_path)[1].lower()
     
     if ext in [".xlsx", ".xlsm"]:
-        import zipfile
-        import xml.etree.ElementTree as ET
-        
         with zipfile.ZipFile(file_path, 'r') as z:
             names = z.namelist()
             shared_strings = []
@@ -2579,22 +2576,61 @@ def parsear_e_importar_archivo(file_path: str) -> int:
                     root = tree.getroot()
                     ns = {'ns': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
                     for t in root.findall('.//ns:t', ns):
-                        shared_strings.append(t.text)
+                        shared_strings.append(t.text if t.text else "")
             
-            if "xl/worksheets/sheet1.xml" not in names:
-                raise ValueError("No se encontró la hoja de datos principal en el archivo Excel.")
+            sheet_name = next((n for n in names if n.startswith("xl/worksheets/sheet")), None)
+            if not sheet_name:
+                raise ValueError("No se encontró ninguna hoja de datos en el archivo Excel.")
                 
-            with z.open("xl/worksheets/sheet1.xml") as f:
+            with z.open(sheet_name) as f:
                 tree = ET.parse(f)
                 root = tree.getroot()
                 ns = {'ns': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
                 rows = root.findall('.//ns:row', ns)
                 
+                if not rows:
+                    raise ValueError("El archivo Excel está vacío.")
+
+                # Mapear encabezados dinámicamente desde la primera fila
+                header_map = {}
+                for c in rows[0].findall('ns:c', ns):
+                    cell_ref = c.attrib.get('r')
+                    col_letter = ''.join([char for char in cell_ref if char.isalpha()])
+                    cell_type = c.attrib.get('t')
+                    val_tag = c.find('ns:v', ns)
+                    val = val_tag.text if val_tag is not None else ""
+                    if cell_type == 's' and val.isdigit():
+                        idx = int(val)
+                        if idx < len(shared_strings):
+                            val = shared_strings[idx]
+                    val_clean = val.strip().lower() if val else ""
+                    if val_clean:
+                        header_map[col_letter] = val_clean
+
+                def find_excel_col(aliases, default_col):
+                    for col, name in header_map.items():
+                        for alias in aliases:
+                            if alias in name:
+                                return col
+                    return default_col
+
+                col_a = find_excel_col(["matricula", "matrícula", "mat", "pas", "reg"], 'A')
+                col_b = find_excel_col(["nombre", "apellido", "denominacion", "razon social"], 'B')
+                col_c = find_excel_col(["documento", "doc", "dni"], 'C')
+                col_d = find_excel_col(["cuit", "cuil"], 'D')
+                col_e = find_excel_col(["ramo"], 'E')
+                col_f = find_excel_col(["domicilio", "direccion", "calle"], 'F')
+                col_g = find_excel_col(["localidad", "loc", "ciudad"], 'G')
+                col_h = find_excel_col(["provincia", "prov"], 'H')
+                col_i = find_excel_col(["telefono", "teléfono", "tel"], 'I')
+                col_j = find_excel_col(["email", "mail", "correo"], 'J')
+                col_k = find_excel_col(["cp", "postal"], 'K')
+
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
                 to_upsert = []
                 
-                # Fila 1 suele ser el encabezado, iterar desde la fila 2
+                # Iterar desde la fila 2
                 for r in rows[1:]:
                     cells = r.findall('ns:c', ns)
                     row_data = {}
@@ -2612,24 +2648,24 @@ def parsear_e_importar_archivo(file_path: str) -> int:
                                 
                         row_data[col_letter] = val.strip() if val else ""
                     
-                    matricula = row_data.get('A', '').strip()
+                    matricula = row_data.get(col_a, '').strip()
                     if matricula:
-                        provincia = row_data.get('H', '').strip().upper() or "—"
-                        localidad = row_data.get('G', '').strip().upper() or "—"
+                        provincia = row_data.get(col_h, '').strip().upper() or "—"
+                        localidad = row_data.get(col_g, '').strip().upper() or "—"
                         to_upsert.append((
                             matricula,
-                            row_data.get('B', '').strip(),
-                            row_data.get('C', '').strip(),
-                            row_data.get('D', '').strip(),
-                            row_data.get('E', '').strip(),
+                            row_data.get(col_b, '').strip(),
+                            row_data.get(col_c, '').strip(),
+                            row_data.get(col_d, '').strip(),
+                            row_data.get(col_e, '').strip(),
                             provincia,
-                            row_data.get('I', '').strip(),
-                            row_data.get('J', '').strip(),
+                            row_data.get(col_i, '').strip(),
+                            row_data.get(col_j, '').strip(),
                             "Excel Import",
                             "—",
-                            row_data.get('F', '').strip(),
+                            row_data.get(col_f, '').strip(),
                             localidad,
-                            row_data.get('K', '').strip()
+                            row_data.get(col_k, '').strip()
                         ))
                 
                 if to_upsert:
@@ -2671,12 +2707,12 @@ def parsear_e_importar_archivo(file_path: str) -> int:
     elif ext == ".csv":
         import csv
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, "r", encoding="utf-8-sig") as f:
                 f.read(2048)
         except UnicodeDecodeError:
             encoding = "latin-1"
         else:
-            encoding = "utf-8"
+            encoding = "utf-8-sig"
             
         with open(file_path, "r", encoding=encoding) as f:
             sample = f.read(4096)
@@ -2684,51 +2720,44 @@ def parsear_e_importar_archivo(file_path: str) -> int:
             delimiter = ","
             if ";" in sample and sample.count(";") > sample.count(","):
                 delimiter = ";"
+            elif "\t" in sample and sample.count("\t") > sample.count(","):
+                delimiter = "\t"
+            elif "|" in sample and sample.count("|") > sample.count(","):
+                delimiter = "|"
                 
             reader = csv.DictReader(f, delimiter=delimiter)
             if not reader.fieldnames:
                 raise ValueError("El archivo CSV no tiene encabezados válidos.")
                 
-            col_mat = None
-            col_nom = None
-            col_doc = None
-            col_cuit = None
-            col_ramo = None
-            col_prov = None
-            col_tel = None
-            col_mail = None
-            col_dom = None
-            col_loc = None
-            col_cp = None
-            
             def find_col(aliases: list[str]) -> str | None:
                 for alias in aliases:
                     for real in reader.fieldnames:
-                        if alias in real.strip().lower():
+                        clean_real = real.strip().lower().replace("\ufeff", "")
+                        if alias in clean_real:
                             return real
                 return None
                 
-            col_mat = find_col(["matricula", "matrícula", "mat", "pas"])
-            col_nom = find_col(["nombre", "apellido_nombre", "apellido y nombre", "nombre/apellido", "denominacion", "razon social"])
+            col_mat = find_col(["matricula", "matrícula", "mat", "pas", "reg", "registro", "productor_matricula"])
+            if not col_mat and reader.fieldnames:
+                col_mat = reader.fieldnames[0]  # Fallback a la 1ª columna si no la reconoce por nombre
+
+            col_nom = find_col(["nombre", "apellido_nombre", "apellido y nombre", "nombre/apellido", "denominacion", "razon social", "productor_apellido_nombre"])
             col_doc = find_col(["documento", "doc", "dni", "nro doc"])
-            col_cuit = find_col(["cuit", "cuil", "cuit/cuil"])
-            col_ramo = find_col(["ramo", "ramos"])
-            col_prov = find_col(["provincia", "prov"])
-            col_tel = find_col(["telefono", "teléfono", "teléfonos", "telefonos", "tel"])
+            col_cuit = find_col(["cuit", "cuil", "cuit/cuil", "productor_id"])
+            col_ramo = find_col(["ramo", "ramos", "productor_ramo"])
+            col_prov = find_col(["provincia", "prov", "jurisdiccion"])
+            col_tel = find_col(["telefono", "teléfono", "teléfonos", "telefonos", "tel", "celular"])
             col_mail = find_col(["email", "e-mail", "mail", "correo"])
             col_dom = find_col(["domicilio", "dirección", "direccion", "calle"])
-            col_loc = find_col(["localidad", "loc"])
+            col_loc = find_col(["localidad", "loc", "ciudad"])
             col_cp = find_col(["cod_postal", "codigo postal", "cp"])
             
-            if not col_mat:
-                raise ValueError("No se pudo identificar una columna de 'Matrícula' en el archivo CSV.")
-                
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             to_upsert = []
             
             for row in reader:
-                matricula = row.get(col_mat, "").strip()
+                matricula = row.get(col_mat, "").strip() if col_mat else ""
                 if not matricula:
                     continue
                     
