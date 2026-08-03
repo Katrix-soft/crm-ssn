@@ -1165,26 +1165,38 @@ def _build_result_row(
     return ft.Container(
         content=ft.Row(
             controls=[
-                mat_cell,
                 ft.Container(
-                    content=ft.Text(truncate(rec.get(COL_NOMBRE, ""), 40), size=13, color=COLORS["text_primary"], weight=ft.FontWeight.W_500),
+                    content=ft.Row(
+                        controls=[
+                            mat_cell,
+                            ft.Container(
+                                content=ft.Text(truncate(rec.get(COL_NOMBRE, ""), 40), size=13, color=COLORS["text_primary"], weight=ft.FontWeight.W_500),
+                                expand=True,
+                                alignment=ft.Alignment(-1, 0),
+                            ),
+                            ft.Container(
+                                content=ft.Text(format_cuit(rec.get(COL_ID, "")), size=12, color=COLORS["text_secondary"], font_family="Roboto Mono"),
+                                width=150,
+                                alignment=ft.Alignment(-1, 0),
+                            ),
+                            ft.Container(
+                                content=ramo_chip,
+                                width=200,
+                                alignment=ft.Alignment(-1, 0),
+                            ),
+                            ft.Container(
+                                content=estado_chip,
+                                width=120,
+                                alignment=ft.Alignment(-1, 0),
+                            ),
+                        ],
+                        spacing=0,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
                     expand=True,
-                    alignment=ft.Alignment(-1, 0),
-                ),
-                ft.Container(
-                    content=ft.Text(format_cuit(rec.get(COL_ID, "")), size=12, color=COLORS["text_secondary"], font_family="Roboto Mono"),
-                    width=150,
-                    alignment=ft.Alignment(-1, 0),
-                ),
-                ft.Container(
-                    content=ramo_chip,
-                    width=200,
-                    alignment=ft.Alignment(-1, 0),
-                ),
-                ft.Container(
-                    content=estado_chip,
-                    width=120,
-                    alignment=ft.Alignment(-1, 0),
+                    on_click=lambda e: on_click(rec),
+                    ink=True,
+                    ink_color=ft.Colors.with_opacity(0.06, COLORS["primary"]),
                 ),
                 ft.Container(
                     content=ft.Row(
@@ -1206,9 +1218,6 @@ def _build_result_row(
         height=ROW_HEIGHT,
         padding=ft.Padding(left=48, right=48, top=0, bottom=0),
         border=ft.Border(bottom=ft.BorderSide(0.5, COLORS["divider"])),
-        on_click=lambda e: on_click(rec),
-        ink=True,
-        ink_color=ft.Colors.with_opacity(0.06, COLORS["primary"]),
     )
 
 
@@ -5284,6 +5293,7 @@ def build_dashboard_metrics_view(
                     else:
                         show_snackbar(f"Visita a {v_name} marcada como Pendiente ⏳")
                     refresh_dashboard()
+                    filter_and_render()
                 return _toggle
 
             def make_del_visita(v_id=vid, v_name=vnombre):
@@ -5291,6 +5301,7 @@ def build_dashboard_metrics_view(
                     _ssn.eliminar_visita(v_id)
                     show_snackbar(f"Visita a {v_name} eliminada.")
                     refresh_dashboard()
+                    filter_and_render()
                 return _del
 
             def make_click_visita(v_rec=v):

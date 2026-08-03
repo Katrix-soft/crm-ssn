@@ -16,6 +16,7 @@ import re
 import time
 import random
 import threading
+from typing import Optional, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 try:
@@ -455,39 +456,55 @@ C_DIM     = "\033[38;5;240m"          # Gris Tenue (#240)
 PROCESSED_MATRICULAS = set()
 
 def procesar_lote_dateas(batch_size: int = 200, max_workers: int = 2, delay_between: float = 0.9, on_item_processed=None,
-                        matricula_desde: int = 0, matricula_hasta: int = 999999):
+                        matricula_desde: int = 0, matricula_hasta: int = 999999, target_matriculas: Optional[List[str]] = None):
     global PROCESSED_MATRICULAS
     if not os.path.exists(DB_PATH):
         print(f"{C_RED}❌ No se encontró la base de datos en {DB_PATH}{C_RESET}")
         return 0
 
-    # Buscamos un pool más amplio para poder filtrar las ya procesadas en memoria
     pool_size = max(batch_size * 10, 2000)
 
     with db_lock:
         conn = sqlite3.connect(DB_PATH, timeout=20.0)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT matricula, cuit, documento, nombre, provincia, localidad, observaciones 
-            FROM productores_detalle 
-            WHERE (cuit IS NOT NULL AND cuit != '' AND cuit != '—')
-              AND (telefono IS NULL OR telefono = '' OR telefono = '—' OR telefono LIKE 'E-mail%')
-              AND (email IS NULL OR email = '' OR email = '—')
-              AND (provincia IS NULL OR provincia = '' OR provincia = '—' OR localidad IS NULL OR localidad = '' OR localidad = '—')
-              AND (observaciones IS NULL OR observaciones NOT LIKE '%NO_DATEAS_2%')
-              AND CAST(matricula AS INTEGER) BETWEEN ? AND ?
-            ORDER BY CAST(matricula AS INTEGER) DESC
-            LIMIT ?
-        """, (matricula_desde, matricula_hasta, pool_size))
-        raw_rows = cursor.fetchall()
+        
+        if target_matriculas is not None:
+            t_mats = [str(m) for m in target_matriculas if str(m) not in PROCESSED_MATRICULAS]
+            raw_rows = []
+            if t_mats:
+                chunk_size = 500
+                for i in range(0, len(t_mats), chunk_size):
+                    chunk = t_mats[i:i + chunk_size]
+                    placeholders = ",".join(["?"] * len(chunk))
+                    cursor.execute(f"""
+                        SELECT matricula, cuit, documento, nombre, provincia, localidad, observaciones 
+                        FROM productores_detalle 
+                        WHERE matricula IN ({placeholders})
+                          AND (cuit IS NOT NULL AND cuit != '' AND cuit != '—')
+                          AND (provincia IS NULL OR provincia = '' OR provincia = '—' OR localidad IS NULL OR localidad = '' OR localidad = '—')
+                    """, chunk)
+                    raw_rows.extend(cursor.fetchall())
+        else:
+            cursor.execute("""
+                SELECT matricula, cuit, documento, nombre, provincia, localidad, observaciones 
+                FROM productores_detalle 
+                WHERE (cuit IS NOT NULL AND cuit != '' AND cuit != '—')
+                  AND (telefono IS NULL OR telefono = '' OR telefono = '—' OR telefono LIKE 'E-mail%')
+                  AND (email IS NULL OR email = '' OR email = '—')
+                  AND (provincia IS NULL OR provincia = '' OR provincia = '—' OR localidad IS NULL OR localidad = '' OR localidad = '—')
+                  AND (observaciones IS NULL OR observaciones NOT LIKE '%NO_DATEAS_2%')
+                  AND CAST(matricula AS INTEGER) BETWEEN ? AND ?
+                ORDER BY CAST(matricula AS INTEGER) DESC
+                LIMIT ?
+            """, (matricula_desde, matricula_hasta, pool_size))
+            raw_rows = cursor.fetchall()
         conn.close()
 
-    # Filtramos las que ya procesamos en esta sesión (evita repetir en el mismo ciclo)
     pendientes = [r for r in raw_rows if str(r["matricula"]) not in PROCESSED_MATRICULAS][:batch_size]
 
     if not pendientes:
-        print(f"{C_GREEN}{C_BOLD}🎉 ¡Todos los productores incompletos con CUIT ya fueron enriquecidos o procesados!{C_RESET}")
+        print(f"{C_GREEN}{C_BOLD}🎉 ¡Todos los productores incompletos seleccionados ya fueron enriquecidos o procesados!{C_RESET}")
         return 0
 
     print(f"{C_MAGENTA}{C_BOLD}⚡ Procesando lote de {len(pendientes)} CUITs (Modo Acelerado Seguro: {max_workers} hilos, delay {delay_between}s)...{C_RESET}")
@@ -547,21 +564,44 @@ def procesar_lote_dateas(batch_size: int = 200, max_workers: int = 2, delay_betw
     return actualizados
 
 def ejecutar_ciclo_continuo(batch_size: int = 200, pause_seconds: int = 6, on_batch_finish=None, on_item_processed=None,
-                           matricula_desde: int = 0, matricula_hasta: int = 999999, max_workers: int = 2, delay_between: float = 0.9):
-    global STOP_ENRICHMENT
+                           matricula_desde: int = 0, matricula_hasta: int = 999999, max_workers: int = 2, delay_between: float = 0.9,
+                           target_matriculas: Optional[List[str]] = None):
+    global STOP_ENRICHMENT, PROCESSED_MATRICULAS
     STOP_ENRICHMENT = False
+    PROCESSED_MATRICULAS.clear()
     batch_num = 1
 
-    rango = f"[{matricula_desde} – {matricula_hasta}]"
-    print(f"\n{C_CYAN}{C_BOLD}🚀 Iniciando Enriquecimiento Acelerado Seguro (2 Hilos): {batch_size} consultas/lote, {max_workers} hilos, pausa {pause_seconds}s.{C_RESET}")
+    if target_matriculas:
+        try:
+            t_mats = [str(m) for m in target_matriculas]
+            with db_lock:
+                conn = sqlite3.connect(DB_PATH, timeout=20.0)
+                cur = conn.cursor()
+                chunk_size = 500
+                for i in range(0, len(t_mats), chunk_size):
+                    chunk = t_mats[i:i + chunk_size]
+                    placeholders = ",".join(["?"] * len(chunk))
+                    cur.execute(f"""
+                        UPDATE productores_detalle
+                        SET observaciones = REPLACE(REPLACE(observaciones, 'NO_DATEAS_2', ''), 'NO_DATEAS_1', '')
+                        WHERE matricula IN ({placeholders}) AND observaciones LIKE '%NO_DATEAS%'
+                    """, chunk)
+                conn.commit()
+                conn.close()
+        except Exception as ex:
+            print(f"Error despejando marcas para matriculas target: {ex}")
+
+    rango = f"[{len(target_matriculas)} objetivo(s)]" if target_matriculas is not None else f"[{matricula_desde} – {matricula_hasta}]"
+    print(f"\n{C_CYAN}{C_BOLD}🚀 Iniciando Enriquecimiento Focalizado {rango}: {batch_size} consultas/lote, {max_workers} hilos, pausa {pause_seconds}s.{C_RESET}")
 
     while not STOP_ENRICHMENT:
         print(f"\n{C_BLUE}{C_BOLD}--- 📦 Lote #{batch_num} {rango} ---{C_RESET}")
         count = procesar_lote_dateas(batch_size=batch_size, max_workers=max_workers, delay_between=delay_between,
-                                    on_item_processed=on_item_processed, matricula_desde=matricula_desde, matricula_hasta=matricula_hasta)
+                                    on_item_processed=on_item_processed, matricula_desde=matricula_desde, matricula_hasta=matricula_hasta,
+                                    target_matriculas=target_matriculas)
         
         if count == 0 and not STOP_ENRICHMENT:
-            print(f"{C_GREEN}{C_BOLD}✨ ¡Proceso completado! No quedan productores incompletos con CUIT pendientes.{C_RESET}")
+            print(f"{C_GREEN}{C_BOLD}✨ ¡Proceso completado! No quedan productores incompletos seleccionados pendientes.{C_RESET}")
             break
 
         if on_batch_finish:
@@ -570,23 +610,38 @@ def ejecutar_ciclo_continuo(batch_size: int = 200, pause_seconds: int = 6, on_ba
         if STOP_ENRICHMENT:
             break
 
-        # Obtener cuántos registros faltan por completar en total
         faltantes = 0
         try:
             with db_lock:
                 conn = sqlite3.connect(DB_PATH, timeout=20.0)
                 cur = conn.cursor()
-                cur.execute("""
-                    SELECT COUNT(*) 
-                    FROM productores_detalle 
-                    WHERE (cuit IS NOT NULL AND cuit != '' AND cuit != '—')
-                      AND (telefono IS NULL OR telefono = '' OR telefono = '—' OR telefono LIKE 'E-mail%')
-                      AND (email IS NULL OR email = '' OR email = '—')
-                      AND (provincia IS NULL OR provincia = '' OR provincia = '—' OR localidad IS NULL OR localidad = '' OR localidad = '—')
-                      AND (observaciones IS NULL OR observaciones NOT LIKE '%NO_DATEAS_2%')
-                      AND CAST(matricula AS INTEGER) BETWEEN ? AND ?
-                """, (matricula_desde, matricula_hasta))
-                faltantes = cur.fetchone()[0]
+                if target_matriculas is not None:
+                    t_mats = [str(m) for m in target_matriculas]
+                    raw_count = 0
+                    chunk_size = 500
+                    for i in range(0, len(t_mats), chunk_size):
+                        chunk = t_mats[i:i + chunk_size]
+                        placeholders = ",".join(["?"] * len(chunk))
+                        cur.execute(f"""
+                            SELECT COUNT(*) FROM productores_detalle 
+                            WHERE matricula IN ({placeholders})
+                              AND (cuit IS NOT NULL AND cuit != '' AND cuit != '—')
+                              AND (provincia IS NULL OR provincia = '' OR provincia = '—' OR localidad IS NULL OR localidad = '' OR localidad = '—')
+                        """, chunk)
+                        raw_count += cur.fetchone()[0]
+                    faltantes = raw_count
+                else:
+                    cur.execute("""
+                        SELECT COUNT(*) 
+                        FROM productores_detalle 
+                        WHERE (cuit IS NOT NULL AND cuit != '' AND cuit != '—')
+                          AND (telefono IS NULL OR telefono = '' OR telefono = '—' OR telefono LIKE 'E-mail%')
+                          AND (email IS NULL OR email = '' OR email = '—')
+                          AND (provincia IS NULL OR provincia = '' OR provincia = '—' OR localidad IS NULL OR localidad = '' OR localidad = '—')
+                          AND (observaciones IS NULL OR observaciones NOT LIKE '%NO_DATEAS_2%')
+                          AND CAST(matricula AS INTEGER) BETWEEN ? AND ?
+                    """, (matricula_desde, matricula_hasta))
+                    faltantes = cur.fetchone()[0]
                 conn.close()
         except Exception:
             pass

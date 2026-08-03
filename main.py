@@ -707,23 +707,38 @@ def main(page: ft.Page):
         state["dateas_active"] = True
         dateas_metrics["start_time"] = time.time()
         
+        filtered_records = state.get("all_filtered") if state.get("all_filtered") is not None else state.get("records", [])
+        target_matriculas = []
+        for r in filtered_records:
+            m = r.get("matricula")
+            prov = str(r.get("provincia", "")).strip()
+            loc = str(r.get("localidad", "")).strip()
+            cuit = str(r.get("cuit", "") or r.get("documento", "") or r.get("productor_id", "")).strip()
+            if m and cuit and cuit not in ("—", "None", "null", ""):
+                if not prov or prov in ("—", "None", "null", "") or not loc or loc in ("—", "None", "null", ""):
+                    target_matriculas.append(str(m))
+
+        if target_matriculas:
+            dateas_metrics["total"] = len(target_matriculas)
+        else:
+            dateas_metrics["total"] = 150
+            
+        dateas_metrics["current"] = 0
+        dateas_metrics["ok"] = 0
+        dateas_metrics["error"] = 0
+        dateas_logs.clear()
+
         import importlib
         import enriquecer_provincia_localidad_dateas
         try:
             importlib.reload(enriquecer_provincia_localidad_dateas)
         except Exception:
             pass
-        from enriquecer_provincia_localidad_dateas import ejecutar_ciclo_continuo, limpiar_marcas_error_dateas
+        from enriquecer_provincia_localidad_dateas import ejecutar_ciclo_continuo
 
-        # Limpiar falsas marcas de rate limit de ejecuciones anteriores antes de empezar
-        try:
-            limpiar_marcas_error_dateas()
-        except Exception:
-            pass
 
         def on_item_proc(idx, total, mat, nombre, cuit, status, info):
-            dateas_metrics["current"] = idx
-            dateas_metrics["total"] = total
+            dateas_metrics["current"] += 1
             if status == "OK":
                 dateas_metrics["ok"] += 1
             elif status == "RATE_LIMIT":
@@ -750,7 +765,15 @@ def main(page: ft.Page):
 
         def run_enrich():
             try:
-                ejecutar_ciclo_continuo(batch_size=600, pause_seconds=12, max_workers=1, delay_between=1.5, on_batch_finish=on_batch_finish, on_item_processed=on_item_proc)
+                ejecutar_ciclo_continuo(
+                    batch_size=600, 
+                    pause_seconds=12, 
+                    max_workers=1, 
+                    delay_between=1.5, 
+                    on_batch_finish=on_batch_finish, 
+                    on_item_processed=on_item_proc,
+                    target_matriculas=target_matriculas if target_matriculas else None
+                )
             except Exception as ex:
                 print(f"Error Dateas enrichment: {ex}")
             finally:
@@ -794,31 +817,18 @@ def main(page: ft.Page):
             timer_text.value = fmt_str
             state["dateas_timer_text"] = fmt_str
 
-            # --- Cuenta regresiva: velocidad real de los últimos 60 items procesados ---
+            # --- Cuenta regresiva: velocidad real de los últimos items procesados ---
             now = time.time()
             ok_count = dateas_metrics["ok"]
             if ok_count >= 5 and elapsed > 5:
                 # items/seg reales en esta sesión
                 speed = ok_count / elapsed  # items OK por segundo
-                # Consultar pendientes de DB cada 30 seg para no saturar
-                if now - _eta_cache["last_check"] >= 30 or _eta_cache["pending"] is None:
-                    try:
-                        import sqlite3 as _sq
-                        _db = _sq.connect(
-                            os.path.expanduser("~/.katrixbroker/data/productores_scraped.db"),
-                            timeout=5.0
-                        )
-                        _cur = _db.cursor()
-                        _cur.execute("""
-                            SELECT COUNT(*) FROM productores_detalle
-                            WHERE (provincia IS NULL OR provincia = '' OR provincia = '\u2014')
-                            AND (observaciones NOT LIKE '%NO_DATEAS_2%')
-                        """)
-                        _eta_cache["pending"] = _cur.fetchone()[0]
-                        _eta_cache["last_check"] = now
-                        _db.close()
-                    except Exception:
-                        pass
+                if now - _eta_cache["last_check"] >= 10 or _eta_cache["pending"] is None:
+                    tot_p = dateas_metrics.get("total", 0)
+                    cur_p = dateas_metrics.get("current", 0)
+                    _eta_cache["pending"] = max(0, tot_p - cur_p)
+                    _eta_cache["last_check"] = now
+
                 if _eta_cache["pending"] is not None and speed > 0:
                     secs_left = int(_eta_cache["pending"] / speed)
                     countdown_text.value = format_hhmmss(secs_left)
@@ -1201,8 +1211,7 @@ def main(page: ft.Page):
             
             from ssn_test import eliminar_productor_db
             if eliminar_productor_db(mat):
-                # Remover de la lista local en memoria de DataManager
-                dm.records = [r for r in dm.records if str(r.get("productor_matricula") or r.get("matricula") or "").strip() != mat]
+                dm.initialize(user_id=state.get("user_id"), role=state.get("role"), regional_only=state.get("regional_only", False))
                 state["records"] = dm.records
                 
                 if state.get("username"):
@@ -1215,6 +1224,7 @@ def main(page: ft.Page):
                     update_page_layout()
                 render_content()
                 update_stats()
+                page.update()
             else:
                 show_alert_dialog("Error", "No se pudo eliminar el productor de la base de datos.")
 
@@ -3267,8 +3277,7 @@ def main(page: ft.Page):
                 
                 from ssn_test import eliminar_productor_db
                 if eliminar_productor_db(mat):
-                    # Remover de los registros en memoria de DataManager
-                    dm.records = [r for r in dm.records if str(r.get("productor_matricula") or r.get("matricula") or "").strip() != mat]
+                    dm.initialize(user_id=state.get("user_id"), role=state.get("role"), regional_only=state.get("regional_only", False))
                     state["records"] = dm.records
                     
                     if state.get("username"):
@@ -3278,6 +3287,7 @@ def main(page: ft.Page):
                     on_back()
                     render_content()
                     update_stats()
+                    page.update()
                 else:
                     show_alert_dialog("Error", "No se pudo eliminar el productor de la base de datos.")
 
@@ -4226,3 +4236,4 @@ if __name__ == "__main__":
         assets_dir="assets",
         name=APP_NAME,
     )
+    # Reload trigger: database sync updated and UI delete refresh fixed

@@ -1,0 +1,611 @@
+{
+	"info": {
+		"_postman_id": "63205220-c817-4865-8688-605a207d3adb",
+		"name": "Cooperación Seguros",
+		"description": "Colección completa de APIs de Cooperación Seguros: Cotización, Suscripción, Consulta de Movimientos y Obtener PDF.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "56602649",
+		"_collection_link": "https://katrixdevs-7521898.postman.co/workspace/katrix's's-Workspace~d4eb6e7b-ce7b-4514-80f1-b6dc937024e2/collection/56602649-63205220-c817-4865-8688-605a207d3adb?source=collection_link"
+	},
+	"item": [
+		{
+			"name": "🔐 Auth",
+			"item": [
+				{
+					"name": "Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (res.access_token) {",
+									"    pm.collectionVariables.set('token', res.access_token);",
+									"    console.log('✅ Token guardado correctamente. Expira en: ' + res.expires_in + 's');",
+									"} else {",
+									"    console.error('❌ No se pudo obtener el token:', JSON.stringify(res));",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"clientSecret\": \"{{clientSecret}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"token"
+							]
+						},
+						"description": "Obtiene el token OAuth2. Se guarda automáticamente en la variable {{token}} de la colección."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🚗 Cotización & Suscripción",
+			"item": [
+				{
+					"name": "Obtener Accesorios",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"UsuarioId\": \"{{usuarioId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Presupuesto/Vehiculo/Accesorios",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Presupuesto",
+								"Vehiculo",
+								"Accesorios"
+							]
+						},
+						"description": "Retorna la lista de accesorios disponibles para usar en la cotización (ej: alarma, alerón). Los códigos obtenidos se usan en el array Accesorios de Cotizar Vehículo."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener GNC",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"UsuarioId\": \"{{usuarioId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Presupuesto/Vehiculo/Gnc",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Presupuesto",
+								"Vehiculo",
+								"Gnc"
+							]
+						},
+						"description": "Retorna la lista de opciones de GNC con su código y valor. Usar CodigoGnc en Cotizar Vehículo cuando PoseeGNC es true."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Localidades",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (Array.isArray(res) && res.length > 0) {",
+									"    pm.collectionVariables.set('idLocalidad', res[0].idLocalidad);",
+									"    console.log('✅ idLocalidad guardado: ' + res[0].idLocalidad + ' - ' + res[0].localidad);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"CodigoPostal\": \"{{codigoPostal}}\",\n  \"UsuarioId\": \"{{usuarioId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Presupuesto/Vehiculo/Localidades",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Presupuesto",
+								"Vehiculo",
+								"Localidades"
+							]
+						},
+						"description": "Retorna las localidades para un código postal dado. El idLocalidad del primer resultado se guarda en {{idLocalidad}}. Ajustar manualmente si hay más de una localidad para el mismo CP."
+					},
+					"response": []
+				},
+				{
+					"name": "Cotizar Vehículo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (Array.isArray(res) && res.length > 0) {",
+									"    const presupuesto = res[0].presupuestoNro;",
+									"    if (presupuesto && presupuesto !== 0) {",
+									"        pm.collectionVariables.set('presupuestoNro', presupuesto);",
+									"        console.log('✅ presupuestoNro guardado: ' + presupuesto);",
+									"    } else {",
+									"        console.warn('⚠️ presupuestoNro es 0. Asegurate de enviar GrabarPresupuesto: true');",
+									"    }",
+									"    console.log('Coberturas disponibles:');",
+									"    res.forEach(c => console.log(' - ' + c.planCobertura + ': ' + c.detalleCobertura + ' | Premio: $' + c.premio));",
+									"} else {",
+									"    console.error('❌ Respuesta inesperada:', JSON.stringify(res));",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"UsuarioId\": \"{{usuarioId}}\",\n  \"RazonSocial\": \"APELLIDO NOMBRE\",\n  \"NroDocumento\": \"12333444\",\n  \"Email\": \"cliente@gmail.com\",\n  \"CodigoProductor\": \"{{codigoProductor}}\",\n  \"CondicionFiscal\": 5,\n  \"Categoria\": 1,\n  \"CodigoInfoAuto\": \"9100011\",\n  \"CodigoVehiculoCMP\": 0,\n  \"CodigoUso\": 1,\n  \"idLocalidad\": {{idLocalidad}},\n  \"CodigoPostal\": \"{{codigoPostal}}\",\n  \"Anio\": 2024,\n  \"PoseeGNC\": false,\n  \"CodigoGNC\": 0,\n  \"ValorVehiculo\": 0,\n  \"CotizaAP\": false,\n  \"CantidadMeses\": 4,\n  \"GrabarPresupuesto\": true,\n  \"AplicarMaxDescuentos\": true,\n  \"Accesorios\": []\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Presupuesto/Vehiculo/Cotizar",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Presupuesto",
+								"Vehiculo",
+								"Cotizar"
+							]
+						},
+						"description": "Cotiza un vehículo. Requiere CodigoInfoAuto (código de InfoAuto/Argautos). Con GrabarPresupuesto:true retorna un presupuestoNro que se guarda automáticamente en {{presupuestoNro}}.\n\nTabla CondicionFiscal: 1=Monotributista, 2=IVA Resp. Inscripto, 5=Consumidor Final\nTabla CodigoUso: 1=Particular, 2=Remis, 4=Comercial, etc."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Beneficios Adicionales",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"UsuarioId\": \"{{usuarioId}}\",\n  \"CoberturaVehiculo\": \"B\",\n  \"PresupuestoNro\": \"{{presupuestoNro}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Presupuesto/Vehiculo/Beneficios",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Presupuesto",
+								"Vehiculo",
+								"Beneficios"
+							]
+						},
+						"description": "Obtiene los beneficios adicionales (grúa, cristales, etc.) para una cobertura y presupuesto dados. Usar solo si poseeBeneficiosAdicionales es true en la respuesta de Cotizar."
+					},
+					"response": []
+				},
+				{
+					"name": "Cargar Imágenes",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (res.idImagenes) {",
+									"    pm.collectionVariables.set('idImagenes', res.idImagenes);",
+									"    console.log('✅ idImagenes guardado: ' + res.idImagenes);",
+									"} else {",
+									"    console.error('❌ No se obtuvo idImagenes:', JSON.stringify(res));",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"UsuarioId\": \"{{usuarioId}}\",\n  \"Unidad\": 1,\n  \"Imagenes\": [\n    {\n      \"NroImagen\": 1,\n      \"NombreImagen\": \"Frente\",\n      \"Extension\": \"jpg\",\n      \"Data\": \"BASE64_DE_LA_IMAGEN_AQUI\"\n    },\n    {\n      \"NroImagen\": 2,\n      \"NombreImagen\": \"Lateral_Derecho\",\n      \"Extension\": \"jpg\",\n      \"Data\": \"BASE64_DE_LA_IMAGEN_AQUI\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Presupuesto/Vehiculo/CargarImagen",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Presupuesto",
+								"Vehiculo",
+								"CargarImagen"
+							]
+						},
+						"description": "Carga las fotos del vehículo en base64. Retorna un idImagenes (GUID) que se guarda en {{idImagenes}} y es requerido para suscribir. La cantidad de fotos requeridas la indica cantidadFotosRequeridas en la respuesta de Cotizar."
+					},
+					"response": []
+				},
+				{
+					"name": "Suscribir Vehículo (Tarjeta de Crédito)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"PresupuestoNro\": \"{{presupuestoNro}}\",\n  \"CodigoProductor\": \"{{codigoProductor}}\",\n  \"UsuarioId\": \"{{usuarioId}}\",\n  \"IdImagenes\": \"{{idImagenes}}\",\n  \"Persona\": {\n    \"Nombre\": \"NOMBRE\",\n    \"Apellido\": \"APELLIDO\",\n    \"FechaNacimiento\": \"1990-01-15\",\n    \"NroDocumento\": \"12333444\",\n    \"IdLocalidad\": {{idLocalidad}},\n    \"CodigoPostal\": \"{{codigoPostal}}\",\n    \"Calle\": \"SAN MARTIN\",\n    \"Numero\": \"123\",\n    \"Genero\": \"M\",\n    \"IdNacionalidad\": 1,\n    \"LugarNacimiento\": \"MENDOZA\",\n    \"Email\": \"cliente@gmail.com\",\n    \"IdEstadoCivil\": \"1\",\n    \"IdActividad\": \"2346\",\n    \"Telefono\": \"2615000000\"\n  },\n  \"MedioPago\": {\n    \"Tipo\": \"2\",\n    \"MarcaTarjetaCredito\": \"VISA\",\n    \"TitularTarjetaCredito\": \"NOMBRE APELLIDO\",\n    \"NumeroTarjetaCredito\": \"4111111111111111\",\n    \"FechaVencimientoTC\": \"2027-12-01\",\n    \"Bp_cardholder_id\": \"\"\n  },\n  \"Vehiculo\": {\n    \"PlanCobertura\": \"B\",\n    \"Patente\": \"ABC123\",\n    \"NumeroMotor\": \"MOTOR01\",\n    \"NumeroChasis\": \"CHASIS01\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Presupuesto/Vehiculo/{{presupuestoNro}}/Suscribir",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Presupuesto",
+								"Vehiculo",
+								"{{presupuestoNro}}",
+								"Suscribir"
+							]
+						},
+						"description": "Suscribe (emite) la póliza del vehículo con pago por tarjeta de crédito.\n\nGénero: M=Masculino, F=Femenino\nEstado Civil: 1=Soltero, 2=Casado, 3=Divorciado, 4=Concubinato, 6=Viudo, 7=Separado\nActividad: 2342=Jubilado, 2343=Desocupado, 2344=Ama de Casa, 2345=Estudiante, 2346=Empleado, 2347=Comerciante\nNacionalidad: 1=Argentina, 2=Brasilera, 3=Chilena, 6=Venezolana, 7=Uruguaya, 10=Paraguaya\nMarcas: VISA, MASTERCARD, NARANJA, CABAL, AMERICAN EXPRESS, DINERS"
+					},
+					"response": []
+				},
+				{
+					"name": "Suscribir Vehículo (CBU)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"PresupuestoNro\": \"{{presupuestoNro}}\",\n  \"CodigoProductor\": \"{{codigoProductor}}\",\n  \"UsuarioId\": \"{{usuarioId}}\",\n  \"IdImagenes\": \"{{idImagenes}}\",\n  \"Persona\": {\n    \"Nombre\": \"NOMBRE\",\n    \"Apellido\": \"APELLIDO\",\n    \"FechaNacimiento\": \"1990-01-15\",\n    \"NroDocumento\": \"12333444\",\n    \"IdLocalidad\": {{idLocalidad}},\n    \"CodigoPostal\": \"{{codigoPostal}}\",\n    \"Calle\": \"SAN MARTIN\",\n    \"Numero\": \"123\",\n    \"Genero\": \"M\",\n    \"IdNacionalidad\": 1,\n    \"LugarNacimiento\": \"MENDOZA\",\n    \"Email\": \"cliente@gmail.com\",\n    \"IdEstadoCivil\": \"1\",\n    \"IdActividad\": \"2346\",\n    \"Telefono\": \"2615000000\"\n  },\n  \"MedioPago\": {\n    \"Tipo\": \"3\",\n    \"CBU\": \"0000003100037924725653\",\n    \"PaisBanco\": \"Argentina\"\n  },\n  \"Vehiculo\": {\n    \"PlanCobertura\": \"B\",\n    \"Patente\": \"ABC123\",\n    \"NumeroMotor\": \"MOTOR01\",\n    \"NumeroChasis\": \"CHASIS01\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Presupuesto/Vehiculo/{{presupuestoNro}}/Suscribir",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Presupuesto",
+								"Vehiculo",
+								"{{presupuestoNro}}",
+								"Suscribir"
+							]
+						},
+						"description": "Suscribe la póliza con débito directo por CBU. El CBU debe tener 22 dígitos: 7 dígitos clave banco + 1 dígito control + 13 dígitos cuenta + 1 dígito control."
+					},
+					"response": []
+				},
+				{
+					"name": "Suscribir Vehículo (Tarjeta + AP)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"PresupuestoNro\": \"{{presupuestoNro}}\",\n  \"CodigoProductor\": \"{{codigoProductor}}\",\n  \"UsuarioId\": \"{{usuarioId}}\",\n  \"IdImagenes\": \"{{idImagenes}}\",\n  \"Persona\": {\n    \"Nombre\": \"NOMBRE\",\n    \"Apellido\": \"APELLIDO\",\n    \"FechaNacimiento\": \"1990-01-15\",\n    \"NroDocumento\": \"12333444\",\n    \"IdLocalidad\": {{idLocalidad}},\n    \"CodigoPostal\": \"{{codigoPostal}}\",\n    \"Calle\": \"SAN MARTIN\",\n    \"Numero\": \"123\",\n    \"Genero\": \"M\",\n    \"IdNacionalidad\": 1,\n    \"LugarNacimiento\": \"MENDOZA\",\n    \"Email\": \"cliente@gmail.com\",\n    \"IdEstadoCivil\": \"1\",\n    \"IdActividad\": \"2346\",\n    \"Telefono\": \"2615000000\"\n  },\n  \"MedioPago\": {\n    \"Tipo\": \"2\",\n    \"MarcaTarjetaCredito\": \"VISA\",\n    \"TitularTarjetaCredito\": \"NOMBRE APELLIDO\",\n    \"NumeroTarjetaCredito\": \"4111111111111111\",\n    \"FechaVencimientoTC\": \"2027-12-01\",\n    \"Bp_cardholder_id\": \"1000724697\"\n  },\n  \"Vehiculo\": {\n    \"PlanCobertura\": \"B\",\n    \"Patente\": \"ABC123\",\n    \"NumeroMotor\": \"MOTOR01\",\n    \"NumeroChasis\": \"CHASIS01\"\n  },\n  \"AccidentePasajeros\": {\n    \"IdProducto\": 5\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Presupuesto/Vehiculo/{{presupuestoNro}}/Suscribir",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Presupuesto",
+								"Vehiculo",
+								"{{presupuestoNro}}",
+								"Suscribir"
+							]
+						},
+						"description": "Suscribe la póliza con tarjeta de crédito e incluye Accidente de Pasajeros. El IdProducto de AP se obtiene del array cotizacionesAP en la respuesta de Cotizar (con CotizaAP: true)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📋 Pólizas",
+			"item": [
+				{
+					"name": "Consultar Movimientos",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();",
+									"if (res.cod_respuesta === '0' && res.documentos && res.documentos.length > 0) {",
+									"    const doc = res.documentos[0];",
+									"    pm.collectionVariables.set('idPoliza', doc.idPoliza);",
+									"    console.log('✅ idPoliza guardado: ' + doc.idPoliza);",
+									"    console.log('Póliza: ' + doc.poliza + ' | Cliente: ' + doc.cliente + ' | Movimiento: ' + doc.tipoMovimiento);",
+									"    if (res.documentos.length > 1) {",
+									"        console.log('⚠️ Se encontraron ' + res.documentos.length + ' movimientos. Se guardó el primero. Ajustar manualmente si se necesita otro.');",
+									"    }",
+									"} else {",
+									"    console.warn('⚠️ ' + res.msg_respuesta);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"NumeroReferencia\": \"20027144800\",\n  \"FechaEmision\": \"2024-01-01\",\n  \"UsuarioId\": \"{{usuarioId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Poliza/Movimiento/Buscar",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Poliza",
+								"Movimiento",
+								"Buscar"
+							]
+						},
+						"description": "Busca los movimientos (emisiones, endosos) de un número de referencia de póliza. El idPoliza del primer resultado se guarda en {{idPoliza}}. Si no se envía FechaEmision, retorna todos los movimientos."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener PDF Póliza",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"NumeroReferencia\": \"20027144800\",\n  \"IdPoliza\": \"{{idPoliza}}\",\n  \"UsuarioId\": \"{{usuarioId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Poliza/Movimiento/ObtenerPDF",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Poliza",
+								"Movimiento",
+								"ObtenerPDF"
+							]
+						},
+						"description": "Descarga el PDF de una póliza. Si no se envía IdPoliza, retorna el PDF del último movimiento del número de referencia.\n\n⚠️ La respuesta es un archivo PDF binario. En Postman usar:\n- Body → Preview para verlo inline\n- Botón 'Save Response' → Save to a file para descargarlo"
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener PDF (último movimiento)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"NumeroReferencia\": \"20027144800\",\n  \"UsuarioId\": \"{{usuarioId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/Poliza/Movimiento/ObtenerPDF",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"Poliza",
+								"Movimiento",
+								"ObtenerPDF"
+							]
+						},
+						"description": "Descarga el PDF del último movimiento sin necesitar IdPoliza. Útil para obtener la póliza más reciente directamente."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://apipre.cooperacionseguros.com.ar",
+			"description": {
+				"content": "URL base. Testing: https://apipre.cooperacionseguros.com.ar | Producción: https://api.cooperacionseguros.com.ar",
+				"type": "text/plain"
+			}
+		},
+		{
+			"key": "token",
+			"value": "",
+			"description": {
+				"content": "Token OAuth2. Se llena automáticamente al ejecutar el request 'Token'.",
+				"type": "text/plain"
+			}
+		},
+		{
+			"key": "clientId",
+			"value": "XXCLIENTEXX",
+			"description": {
+				"content": "Client ID provisto por Cooperación Seguros",
+				"type": "text/plain"
+			}
+		},
+		{
+			"key": "clientSecret",
+			"value": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXX",
+			"description": {
+				"content": "Client Secret provisto por Cooperación Seguros",
+				"type": "text/plain"
+			}
+		},
+		{
+			"key": "usuarioId",
+			"value": "pwNNNNNN",
+			"description": {
+				"content": "Usuario habilitado ej: pwNNNNNN",
+				"type": "text/plain"
+			}
+		},
+		{
+			"key": "codigoProductor",
+			"value": "NNNNN/NN",
+			"description": {
+				"content": "Código del productor",
+				"type": "text/plain"
+			}
+		},
+		{
+			"key": "presupuestoNro",
+			"value": "",
+			"description": {
+				"content": "Se llena automáticamente desde Cotizar Vehículo",
+				"type": "text/plain"
+			}
+		},
+		{
+			"key": "idPoliza",
+			"value": "",
+			"description": {
+				"content": "Se llena automáticamente desde Consultar Movimientos",
+				"type": "text/plain"
+			}
+		},
+		{
+			"key": "numeroReferencia",
+			"value": "",
+			"description": {
+				"content": "Se llena automáticamente desde Consultar Movimientos",
+				"type": "text/plain"
+			}
+		},
+		{
+			"key": "idImagenes",
+			"value": "",
+			"description": {
+				"content": "Se llena automáticamente desde Cargar Imágenes",
+				"type": "text/plain"
+			}
+		},
+		{
+			"key": "idLocalidad",
+			"value": "4743",
+			"description": {
+				"content": "Se obtiene del servicio Obtener Localidades",
+				"type": "text/plain"
+			}
+		},
+		{
+			"key": "codigoPostal",
+			"value": "5000",
+			"description": {
+				"content": "Código postal del asegurado",
+				"type": "text/plain"
+			}
+		}
+	]
+}

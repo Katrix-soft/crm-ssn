@@ -2844,18 +2844,22 @@ def eliminar_productor_db(matricula: str) -> bool:
     """Elimina un productor específico de la base de datos SQLite por su matrícula."""
     if not matricula:
         return False
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        mat_str = str(matricula).strip()
-        cursor.execute("DELETE FROM productores_detalle WHERE TRIM(LOWER(matricula)) = TRIM(LOWER(?))", (mat_str,))
-        cursor.execute("DELETE FROM productor_sociedad WHERE TRIM(LOWER(productor_matricula)) = TRIM(LOWER(?))", (mat_str,))
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"Error al eliminar productor {matricula}: {e}")
-        return False
+    mat_str = str(matricula).strip()
+    any_success = False
+    paths_to_clean = list(set([DB_PATH, _local_db]))
+    for path in paths_to_clean:
+        if os.path.exists(path):
+            try:
+                conn = sqlite3.connect(path, timeout=10.0)
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM productores_detalle WHERE TRIM(LOWER(matricula)) = TRIM(LOWER(?))", (mat_str,))
+                cursor.execute("DELETE FROM productor_sociedad WHERE TRIM(LOWER(productor_matricula)) = TRIM(LOWER(?))", (mat_str,))
+                conn.commit()
+                conn.close()
+                any_success = True
+            except Exception as e:
+                print(f"Error al eliminar productor {matricula} en {path}: {e}")
+    return any_success
 
 def obtener_configuraciones() -> dict:
     """Devuelve todas las configuraciones del sistema en un diccionario."""
