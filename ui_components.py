@@ -249,7 +249,7 @@ def build_header(
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
         bgcolor=COLORS["header_bg"],
-        padding=ft.Padding(left=48, right=48, top=16, bottom=16),
+        padding=ft.Padding(left=48, right=48, top=10, bottom=10),
         shadow=ft.BoxShadow(spread_radius=0, blur_radius=8, color=ft.Colors.with_opacity(0.25, "#000000"), offset=ft.Offset(0, 2)),
         animate=400,
     )
@@ -483,6 +483,8 @@ def build_search_bar(
         color=COLORS["text_primary"],
         bgcolor=COLORS["surface"],
         expand=True,
+        dense=True,
+        content_padding=ft.Padding(left=12, right=12, top=6, bottom=6),
         on_change=lambda e: on_change(e.control.value),
         on_submit=on_submit,
         cursor_color=COLORS["primary"],
@@ -514,136 +516,6 @@ def build_search_bar(
                                 provincia_dropdown2,
                                 localidad_dropdown2,
                                 estado_dropdown,
-                                (lambda is_completos: ft.Container(
-                                    content=ft.Row(
-                                        controls=[
-                                            ft.Icon(
-                                                ft.Icons.CHECK_CIRCLE_ROUNDED if is_completos else ft.Icons.RADIO_BUTTON_UNCHECKED_ROUNDED,
-                                                size=16,
-                                                color=COLORS["success"] if is_completos else COLORS["text_secondary"]
-                                            ),
-                                            ft.Text(
-                                                "Datos Completos",
-                                                size=12,
-                                                weight=ft.FontWeight.W_600 if is_completos else ft.FontWeight.NORMAL,
-                                                color=COLORS["success"] if is_completos else COLORS["text_secondary"]
-                                            ),
-                                        ],
-                                        spacing=6,
-                                        tight=True,
-                                    ),
-                                    bgcolor=ft.Colors.with_opacity(0.12, COLORS["success"]) if is_completos else ft.Colors.TRANSPARENT,
-                                    border=ft.Border.all(1.5, COLORS["success"] if is_completos else COLORS["border"]),
-                                    border_radius=8,
-                                    padding=ft.Padding(left=10, right=12, top=6, bottom=6),
-                                    on_click=lambda _: (
-                                        on_completitud_filter_change("todos" if is_completos else "completos")
-                                        if on_completitud_filter_change
-                                        else (on_mostly_complete_change(not mostly_complete_value) if on_mostly_complete_change else None)
-                                    ),
-                                    tooltip="Filtrar productores con datos de contacto completos",
-                                ))(completitud_filter_value == "completos" or (mostly_complete_value and completitud_filter_value == "todos")),
-
-                                (lambda is_incompletos: ft.Container(
-                                    content=ft.Row(
-                                        controls=[
-                                            ft.Icon(
-                                                ft.Icons.WARNING_AMBER_ROUNDED if is_incompletos else ft.Icons.RADIO_BUTTON_UNCHECKED_ROUNDED,
-                                                size=16,
-                                                color=COLORS["warning"] if is_incompletos else COLORS["text_secondary"]
-                                            ),
-                                            ft.Text(
-                                                "Datos Incompletos",
-                                                size=12,
-                                                weight=ft.FontWeight.W_600 if is_incompletos else ft.FontWeight.NORMAL,
-                                                color=COLORS["warning"] if is_incompletos else COLORS["text_secondary"]
-                                            ),
-                                        ],
-                                        spacing=6,
-                                        tight=True,
-                                    ),
-                                    bgcolor=ft.Colors.with_opacity(0.15, COLORS["warning"]) if is_incompletos else ft.Colors.TRANSPARENT,
-                                    border=ft.Border.all(1.5, COLORS["warning"] if is_incompletos else COLORS["border"]),
-                                    border_radius=8,
-                                    padding=ft.Padding(left=10, right=12, top=6, bottom=6),
-                                    on_click=lambda _: (
-                                        on_completitud_filter_change("todos" if is_incompletos else "incompletos")
-                                        if on_completitud_filter_change else None
-                                    ),
-                                    tooltip="Filtrar productores a los que les faltan datos de contacto",
-                                ))(completitud_filter_value == "incompletos"),
-                                ft.Container(
-                                    content=ft.Row(
-                                        controls=[
-                                            ft.Icon(
-                                                ft.Icons.ARROW_UPWARD_ROUNDED if not sort_descending_value else ft.Icons.ARROW_DOWNWARD_ROUNDED,
-                                                size=16,
-                                                color=COLORS["accent"]
-                                            ),
-                                            ft.Text(
-                                                "Orden: Ascendente" if not sort_descending_value else "Orden: Descendente",
-                                                size=12,
-                                                weight=ft.FontWeight.W_600,
-                                                color=COLORS["accent"]
-                                            ),
-                                        ],
-                                        spacing=6,
-                                        tight=True,
-                                    ),
-                                    bgcolor=ft.Colors.with_opacity(0.1, COLORS["accent"]),
-                                    border=ft.Border.all(
-                                        1.5,
-                                        COLORS["accent"]
-                                    ),
-                                    border_radius=8,
-                                    padding=ft.Padding(left=10, right=12, top=6, bottom=6),
-                                    on_click=lambda e: on_sort_direction_change(not sort_descending_value) if on_sort_direction_change else None,
-                                    tooltip="Cambiar dirección del orden (Ascendente / Descendente)",
-                                ) if on_sort_direction_change else ft.Container(),
-                                ft.Container(
-                                    content=ft.Row(
-                                        controls=[
-                                            ft.Icon(
-                                                ft.Icons.MAP_ROUNDED if regional_only_value else ft.Icons.PUBLIC_ROUNDED,
-                                                size=16,
-                                                color=COLORS["primary"]
-                                            ),
-                                            ft.Text(
-                                                "Regionales" if regional_only_value else "Nacionales",
-                                                size=12,
-                                                weight=ft.FontWeight.W_600,
-                                                color=COLORS["primary"]
-                                            ),
-                                        ],
-                                        spacing=6,
-                                        tight=True,
-                                    ),
-                                    bgcolor=ft.Colors.with_opacity(0.1, COLORS["primary"]),
-                                    border=ft.Border.all(
-                                        1.5,
-                                        COLORS["primary"]
-                                    ),
-                                    border_radius=8,
-                                    padding=ft.Padding(left=10, right=12, top=6, bottom=6),
-                                    on_click=lambda e: on_regional_only_change(not regional_only_value) if on_regional_only_change else None,
-                                    tooltip="Alternar entre ver solo productores de la región Cuyo (Mendoza, San Juan, San Luis) o de todo el país",
-                                ) if on_regional_only_change else ft.Container(),
-                                ft.Container(
-                                    content=ft.Row(
-                                        controls=[
-                                            ft.Icon(ft.Icons.INFO_OUTLINED, size=16, color=COLORS["accent"]),
-                                            ft.Text("Info & Restricciones", size=12, weight=ft.FontWeight.W_600, color=COLORS["accent"]),
-                                        ],
-                                        spacing=6,
-                                        tight=True,
-                                    ),
-                                    bgcolor=ft.Colors.with_opacity(0.1, COLORS["accent"]),
-                                    border=ft.Border.all(1.5, COLORS["accent"]),
-                                    border_radius=8,
-                                    padding=ft.Padding(left=10, right=12, top=6, bottom=6),
-                                    on_click=on_info_padron_click if on_info_padron_click else None,
-                                    tooltip="Ver detalles del Padrón: PAS, Sociedades/Brokers, Ramos y Restricciones SSN",
-                                ) if on_info_padron_click else ft.Container(),
                             ],
                             spacing=14,
                             vertical_alignment=ft.CrossAxisAlignment.CENTER,
@@ -748,10 +620,10 @@ def build_search_bar(
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
             ],
-            spacing=12,
+            spacing=8,
         ),
         bgcolor=COLORS["surface"],
-        padding=ft.Padding(left=48, right=48, top=18, bottom=18),
+        padding=ft.Padding(left=48, right=48, top=10, bottom=10),
         border=ft.Border(bottom=ft.BorderSide(1, COLORS["divider"])),
         shadow=ft.BoxShadow(spread_radius=0, blur_radius=4, color=ft.Colors.with_opacity(0.06, "#000000"), offset=ft.Offset(0, 2)),
         animate=400,

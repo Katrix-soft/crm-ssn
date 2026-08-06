@@ -6,6 +6,16 @@ import threading
 import time
 import os
 import sys
+
+# Cargar variables de entorno desde .env manualmente
+env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+if os.path.exists(env_file):
+    with open(env_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, val = line.split("=", 1)
+                os.environ[key.strip()] = val.strip()
 from typing import Any
 import flet as ft
 
@@ -360,6 +370,7 @@ def main(page: ft.Page):
     page.bgcolor           = COLORS["background"]
     page.padding           = 0
     page.spacing           = 0
+    page.scroll            = None
     page.theme             = ft.Theme(color_scheme_seed=COLORS["primary"])
     page.theme_mode        = ft.ThemeMode.LIGHT
     page.locale_configuration = ft.LocaleConfiguration(
@@ -431,6 +442,8 @@ def main(page: ft.Page):
     stats_ref        = ft.Ref[ft.Container]()
     content_area     = ft.Ref[ft.Column]()
     footer_container = ft.Ref[ft.Container]()
+    badge_ref        = ft.Ref[ft.Container]()
+    pagination_ref   = ft.Ref[ft.Container]()
 
     def trigger_import_picker(e):
         try:
@@ -1462,7 +1475,21 @@ def main(page: ft.Page):
             )
             pagination = build_pagination(current_page, total_pages, on_page_change=go_to_page)
 
-            content_area.current.controls = [badge, table, pagination]
+            # Badge y paginacion van en sus propios contenedores fijos
+            # (siempre visibles, sin necesidad de scrollear)
+            if badge_ref.current is not None:
+                badge_ref.current.content = badge.content
+                badge_ref.current.bgcolor = badge.bgcolor
+                badge_ref.current.padding = badge.padding
+
+            if pagination_ref.current is not None:
+                pagination_ref.current.content = pagination.content
+                pagination_ref.current.bgcolor = getattr(pagination, "bgcolor", None)
+                pagination_ref.current.padding = getattr(pagination, "padding", None)
+                pagination_ref.current.border  = getattr(pagination, "border",  None)
+
+            # Solo la tabla (con el ListView scrolleable) en el area central
+            content_area.current.controls = [table]
 
         page.update()
 
@@ -2136,28 +2163,23 @@ def main(page: ft.Page):
             return ft.Container(
                 content=ft.Row(
                     controls=[
-                        ft.Container(
-                            content=ft.Icon(icon, color=color, size=24),
-                            bgcolor=ft.Colors.with_opacity(0.12, color),
-                            border_radius=12,
-                            padding=10,
-                        ),
+                        ft.Icon(icon, color=color, size=18),
                         ft.Column(
                             controls=[
-                                ft.Text(str(value), size=18, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
-                                ft.Text(title, size=11, color=COLORS["text_secondary"], weight=ft.FontWeight.W_500),
+                                ft.Text(str(value), size=15, weight=ft.FontWeight.BOLD, color=COLORS["text_primary"]),
+                                ft.Text(title, size=10, color=COLORS["text_secondary"]),
                             ],
-                            spacing=1,
+                            spacing=0,
                             tight=True,
                         )
                     ],
-                    spacing=12,
+                    spacing=8,
+                    tight=True,
                 ),
                 bgcolor=COLORS["surface"],
-                border_radius=12,
-                padding=14,
-                width=190,
-                shadow=ft.BoxShadow(spread_radius=1, blur_radius=6, color=ft.Colors.with_opacity(0.06, "#000000")),
+                border_radius=8,
+                padding=ft.Padding(left=12, right=14, top=8, bottom=8),
+                shadow=ft.BoxShadow(spread_radius=0, blur_radius=4, color=ft.Colors.with_opacity(0.06, "#000000")),
                 on_click=lambda e: filter_by_status(status_filter),
             )
             
@@ -2170,9 +2192,9 @@ def main(page: ft.Page):
                     make_card("Interesados", interesados, ft.Icons.STAR_ROUNDED, COLORS["warning"], "interesado"),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
-                spacing=16,
+                spacing=12,
             ),
-            margin=ft.Margin(left=24, right=24, top=16, bottom=8),
+            padding=ft.Padding(left=24, right=24, top=8, bottom=4),
         )
 
     def update_settings_btn():
@@ -4062,7 +4084,12 @@ def main(page: ft.Page):
                     header_wrap,
                     initial_search,
                     ft.Container(ref=stats_ref),
-                    main_content,
+                    ft.Container(ref=badge_ref),
+                    ft.Container(
+                        content=main_content,
+                        expand=True,
+                    ),
+                    ft.Container(ref=pagination_ref),
                     footer_wrap,
                 ]
                 update_stats()
